@@ -1,5 +1,6 @@
 import type { Tool } from "../config/schemas.ts";
 import type { ToolWithServer } from "../client/manager.ts";
+import type { ValidationError } from "../validation/schema.ts";
 
 // ANSI color codes
 const RESET = "\x1b[0m";
@@ -151,6 +152,27 @@ function formatSchema(schema: Tool["inputSchema"], indent: number): string {
 export function formatCallResult(result: unknown, options: FormatOptions): string {
   // Call results are always JSON
   return JSON.stringify(result, null, 2);
+}
+
+/** Format validation errors for tool input */
+export function formatValidationErrors(
+  serverName: string,
+  toolName: string,
+  errors: ValidationError[],
+  options: FormatOptions,
+): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify({
+      error: "validation",
+      server: serverName,
+      tool: toolName,
+      details: errors,
+    });
+  }
+
+  const header = `${RED}error:${RESET} invalid arguments for ${CYAN}${serverName}${RESET}/${BOLD}${toolName}${RESET}`;
+  const details = errors.map((e) => `  ${YELLOW}${e.path}${RESET}: ${e.message}`).join("\n");
+  return `${header}\n${details}`;
 }
 
 /** Format an error message */

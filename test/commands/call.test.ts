@@ -70,4 +70,26 @@ describe("mcpcli call", () => {
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Unknown server");
   });
+
+  test("validates missing required field", async () => {
+    const proc = run("call", "mock", "echo", "{}");
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("message");
+  });
+
+  test("validates wrong type", async () => {
+    const proc = run("call", "mock", "add", '{"a": "not a number", "b": 1}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("number");
+  });
+
+  test("passes validation with correct args", async () => {
+    const proc = run("call", "mock", "echo", '{"message": "valid"}');
+    const exitCode = await proc.exited;
+    expect(exitCode).toBe(0);
+  });
 });

@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { getContext } from "../context.ts";
-import { formatCallResult, formatError } from "../output/formatter.ts";
+import { formatCallResult, formatError, formatValidationErrors } from "../output/formatter.ts";
+import { validateToolInput } from "../validation/schema.ts";
 
 export function registerCallCommand(program: Command) {
   program
@@ -22,7 +23,15 @@ export function registerCallCommand(program: Command) {
           }
         }
 
-        // TODO: Phase 6 — validate args against tool inputSchema before calling
+        // Validate args against tool inputSchema before calling
+        const toolSchema = await manager.getToolSchema(server, tool);
+        if (toolSchema) {
+          const validation = validateToolInput(server, toolSchema, args);
+          if (!validation.valid) {
+            console.error(formatValidationErrors(server, tool, validation.errors, formatOptions));
+            process.exit(1);
+          }
+        }
 
         const result = await manager.callTool(server, tool, args);
         console.log(formatCallResult(result, formatOptions));
