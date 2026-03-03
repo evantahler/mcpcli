@@ -1,11 +1,61 @@
 import type { Command } from "commander";
+import { getContext } from "../context.ts";
+import { formatCallResult, formatError } from "../output/formatter.ts";
 
 export function registerCallCommand(program: Command) {
   program
     .command("call <server> <tool> [args]")
     .description("validate inputs locally, then execute a tool")
-    .action((server, tool, args, _options) => {
-      // TODO: call implementation
-      console.log(`mcpcli call ${server} ${tool} ${args ?? "(no args)"} — not yet implemented`);
+    .action(async (server: string, tool: string, argsStr: string | undefined) => {
+      const { manager, formatOptions } = await getContext(program);
+      try {
+        // Parse args from argument, stdin, or empty
+        let args: Record<string, unknown> = {};
+
+        if (argsStr) {
+          args = parseJsonArgs(argsStr);
+        } else if (!process.stdin.isTTY) {
+          // Read from stdin
+          const stdin = await readStdin();
+          if (stdin.trim()) {
+            args = parseJsonArgs(stdin);
+          }
+        }
+
+        // TODO: Phase 6 — validate args against tool inputSchema before calling
+
+        const result = await manager.callTool(server, tool, args);
+        console.log(formatCallResult(result, formatOptions));
+      } catch (err) {
+        console.error(formatError(String(err), formatOptions));
+        process.exit(1);
+      } finally {
+        await manager.close();
+      }
     });
+}
+
+function parseJsonArgs(str: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(str);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      throw new Error("Tool arguments must be a JSON object");
+    }
+    return parsed as Record<string, unknown>;
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error(`Invalid JSON: ${err.message}`);
+    }
+    throw err;
+  }
+}
+
+async function readStdin(): Promise<string> {
+  const chunks: string[] = [];
+  const reader = process.stdin;
+  reader.setEncoding("utf-8");
+  for await (const chunk of reader) {
+    chunks.push(chunk as string);
+  }
+  return chunks.join("");
 }
