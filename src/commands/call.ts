@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { getContext } from "../context.ts";
 import { formatCallResult, formatError, formatValidationErrors } from "../output/formatter.ts";
+import { startSpinner } from "../output/spinner.ts";
 import { validateToolInput } from "../validation/schema.ts";
 
 export function registerCallCommand(program: Command) {
@@ -33,7 +34,9 @@ export function registerCallCommand(program: Command) {
           }
         }
 
+        const spinner = startSpinner(`Calling ${server}/${tool}...`, formatOptions);
         const result = await manager.callTool(server, tool, args);
+        spinner.stop();
         console.log(formatCallResult(result, formatOptions));
       } catch (err) {
         console.error(formatError(String(err), formatOptions));

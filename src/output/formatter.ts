@@ -1,15 +1,7 @@
+import { bold, cyan, dim, green, red, yellow } from "ansis";
 import type { Tool } from "../config/schemas.ts";
 import type { ToolWithServer } from "../client/manager.ts";
 import type { ValidationError } from "../validation/schema.ts";
-
-// ANSI color codes
-const RESET = "\x1b[0m";
-const BOLD = "\x1b[1m";
-const DIM = "\x1b[2m";
-const CYAN = "\x1b[36m";
-const GREEN = "\x1b[32m";
-const RED = "\x1b[31m";
-const YELLOW = "\x1b[33m";
 
 export interface FormatOptions {
   json?: boolean;
@@ -44,7 +36,7 @@ export function formatToolList(tools: ToolWithServer[], options: FormatOptions):
   }
 
   if (tools.length === 0) {
-    return `${DIM}No tools found${RESET}`;
+    return dim("No tools found");
   }
 
   // Calculate column widths
@@ -53,10 +45,10 @@ export function formatToolList(tools: ToolWithServer[], options: FormatOptions):
 
   return tools
     .map((t) => {
-      const server = `${CYAN}${t.server.padEnd(maxServer)}${RESET}`;
-      const tool = `${BOLD}${t.tool.name.padEnd(maxTool)}${RESET}`;
+      const server = cyan(t.server.padEnd(maxServer));
+      const tool = bold(t.tool.name.padEnd(maxTool));
       if (options.withDescriptions && t.tool.description) {
-        return `${server}  ${tool}  ${DIM}${t.tool.description}${RESET}`;
+        return `${server}  ${tool}  ${dim(t.tool.description)}`;
       }
       return `${server}  ${tool}`;
     })
@@ -81,16 +73,16 @@ export function formatServerTools(
   }
 
   if (tools.length === 0) {
-    return `${DIM}No tools found for ${serverName}${RESET}`;
+    return dim(`No tools found for ${serverName}`);
   }
 
-  const header = `${CYAN}${BOLD}${serverName}${RESET}`;
+  const header = cyan.bold(serverName);
   const maxName = Math.max(...tools.map((t) => t.name.length));
 
   const lines = tools.map((t) => {
-    const name = `  ${BOLD}${t.name.padEnd(maxName)}${RESET}`;
+    const name = `  ${bold(t.name.padEnd(maxName))}`;
     if (t.description) {
-      return `${name}  ${DIM}${t.description}${RESET}`;
+      return `${name}  ${dim(t.description)}`;
     }
     return name;
   });
@@ -114,14 +106,14 @@ export function formatToolSchema(serverName: string, tool: Tool, options: Format
   }
 
   const lines: string[] = [];
-  lines.push(`${CYAN}${serverName}${RESET}/${BOLD}${tool.name}${RESET}`);
+  lines.push(`${cyan(serverName)}/${bold(tool.name)}`);
 
   if (tool.description) {
-    lines.push(`${DIM}${tool.description}${RESET}`);
+    lines.push(dim(tool.description));
   }
 
   lines.push("");
-  lines.push(`${BOLD}Input Schema:${RESET}`);
+  lines.push(bold("Input Schema:"));
   lines.push(formatSchema(tool.inputSchema, 2));
 
   return lines.join("\n");
@@ -134,22 +126,22 @@ function formatSchema(schema: Tool["inputSchema"], indent: number): string {
   const required = new Set(schema.required ?? []);
 
   if (Object.keys(properties).length === 0) {
-    return `${pad}${DIM}(no parameters)${RESET}`;
+    return `${pad}${dim("(no parameters)")}`;
   }
 
   return Object.entries(properties)
     .map(([name, prop]) => {
       const p = prop as Record<string, unknown>;
       const type = (p.type as string) ?? "any";
-      const req = required.has(name) ? `${RED}*${RESET}` : "";
-      const desc = p.description ? `  ${DIM}${p.description}${RESET}` : "";
-      return `${pad}${GREEN}${name}${RESET}${req} ${DIM}(${type})${RESET}${desc}`;
+      const req = required.has(name) ? red("*") : "";
+      const desc = p.description ? `  ${dim(String(p.description))}` : "";
+      return `${pad}${green(name)}${req} ${dim(`(${type})`)}${desc}`;
     })
     .join("\n");
 }
 
 /** Format a tool call result */
-export function formatCallResult(result: unknown, options: FormatOptions): string {
+export function formatCallResult(result: unknown, _options: FormatOptions): string {
   // Call results are always JSON
   return JSON.stringify(result, null, 2);
 }
@@ -170,8 +162,8 @@ export function formatValidationErrors(
     });
   }
 
-  const header = `${RED}error:${RESET} invalid arguments for ${CYAN}${serverName}${RESET}/${BOLD}${toolName}${RESET}`;
-  const details = errors.map((e) => `  ${YELLOW}${e.path}${RESET}: ${e.message}`).join("\n");
+  const header = `${red("error:")} invalid arguments for ${cyan(serverName)}/${bold(toolName)}`;
+  const details = errors.map((e) => `  ${yellow(e.path)}: ${e.message}`).join("\n");
   return `${header}\n${details}`;
 }
 
@@ -180,5 +172,5 @@ export function formatError(message: string, options: FormatOptions): string {
   if (!isInteractive(options)) {
     return JSON.stringify({ error: message });
   }
-  return `${RED}error:${RESET} ${message}`;
+  return `${red("error:")} ${message}`;
 }
