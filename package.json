@@ -1,0 +1,53 @@
+{
+  "name": "mcpcli",
+  "version": "0.1.0",
+  "description": "A command-line interface for MCP servers. curl for MCP.",
+  "type": "module",
+  "bin": {
+    "mcpcli": "./src/cli.ts"
+  },
+  "files": [
+    "src",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "test": "bun test",
+    "lint": "prettier --check .",
+    "format": "prettier --write .",
+    "build": "bun build --compile --minify --sourcemap --bytecode ./src/cli.ts --outfile dist/mcpcli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evantahler/mcpcli.git"
+  },
+  "keywords": [
+    "mcp",
+    "cli",
+    "model-context-protocol",
+    "ai",
+    "llm",
+    "tools"
+  ],
+  "author": "Evan Tahler",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "ajv": "^8.18.0",
+    "commander": "^14.0.3",
+    "picomatch": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/picomatch": "^4.0.2",
+    "prettier": "^3.8.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

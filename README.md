@@ -1,0 +1,412 @@
+# mcpcli
+
+A command-line interface for MCP servers. **curl for MCP.**
+
+Two audiences:
+
+1. **AI/LLM agents** that prefer shelling out over maintaining persistent MCP connections — better for token management, progressive tool discovery, and sharing a single pool of MCP servers across multiple agents on one machine
+2. **MCP developers** who need a fast way to discover, debug, and test their servers from the terminal
+
+## Install
+
+```bash
+# Via bun
+bun install -g mcpcli
+
+# Via curl
+curl -fsSL https://raw.githubusercontent.com/evantahler/mcpcli/main/install.sh | bash
+```
+
+Requires [Bun](https://bun.sh) runtime.
+
+## Quick Start
+
+```bash
+# List all servers and their tools
+mcpcli
+
+# List with descriptions
+mcpcli -d
+
+# Inspect a server
+mcpcli info github
+
+# Inspect a specific tool
+mcpcli info github/search_repositories
+
+# Call a tool
+mcpcli call github search_repositories '{"query": "mcp server"}'
+
+# Search tools — combines keyword and semantic matching
+mcpcli search "post a ticket to linear"
+
+# Search with only keyword/glob matching (fast, no embeddings)
+mcpcli search --keyword "*file*"
+
+# Search with only semantic matching
+mcpcli search --semantic "manage pull requests"
+```
+
+## Commands
+
+| Command                              | Description                                  |
+| ------------------------------------ | -------------------------------------------- |
+| `mcpcli`                             | List all configured servers and tools        |
+| `mcpcli info <server>`               | Show tools for a server                      |
+| `mcpcli info <server>/<tool>`        | Show tool schema                             |
+| `mcpcli search <query>`              | Search tools (keyword + semantic)            |
+| `mcpcli search --keyword <pattern>`  | Keyword/glob search only                     |
+| `mcpcli search --semantic <query>`   | Semantic search only                         |
+| `mcpcli call <server> <tool> [json]` | Validate inputs locally, then execute tool   |
+| `mcpcli auth <server>`               | Authenticate with an HTTP MCP server (OAuth) |
+| `mcpcli auth <server> --status`      | Check auth status and token TTL              |
+
+## Options
+
+| Flag                      | Purpose                                  |
+| ------------------------- | ---------------------------------------- |
+| `-h, --help`              | Show help                                |
+| `-v, --version`           | Show version                             |
+| `-d, --with-descriptions` | Include tool descriptions in list output |
+| `-c, --config <path>`     | Specify config file location             |
+| `--json`                  | Force JSON output (default when piped)   |
+| `--no-daemon`             | Disable connection pooling               |
+
+## Configuration
+
+Config lives in `~/.config/mcpcli/` (or the current directory). Three files:
+
+### `servers.json` — MCP Server Definitions
+
+Standard MCP server config format. Supports both stdio and HTTP servers.
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "API_KEY": "${API_KEY}" },
+      "allowedTools": ["read_file", "list_directory"],
+      "disabledTools": ["delete_file"]
+    },
+    "github": {
+      "url": "https://mcp.github.com"
+    },
+    "internal-api": {
+      "url": "https://mcp.internal.example.com",
+      "headers": { "Authorization": "Bearer ${TOKEN}" }
+    }
+  }
+}
+```
+
+**Stdio servers** — `command` + `args`, spawned as child processes
+**HTTP servers** — `url`, with optional static `headers` for pre-shared tokens. OAuth is auto-discovered at connection time via `.well-known/oauth-authorization-server` — no config needed.
+
+Environment variables are interpolated via `${VAR_NAME}` syntax. Set `MCP_STRICT_ENV=false` to warn instead of error on missing variables.
+
+**Tool filtering:**
+
+- `allowedTools` — glob patterns for tools to expose (whitelist)
+- `disabledTools` — glob patterns for tools to hide (blacklist, takes precedence)
+
+### `auth.json` — OAuth Token Storage (managed automatically)
+
+Stores OAuth tokens for HTTP MCP servers. You don't edit this directly — managed automatically.
+
+```json
+{
+  "github": {
+    "access_token": "gho_xxxx",
+    "refresh_token": "ghr_xxxx",
+    "expires_at": "2026-03-03T12:00:00Z",
+    "token_type": "bearer",
+    "scope": "repo,read:org"
+  },
+  "linear": {
+    "access_token": "lin_xxxx",
+    "refresh_token": "lin_ref_xxxx",
+    "expires_at": "2026-03-04T08:30:00Z",
+    "token_type": "bearer"
+  }
+}
+```
+
+Tokens are automatically refreshed when expired (if a refresh token is available). Any command that connects to a server (`call`, `info`, `search`, listing) will refresh tokens transparently. `mcpcli auth <server> --status` shows current token state and TTL.
+
+### `search.json` — Semantic Search Index (managed automatically)
+
+Contains every discovered tool with metadata for semantic search. Built and updated automatically — any command that connects to a server will detect new/changed tools and re-index them in the background.
+
+```json
+{
+  "version": 1,
+  "indexed_at": "2026-03-03T10:00:00Z",
+  "embedding_model": "claude",
+  "tools": [
+    {
+      "server": "linear",
+      "tool": "createIssue",
+      "description": "Create a new issue in Linear",
+      "input_schema": { "...": "..." },
+      "scenarios": [
+        "File a bug report for a production issue",
+        "Create a feature request from user feedback",
+        "Log a tech debt item for the backlog",
+        "Open a ticket to track a deployment rollback",
+        "Assign a task to a team member",
+        "Create a subtask for a larger epic",
+        "Report a security vulnerability internally",
+        "Track a customer-reported issue",
+        "Create a follow-up task after a meeting",
+        "Log a blocking issue for another team"
+      ],
+      "keywords": [
+        "ticket",
+        "issue",
+        "bug",
+        "task",
+        "track",
+        "assign",
+        "report",
+        "create",
+        "linear"
+      ],
+      "embedding": [0.012, -0.034, "..."]
+    }
+  ]
+}
+```
+
+Each tool gets:
+
+- **10 scenarios** — natural-language descriptions of when you'd use this tool
+- **keywords** — extracted terms for fast pre-filtering
+- **embedding** — vector for cosine similarity search
+
+Scenarios and embeddings are generated by shelling out to a coding CLI already on your machine (e.g., `claude` via Claude Code). No API keys to configure — if you can run `claude`, indexing just works.
+
+## Config Resolution Order
+
+1. `MCP_CONFIG_PATH` environment variable
+2. `-c / --config` flag
+3. `./servers.json` (current directory)
+4. `~/.config/mcpcli/servers.json`
+
+## Environment Variables
+
+| Variable             | Purpose                           | Default             |
+| -------------------- | --------------------------------- | ------------------- |
+| `MCP_CONFIG_PATH`    | Config directory path             | `~/.config/mcpcli/` |
+| `MCP_DEBUG`          | Enable debug output               | `false`             |
+| `MCP_TIMEOUT`        | Request timeout (seconds)         | `1800`              |
+| `MCP_CONCURRENCY`    | Parallel server connections       | `5`                 |
+| `MCP_MAX_RETRIES`    | Retry attempts                    | `3`                 |
+| `MCP_STRICT_ENV`     | Error on missing `${VAR}`         | `true`              |
+| `MCP_NO_DAEMON`      | Disable connection pooling        | `false`             |
+| `MCP_DAEMON_TIMEOUT` | Idle connection timeout (seconds) | `60`                |
+| `MCP_EMBEDDING_CLI`  | CLI to use for embeddings         | `claude`            |
+
+## Connection Pooling
+
+mcpcli runs a lightweight daemon that keeps MCP server connections warm. Stdio processes stay alive and HTTP connections are reused across invocations. The daemon exits after `MCP_DAEMON_TIMEOUT` seconds of inactivity (default 60s).
+
+Disable with `--no-daemon` or `MCP_NO_DAEMON=true` for one-shot usage.
+
+## OAuth Flow
+
+For HTTP MCP servers that require OAuth:
+
+```bash
+# Start the OAuth flow — opens browser for authorization
+mcpcli auth github
+
+# Check token status
+mcpcli auth github --status
+# => github: authenticated (expires in 47m)
+
+# Force re-authentication
+mcpcli auth github --refresh
+```
+
+The OAuth flow:
+
+1. Discovers the server's OAuth metadata via `/.well-known/oauth-authorization-server`
+2. Starts a local callback server on a random port
+3. Opens the browser for user authorization
+4. Exchanges the authorization code for tokens
+5. Stores tokens in `auth.json`
+6. Automatically refreshes tokens before they expire on any subsequent command
+
+## Search
+
+`mcpcli search` is a single command that combines keyword matching and semantic vector search. By default, both strategies run and results are merged.
+
+```bash
+# Combined search (default) — keyword hits + semantic matches, merged and ranked
+mcpcli search "send a message to slack"
+# => slack/postMessage          (0.94) Post a message to a channel
+# => slack/sendDirectMessage    (0.87) Send a DM to a user
+# => teams/sendMessage          (0.72) Send a Teams message
+
+# Keyword only — fast glob match against tool names, descriptions, and keywords
+mcpcli search --keyword "*pull*request*"
+# => github/createPullRequest
+# => github/getPullRequest
+# => github/mergePullRequest
+
+# Semantic only — vector similarity against intent
+mcpcli search --semantic "review someone's code changes"
+# => github/submitPullRequestReview  (0.91) Submit a PR review
+# => github/getPullRequest           (0.85) Get PR details
+# => github/listPullRequestCommits   (0.78) List commits in a PR
+```
+
+The combined search pipeline:
+
+1. **Keyword match** — glob/substring against tool names, descriptions, and indexed keywords
+2. **Semantic match** — embed the query, cosine similarity against tool embeddings
+3. **Merge & rank** — combine both result sets, deduplicate, sort by score
+4. **Return** — top results with similarity scores
+
+The index updates incrementally — only new or changed tools are re-indexed. The first run indexes everything; subsequent runs are fast.
+
+## Input Validation
+
+`mcpcli call` validates tool arguments locally before sending them to the server. MCP tools advertise a JSON Schema for their inputs — mcpcli uses this to catch errors fast, without a round-trip.
+
+```bash
+# Missing required field — caught locally
+mcpcli call github create_issue '{"title": "bug"}'
+# => error: missing required field "repo" (github/create_issue)
+
+# Wrong type — caught locally
+mcpcli call github create_issue '{"repo": "foo", "title": 123}'
+# => error: "title" must be a string, got number (github/create_issue)
+
+# Valid — sent to server
+mcpcli call github create_issue '{"repo": "foo", "title": "bug"}'
+# => { ... }
+```
+
+Validation covers:
+
+- **Required fields** — errors before sending if any are missing
+- **Type checking** — string, number, boolean, array, object
+- **Enum values** — rejects values not in the allowed set
+- **Nested objects** — validates recursively
+
+If a tool's `inputSchema` is unavailable (some servers don't provide one), the call proceeds without local validation.
+
+## Shell Output & Piping
+
+Output is human-friendly by default, JSON when piped:
+
+```bash
+# Human-readable
+mcpcli info github
+
+# JSON (piped)
+mcpcli info github | jq '.tools[].name'
+
+# Force JSON
+mcpcli info github --json
+```
+
+Tool call results are always JSON, designed for chaining:
+
+```bash
+# Search repos and read the first result
+mcpcli call github search_repositories '{"query":"mcp"}' \
+  | jq -r '.content[0].text | fromjson | .items[0].full_name' \
+  | xargs -I {} mcpcli call github get_file_contents '{"owner":"{}","path":"README.md"}'
+
+# Conditional execution
+mcpcli call filesystem list_directory '{"path":"."}' \
+  | jq -e '.content[0].text | contains("package.json")' \
+  && mcpcli call filesystem read_file '{"path":"./package.json"}'
+```
+
+Stdin works for tool arguments:
+
+```bash
+echo '{"path":"./README.md"}' | mcpcli call filesystem read_file
+
+cat params.json | mcpcli call server tool
+```
+
+## Agent Integration
+
+### Claude Code Skill
+
+mcpcli ships a Claude Code skill at `skills/mcpcli.md` that teaches Claude Code how to discover and use MCP tools. Install it:
+
+```bash
+# Copy the skill to your global Claude Code skills
+cp skills/mcpcli.md ~/.claude/skills/mcpcli.md
+```
+
+Then in any Claude Code session, the agent can use `/mcpcli` or the skill triggers automatically when the agent needs to interact with external services. The skill instructs the agent to:
+
+1. **Search first** — `mcpcli search "<intent>"` to find relevant tools
+2. **Inspect** — `mcpcli info <server>/<tool>` to get the schema before calling
+3. **Call** — `mcpcli call <server> <tool> '<json>'` to execute
+
+This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
+
+### Raw System Prompt (other agents)
+
+For non-Claude-Code agents, add this to the system prompt:
+
+```
+You have access to MCP tools via the `mcpcli` CLI.
+
+To discover tools:
+  mcpcli search "<what you want to do>"    # combined keyword + semantic
+  mcpcli search --keyword "<pattern>"      # keyword/glob only
+  mcpcli info <server>/<tool>              # tool schema
+
+To call tools:
+  mcpcli call <server> <tool> '<json args>'
+
+Always search before calling — don't assume tool names.
+```
+
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Run in development
+bun run src/index.ts
+
+# Run tests
+bun test
+
+# Build single binary
+bun build --compile src/index.ts --outfile mcpcli
+
+# Lint
+bun lint
+```
+
+## Tech Stack
+
+| Layer       | Choice                                       |
+| ----------- | -------------------------------------------- |
+| Runtime     | Bun                                          |
+| Language    | TypeScript                                   |
+| MCP Client  | `@modelcontextprotocol/sdk`                  |
+| CLI Parsing | `commander`                                  |
+| Validation  | Zod                                          |
+| Embeddings  | Shells out to `claude` (or configurable CLI) |
+
+## Inspiration
+
+Inspired by [mcp-cli](https://github.com/philschmid/mcp-cli) by Phil Schmid, which nails the core DX of a shell-friendly MCP client. mcpcli extends that foundation with OAuth support for HTTP servers and semantic tool search.
+
+## License
+
+MIT
