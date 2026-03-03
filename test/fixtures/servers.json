@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "API_KEY": "${TEST_API_KEY}" }
+    },
+    "github": {
+      "url": "https://mcp.github.com"
+    },
+    "internal": {
+      "url": "https://mcp.internal.example.com",
+      "headers": { "Authorization": "Bearer ${TEST_TOKEN}" },
+      "allowedTools": ["read_*"],
+      "disabledTools": ["read_secret"]
+    }
+  }
+}
