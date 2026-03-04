@@ -157,29 +157,8 @@ Contains every discovered tool with metadata for semantic search. Built and upda
       "tool": "createIssue",
       "description": "Create a new issue in Linear",
       "input_schema": { "...": "..." },
-      "scenarios": [
-        "File a bug report for a production issue",
-        "Create a feature request from user feedback",
-        "Log a tech debt item for the backlog",
-        "Open a ticket to track a deployment rollback",
-        "Assign a task to a team member",
-        "Create a subtask for a larger epic",
-        "Report a security vulnerability internally",
-        "Track a customer-reported issue",
-        "Create a follow-up task after a meeting",
-        "Log a blocking issue for another team"
-      ],
-      "keywords": [
-        "ticket",
-        "issue",
-        "bug",
-        "task",
-        "track",
-        "assign",
-        "report",
-        "create",
-        "linear"
-      ],
+      "scenarios": ["Create a new issue in Linear", "create issue"],
+      "keywords": ["create", "issue"],
       "embedding": [0.012, -0.034, "..."]
     }
   ]
@@ -188,11 +167,11 @@ Contains every discovered tool with metadata for semantic search. Built and upda
 
 Each tool gets:
 
-- **10 scenarios** — natural-language descriptions of when you'd use this tool
-- **keywords** — extracted terms for fast pre-filtering
-- **embedding** — vector for cosine similarity search
+- **scenarios** — the tool description plus a keyword phrase derived from the tool name
+- **keywords** — terms extracted by splitting the tool name on `_`, `-`, and camelCase boundaries
+- **embedding** — 384-dim vector for cosine similarity search
 
-Scenarios and keywords are extracted from tool names and descriptions. Embeddings are generated in-process using `Xenova/all-MiniLM-L6-v2` (384-dim ONNX model, ~23MB, downloaded on first run). No API keys needed.
+Scenarios and keywords are extracted heuristically from tool names and descriptions. Embeddings are generated in-process using `Xenova/all-MiniLM-L6-v2` (~23MB ONNX model, downloaded on first run). No API keys needed.
 
 ## Config Resolution Order
 
