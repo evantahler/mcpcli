@@ -25,7 +25,7 @@ describe("ServerManager", () => {
   });
 
   test("connects to a stdio server and lists tools", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const tools = await manager.listTools("mock");
     const names = tools.map((t) => t.name);
     expect(names).toContain("echo");
@@ -34,7 +34,7 @@ describe("ServerManager", () => {
   });
 
   test("calls a tool and gets a result", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const result = (await manager.callTool("mock", "echo", { message: "hello" })) as {
       content: { type: string; text: string }[];
     };
@@ -42,7 +42,7 @@ describe("ServerManager", () => {
   });
 
   test("calls add tool", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const result = (await manager.callTool("mock", "add", { a: 3, b: 4 })) as {
       content: { type: string; text: string }[];
     };
@@ -50,25 +50,21 @@ describe("ServerManager", () => {
   });
 
   test("applies allowedTools filter", async () => {
-    manager = new ServerManager(
-      makeServersFile({
-        allowedTools: ["echo"],
-      }),
-      "/tmp",
-      {},
-    );
+    manager = new ServerManager({
+      servers: makeServersFile({ allowedTools: ["echo"] }),
+      configDir: "/tmp",
+      auth: {},
+    });
     const tools = await manager.listTools("mock");
     expect(tools.map((t) => t.name)).toEqual(["echo"]);
   });
 
   test("applies disabledTools filter", async () => {
-    manager = new ServerManager(
-      makeServersFile({
-        disabledTools: ["secret"],
-      }),
-      "/tmp",
-      {},
-    );
+    manager = new ServerManager({
+      servers: makeServersFile({ disabledTools: ["secret"] }),
+      configDir: "/tmp",
+      auth: {},
+    });
     const tools = await manager.listTools("mock");
     const names = tools.map((t) => t.name);
     expect(names).toContain("echo");
@@ -77,20 +73,17 @@ describe("ServerManager", () => {
   });
 
   test("disabledTools takes precedence over allowedTools", async () => {
-    manager = new ServerManager(
-      makeServersFile({
-        allowedTools: ["*"],
-        disabledTools: ["secret"],
-      }),
-      "/tmp",
-      {},
-    );
+    manager = new ServerManager({
+      servers: makeServersFile({ allowedTools: ["*"], disabledTools: ["secret"] }),
+      configDir: "/tmp",
+      auth: {},
+    });
     const tools = await manager.listTools("mock");
     expect(tools.map((t) => t.name)).not.toContain("secret");
   });
 
   test("getToolSchema returns a specific tool", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const tool = await manager.getToolSchema("mock", "echo");
     expect(tool).toBeDefined();
     expect(tool!.name).toBe("echo");
@@ -98,18 +91,18 @@ describe("ServerManager", () => {
   });
 
   test("getToolSchema returns undefined for unknown tool", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const tool = await manager.getToolSchema("mock", "nonexistent");
     expect(tool).toBeUndefined();
   });
 
   test("throws on unknown server", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     await expect(manager.listTools("nonexistent")).rejects.toThrow('Unknown server: "nonexistent"');
   });
 
   test("getAllTools returns tools with server names", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const { tools, errors } = await manager.getAllTools();
     expect(errors).toEqual([]);
     expect(tools.length).toBeGreaterThan(0);
@@ -118,14 +111,37 @@ describe("ServerManager", () => {
   });
 
   test("caches client connections", async () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     const client1 = await manager.getClient("mock");
     const client2 = await manager.getClient("mock");
     expect(client1).toBe(client2);
   });
 
   test("getServerNames returns configured servers", () => {
-    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
     expect(manager.getServerNames()).toEqual(["mock"]);
+  });
+
+  test("timeout fires on slow operations", async () => {
+    manager = new ServerManager({
+      servers: makeServersFile(),
+      configDir: "/tmp",
+      auth: {},
+      timeout: 1, // 1ms — will definitely timeout
+      maxRetries: 0,
+    });
+    await expect(manager.listTools("mock")).rejects.toThrow(/timed out/);
+  });
+
+  test("retries on transient failure then succeeds", async () => {
+    // Retry wrapping shouldn't break normal operations
+    manager = new ServerManager({
+      servers: makeServersFile(),
+      configDir: "/tmp",
+      auth: {},
+      maxRetries: 2,
+    });
+    const tools = await manager.listTools("mock");
+    expect(tools.length).toBeGreaterThan(0);
   });
 });

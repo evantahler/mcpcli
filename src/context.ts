@@ -18,17 +18,26 @@ export async function getContext(program: Command): Promise<AppContext> {
     configFlag: opts.config as string | undefined,
   });
 
-  const verbose = !!(opts.verbose as boolean | undefined);
+  const verbose = !!(
+    (opts.verbose as boolean | undefined) ||
+    process.env.MCP_DEBUG === "1" ||
+    process.env.MCP_DEBUG === "true"
+  );
   const showSecrets = !!(opts.showSecrets as boolean | undefined);
   const concurrency = Number(process.env.MCP_CONCURRENCY ?? 5);
-  const manager = new ServerManager(
-    config.servers,
-    config.configDir,
-    config.auth,
+  const timeout = Number(process.env.MCP_TIMEOUT ?? 1800) * 1000;
+  const maxRetries = Number(process.env.MCP_MAX_RETRIES ?? 3);
+
+  const manager = new ServerManager({
+    servers: config.servers,
+    configDir: config.configDir,
+    auth: config.auth,
     concurrency,
     verbose,
     showSecrets,
-  );
+    timeout,
+    maxRetries,
+  });
 
   const formatOptions: FormatOptions = {
     json: opts.json as boolean | undefined,

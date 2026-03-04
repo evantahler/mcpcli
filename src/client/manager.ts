@@ -17,6 +17,17 @@ export interface ServerError {
   message: string;
 }
 
+export interface ServerManagerOptions {
+  servers: ServersFile;
+  configDir: string;
+  auth: AuthFile;
+  concurrency?: number;
+  verbose?: boolean;
+  showSecrets?: boolean;
+  timeout?: number; // ms, default 1_800_000 (30 min)
+  maxRetries?: number; // default 3
+}
+
 export class ServerManager {
   private clients = new Map<string, Client>();
   private transports = new Map<string, Transport>();
@@ -27,21 +38,18 @@ export class ServerManager {
   private concurrency: number;
   private verbose: boolean;
   private showSecrets: boolean;
+  private timeout: number;
+  private maxRetries: number;
 
-  constructor(
-    servers: ServersFile,
-    configDir: string,
-    auth: AuthFile,
-    concurrency = 5,
-    verbose = false,
-    showSecrets = false,
-  ) {
-    this.servers = servers;
-    this.configDir = configDir;
-    this.auth = auth;
-    this.concurrency = concurrency;
-    this.verbose = verbose;
-    this.showSecrets = showSecrets;
+  constructor(opts: ServerManagerOptions) {
+    this.servers = opts.servers;
+    this.configDir = opts.configDir;
+    this.auth = opts.auth;
+    this.concurrency = opts.concurrency ?? 5;
+    this.verbose = opts.verbose ?? false;
+    this.showSecrets = opts.showSecrets ?? false;
+    this.timeout = opts.timeout ?? 1_800_000;
+    this.maxRetries = opts.maxRetries ?? 3;
   }
 
   /** Get or create a connected client for a server */
@@ -71,7 +79,7 @@ export class ServerManager {
     this.transports.set(serverName, transport);
 
     const client = new Client({ name: "mcpcli", version: "0.1.0" });
-    await client.connect(transport);
+    await this.withTimeout(client.connect(transport), `connect(${serverName})`);
     this.clients.set(serverName, client);
 
     return client;
@@ -110,12 +118,57 @@ export class ServerManager {
     throw new Error("Invalid server config");
   }
 
+  /** Race a promise against a timeout */
+  private withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+    if (this.timeout <= 0) return promise;
+    let timer: ReturnType<typeof setTimeout>;
+    return Promise.race([
+      promise.finally(() => clearTimeout(timer)),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label}: timed out after ${this.timeout / 1000}s`)),
+          this.timeout,
+        );
+        timer.unref();
+      }),
+    ]);
+  }
+
+  /** Retry a function up to maxRetries times, clearing cached client between attempts */
+  private async withRetry<T>(fn: () => Promise<T>, label: string, serverName?: string): Promise<T> {
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries && serverName) {
+          // Clear cached client so next attempt reconnects fresh
+          try {
+            await this.clients.get(serverName)?.close();
+          } catch {
+            // ignore close errors
+          }
+          this.clients.delete(serverName);
+          this.transports.delete(serverName);
+        }
+      }
+    }
+    throw lastError;
+  }
+
   /** List tools for a single server, applying allowedTools/disabledTools filters */
   async listTools(serverName: string): Promise<Tool[]> {
-    const client = await this.getClient(serverName);
-    const result = await client.listTools();
-    const config = this.servers.mcpServers[serverName]!;
-    return filterTools(result.tools, config.allowedTools, config.disabledTools);
+    return this.withRetry(
+      async () => {
+        const client = await this.getClient(serverName);
+        const result = await this.withTimeout(client.listTools(), `listTools(${serverName})`);
+        const config = this.servers.mcpServers[serverName]!;
+        return filterTools(result.tools, config.allowedTools, config.disabledTools);
+      },
+      `listTools(${serverName})`,
+      serverName,
+    );
   }
 
   /** List tools across all configured servers */
@@ -156,8 +209,17 @@ export class ServerManager {
     toolName: string,
     args: Record<string, unknown> = {},
   ): Promise<unknown> {
-    const client = await this.getClient(serverName);
-    return client.callTool({ name: toolName, arguments: args });
+    return this.withRetry(
+      async () => {
+        const client = await this.getClient(serverName);
+        return this.withTimeout(
+          client.callTool({ name: toolName, arguments: args }),
+          `callTool(${serverName}/${toolName})`,
+        );
+      },
+      `callTool(${serverName}/${toolName})`,
+      serverName,
+    );
   }
 
   /** Get the schema for a specific tool */

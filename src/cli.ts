@@ -20,8 +20,7 @@ program
   .option("-d, --with-descriptions", "include tool descriptions in output")
   .option("-j, --json", "force JSON output")
   .option("-v, --verbose", "show HTTP request/response details")
-  .option("-S, --show-secrets", "show full auth tokens in verbose output")
-  .option("--no-daemon", "disable connection pooling");
+  .option("-S, --show-secrets", "show full auth tokens in verbose output");
 
 registerListCommand(program);
 registerInfoCommand(program);
