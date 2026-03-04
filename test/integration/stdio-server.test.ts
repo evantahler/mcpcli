@@ -110,9 +110,11 @@ describe("stdio MCP server integration", () => {
     const proc = Bun.spawn(["bun", "run", CLI, "-c", CONFIG, "--json", "call", "mock", "echo"], {
       stdout: "pipe",
       stderr: "pipe",
-      stdin: new TextEncoder().encode('{"message":"from stdin"}'),
+      stdin: "pipe",
       cwd: join(import.meta.dir, "../.."),
     });
+    proc.stdin.write('{"message":"from stdin"}');
+    proc.stdin.end();
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);

@@ -7,6 +7,8 @@ import { registerSearchCommand } from "./commands/search.ts";
 import { registerCallCommand } from "./commands/call.ts";
 import { registerAuthCommand, registerDeauthCommand } from "./commands/auth.ts";
 import { registerIndexCommand } from "./commands/index.ts";
+import { registerAddCommand } from "./commands/add.ts";
+import { registerRemoveCommand } from "./commands/remove.ts";
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -29,5 +31,7 @@ registerCallCommand(program);
 registerAuthCommand(program);
 registerDeauthCommand(program);
 registerIndexCommand(program);
+registerAddCommand(program);
+registerRemoveCommand(program);
 
 program.parse();

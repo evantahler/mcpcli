@@ -65,6 +65,9 @@ mcpcli search -q "manage pull requests"
 | `mcpcli auth <server> -s`            | Check auth status and token TTL              |
 | `mcpcli auth <server> -r`            | Force token refresh                          |
 | `mcpcli deauth <server>`             | Remove stored authentication for a server    |
+| `mcpcli add <name> --command <cmd>`  | Add a stdio MCP server to your config        |
+| `mcpcli add <name> --url <url>`      | Add an HTTP MCP server to your config        |
+| `mcpcli remove <name>`               | Remove an MCP server from your config        |
 
 ## Options
 
@@ -78,6 +81,57 @@ mcpcli search -q "manage pull requests"
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked) |
 | `-j, --json`              | Force JSON output (default when piped)             |
 | `--no-daemon`             | Disable connection pooling                         |
+
+## Managing Servers
+
+Add and remove servers from the CLI — no manual JSON editing required.
+
+```bash
+# Add a stdio server
+mcpcli add filesystem --command npx --args "-y,@modelcontextprotocol/server-filesystem,/tmp"
+
+# Add an HTTP server with headers
+mcpcli add my-api --url https://api.example.com/mcp --header "Authorization:Bearer tok123"
+
+# Add with tool filtering
+mcpcli add github --url https://mcp.github.com --allowed-tools "search_*,get_*"
+
+# Add with environment variables
+mcpcli add my-server --command node --args "server.js" --env "API_KEY=sk-123,DEBUG=true"
+
+# Overwrite an existing server
+mcpcli add filesystem --command echo --force
+
+# Remove a server (also cleans up auth.json)
+mcpcli remove filesystem
+
+# Remove but keep stored auth credentials
+mcpcli remove my-api --keep-auth
+
+# Preview what would be removed
+mcpcli remove my-api --dry-run
+```
+
+**`add` options:**
+
+| Flag                       | Purpose                                |
+| -------------------------- | -------------------------------------- |
+| `--command <cmd>`          | Command to run (stdio server)          |
+| `--args <a1,a2,...>`       | Comma-separated arguments              |
+| `--env <KEY=VAL,...>`      | Comma-separated environment variables  |
+| `--cwd <dir>`              | Working directory for the command      |
+| `--url <url>`              | Server URL (HTTP server)               |
+| `--header <Key:Value>`     | HTTP header (repeatable)               |
+| `--allowed-tools <t1,t2>`  | Comma-separated allowed tool patterns  |
+| `--disabled-tools <t1,t2>` | Comma-separated disabled tool patterns |
+| `-f, --force`              | Overwrite if server already exists     |
+
+**`remove` options:**
+
+| Flag          | Purpose                                           |
+| ------------- | ------------------------------------------------- |
+| `--keep-auth` | Don't remove stored auth credentials              |
+| `--dry-run`   | Show what would be removed without changing files |
 
 ## Configuration
 

@@ -116,3 +116,35 @@ export async function saveAuth(configDir: string, auth: AuthFile): Promise<void>
 export async function saveSearchIndex(configDir: string, index: SearchIndex): Promise<void> {
   await Bun.write(join(configDir, "search.json"), JSON.stringify(index, null, 2) + "\n");
 }
+
+/** Save servers.json to the config directory */
+export async function saveServers(configDir: string, servers: ServersFile): Promise<void> {
+  await Bun.write(join(configDir, "servers.json"), JSON.stringify(servers, null, 2) + "\n");
+}
+
+/** Load servers.json without env interpolation (preserves ${VAR} placeholders) */
+export async function loadRawServers(
+  configFlag?: string,
+): Promise<{ configDir: string; servers: ServersFile }> {
+  let configDir = resolveConfigDir(configFlag);
+
+  if (!(await hasServersFile(configDir))) {
+    const cwd = process.cwd();
+    if (await hasServersFile(cwd)) {
+      configDir = cwd;
+    }
+  }
+
+  const serversPath = join(configDir, "servers.json");
+  const raw = await readJsonFile(serversPath);
+  const servers = raw !== undefined ? validateServersFile(raw) : EMPTY_SERVERS;
+
+  return { configDir, servers };
+}
+
+/** Load auth.json without loading the full config */
+export async function loadRawAuth(configDir: string): Promise<AuthFile> {
+  const authPath = join(configDir, "auth.json");
+  const raw = await readJsonFile(authPath);
+  return raw !== undefined ? validateAuthFile(raw) : EMPTY_AUTH;
+}
