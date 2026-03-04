@@ -1,6 +1,6 @@
 import { exec } from "child_process";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import { auth, refreshAuthorization } from "@modelcontextprotocol/sdk/client/auth.js";
+import { auth, discoverOAuthServerInfo, refreshAuthorization } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientMetadata,
   OAuthClientInformationMixed,
@@ -8,6 +8,8 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthFile } from "../config/schemas.ts";
 import { saveAuth } from "../config/loader.ts";
+import type { FormatOptions } from "../output/formatter.ts";
+import { startSpinner } from "../output/spinner.ts";
 
 export class McpOAuthProvider implements OAuthClientProvider {
   private serverName: string;
@@ -241,6 +243,37 @@ export function startCallbackServer(): {
   });
 
   return { server, authCodePromise };
+}
+
+/** Probe for OAuth support and run the auth flow if the server supports it.
+ * Returns true if auth ran, false if server doesn't support OAuth (silent skip). */
+export async function tryOAuthIfSupported(
+  serverName: string,
+  serverUrl: string,
+  configDir: string,
+  auth: AuthFile,
+  formatOptions: FormatOptions,
+): Promise<boolean> {
+  let oauthSupported: boolean;
+  try {
+    const info = await discoverOAuthServerInfo(serverUrl);
+    oauthSupported = info.authorizationServerMetadata !== undefined;
+  } catch {
+    return false;
+  }
+
+  if (!oauthSupported) return false;
+
+  const provider = new McpOAuthProvider({ serverName, configDir, auth });
+  const spinner = startSpinner(`Authenticating with "${serverName}"…`, formatOptions);
+  try {
+    await runOAuthFlow(serverUrl, provider);
+    spinner.success(`Authenticated with "${serverName}"`);
+    return true;
+  } catch (err) {
+    spinner.error(`Authentication failed: ${err instanceof Error ? err.message : err}`);
+    throw err;
+  }
 }
 
 /** Run a full OAuth authorization flow for an HTTP MCP server */

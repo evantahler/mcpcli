@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import type { ServerConfig } from "../config/schemas.ts";
-import { loadRawServers, saveServers } from "../config/loader.ts";
+import { loadRawAuth, loadRawServers, saveServers } from "../config/loader.ts";
+import { tryOAuthIfSupported } from "../client/oauth.ts";
 import { runIndex } from "./index.ts";
 
 export function registerAddCommand(program: Command) {
@@ -16,6 +17,7 @@ export function registerAddCommand(program: Command) {
     .option("--allowed-tools <tools>", "comma-separated list of allowed tools")
     .option("--disabled-tools <tools>", "comma-separated list of disabled tools")
     .option("-f, --force", "overwrite if server already exists")
+    .option("--no-auth", "skip automatic OAuth authentication after adding an HTTP server")
     .option("--no-index", "skip rebuilding the search index after adding")
     .action(
       async (
@@ -30,6 +32,7 @@ export function registerAddCommand(program: Command) {
           allowedTools?: string;
           disabledTools?: string;
           force?: boolean;
+          auth?: boolean;
           index?: boolean;
         },
       ) => {
@@ -72,6 +75,21 @@ export function registerAddCommand(program: Command) {
         servers.mcpServers[name] = config;
         await saveServers(configDir, servers);
         console.log(`Added server "${name}" to ${configDir}/servers.json`);
+
+        // Auto-auth: probe for OAuth support and run the flow if supported
+        if (hasUrl && options.auth !== false) {
+          const auth = await loadRawAuth(configDir);
+          const formatOptions = {
+            json: !!program.opts().json,
+            verbose: !!program.opts().verbose,
+            showSecrets: false,
+          };
+          try {
+            await tryOAuthIfSupported(name, options.url!, configDir, auth, formatOptions);
+          } catch {
+            console.error(`Warning: OAuth authentication failed. Run: mcpcli auth ${name}`);
+          }
+        }
 
         // Commander treats --no-index as index=false (default true)
         if (options.index !== false) {
