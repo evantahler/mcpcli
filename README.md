@@ -11,7 +11,7 @@ Two audiences:
 
 ```bash
 # Via bun
-bun install -g mcpcli
+bun install -g @evantahler/mcpcli
 
 # Via curl
 curl -fsSL https://raw.githubusercontent.com/evantahler/mcpcli/main/install.sh | bash
