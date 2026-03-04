@@ -1,6 +1,10 @@
 import { exec } from "child_process";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import { auth, discoverOAuthServerInfo, refreshAuthorization } from "@modelcontextprotocol/sdk/client/auth.js";
+import {
+  auth,
+  discoverOAuthServerInfo,
+  refreshAuthorization,
+} from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientMetadata,
   OAuthClientInformationMixed,
