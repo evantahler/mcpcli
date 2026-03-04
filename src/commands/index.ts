@@ -1,10 +1,38 @@
 import type { Command } from "commander";
-import { dim } from "ansis";
+import { dim, yellow } from "ansis";
 import { getContext } from "../context.ts";
 import { buildSearchIndex } from "../search/indexer.ts";
+import { getStaleServers } from "../search/staleness.ts";
 import { saveSearchIndex } from "../config/loader.ts";
 import { formatError } from "../output/formatter.ts";
 import { startSpinner } from "../output/spinner.ts";
+
+/** Run the search index build. Reusable from other commands (e.g. add). */
+export async function runIndex(program: Command): Promise<void> {
+  const { config, manager, formatOptions } = await getContext(program);
+  const spinner = startSpinner("Connecting to servers...", formatOptions);
+
+  try {
+    const start = performance.now();
+    const index = await buildSearchIndex(manager, (progress) => {
+      spinner.update(`Indexing ${progress.current}/${progress.total}: ${progress.tool}`);
+    });
+    const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+
+    await saveSearchIndex(config.configDir, index);
+    spinner.success(`Indexed ${index.tools.length} tools in ${elapsed}s`);
+
+    if (process.stderr.isTTY) {
+      process.stderr.write(dim(`Saved to ${config.configDir}/search.json\n`));
+    }
+  } catch (err) {
+    spinner.error("Indexing failed");
+    console.error(formatError(String(err), formatOptions));
+    process.exit(1);
+  } finally {
+    await manager.close();
+  }
+}
 
 export function registerIndexCommand(program: Command) {
   program
@@ -12,9 +40,8 @@ export function registerIndexCommand(program: Command) {
     .description("build the search index from all configured servers")
     .option("-i, --status", "show index status")
     .action(async (options: { status?: boolean }) => {
-      const { config, manager, formatOptions } = await getContext(program);
-
       if (options.status) {
+        const { config, manager } = await getContext(program);
         const idx = config.searchIndex;
         if (idx.tools.length === 0) {
           console.log("No search index. Run: mcpcli index");
@@ -22,32 +49,16 @@ export function registerIndexCommand(program: Command) {
           console.log(`Tools:   ${idx.tools.length}`);
           console.log(`Model:   ${idx.embedding_model}`);
           console.log(`Indexed: ${idx.indexed_at}`);
+
+          const stale = getStaleServers(idx, config.servers);
+          if (stale.length > 0) {
+            console.log(yellow(`Stale:   ${stale.join(", ")} (run mcpcli index to refresh)`));
+          }
         }
         await manager.close();
         return;
       }
 
-      const spinner = startSpinner("Connecting to servers...", formatOptions);
-
-      try {
-        const start = performance.now();
-        const index = await buildSearchIndex(manager, (progress) => {
-          spinner.update(`Indexing ${progress.current}/${progress.total}: ${progress.tool}`);
-        });
-        const elapsed = ((performance.now() - start) / 1000).toFixed(1);
-
-        await saveSearchIndex(config.configDir, index);
-        spinner.success(`Indexed ${index.tools.length} tools in ${elapsed}s`);
-
-        if (process.stderr.isTTY) {
-          process.stderr.write(dim(`Saved to ${config.configDir}/search.json\n`));
-        }
-      } catch (err) {
-        spinner.error("Indexing failed");
-        console.error(formatError(String(err), formatOptions));
-        process.exit(1);
-      } finally {
-        await manager.close();
-      }
+      await runIndex(program);
     });
 }

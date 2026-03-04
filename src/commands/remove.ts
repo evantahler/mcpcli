@@ -1,5 +1,12 @@
 import type { Command } from "commander";
-import { loadRawServers, loadRawAuth, saveServers, saveAuth } from "../config/loader.ts";
+import {
+  loadRawServers,
+  loadRawAuth,
+  loadSearchIndex,
+  saveServers,
+  saveAuth,
+  saveSearchIndex,
+} from "../config/loader.ts";
 
 export function registerRemoveCommand(program: Command) {
   program
@@ -24,6 +31,13 @@ export function registerRemoveCommand(program: Command) {
             console.log(`Would remove auth for "${name}" from ${configDir}/auth.json`);
           }
         }
+        const searchIndex = await loadSearchIndex(configDir);
+        const indexedCount = searchIndex.tools.filter((t) => t.server === name).length;
+        if (indexedCount > 0) {
+          console.log(
+            `Would remove ${indexedCount} tool(s) for "${name}" from ${configDir}/search.json`,
+          );
+        }
         return;
       }
 
@@ -38,6 +52,16 @@ export function registerRemoveCommand(program: Command) {
           await saveAuth(configDir, auth);
           console.log(`Removed auth for "${name}" from ${configDir}/auth.json`);
         }
+      }
+
+      // Remove tools for this server from the search index
+      const searchIndex = await loadSearchIndex(configDir);
+      const before = searchIndex.tools.length;
+      searchIndex.tools = searchIndex.tools.filter((t) => t.server !== name);
+      const removed = before - searchIndex.tools.length;
+      if (removed > 0) {
+        await saveSearchIndex(configDir, searchIndex);
+        console.log(`Removed ${removed} tool(s) for "${name}" from ${configDir}/search.json`);
       }
     });
 }

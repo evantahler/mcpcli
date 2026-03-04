@@ -38,6 +38,7 @@ describe("mcpcli add", () => {
       "echo",
       "--args",
       "hello,world",
+      "--no-index",
     ]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Added server "test-server"');
@@ -59,6 +60,7 @@ describe("mcpcli add", () => {
       "https://example.com/mcp",
       "--header",
       "Authorization:Bearer tok123",
+      "--no-index",
     ]);
     expect(exitCode).toBe(0);
 
@@ -83,6 +85,7 @@ describe("mcpcli add", () => {
       "KEY=val,FOO=bar",
       "--cwd",
       "/tmp",
+      "--no-index",
     ]);
     expect(exitCode).toBe(0);
 
@@ -107,6 +110,7 @@ describe("mcpcli add", () => {
       "read,write",
       "--disabled-tools",
       "delete",
+      "--no-index",
     ]);
     expect(exitCode).toBe(0);
 
@@ -116,15 +120,32 @@ describe("mcpcli add", () => {
   });
 
   test("errors if server already exists without --force", async () => {
-    await run(["-c", tmpDir, "add", "dupe", "--command", "echo"]);
-    const { exitCode, stderr } = await run(["-c", tmpDir, "add", "dupe", "--command", "cat"]);
+    await run(["-c", tmpDir, "add", "dupe", "--command", "echo", "--no-index"]);
+    const { exitCode, stderr } = await run([
+      "-c",
+      tmpDir,
+      "add",
+      "dupe",
+      "--command",
+      "cat",
+      "--no-index",
+    ]);
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("already exists");
   });
 
   test("overwrites with --force", async () => {
-    await run(["-c", tmpDir, "add", "dupe", "--command", "echo"]);
-    const { exitCode } = await run(["-c", tmpDir, "add", "dupe", "--command", "cat", "--force"]);
+    await run(["-c", tmpDir, "add", "dupe", "--command", "echo", "--no-index"]);
+    const { exitCode } = await run([
+      "-c",
+      tmpDir,
+      "add",
+      "dupe",
+      "--command",
+      "cat",
+      "--force",
+      "--no-index",
+    ]);
     expect(exitCode).toBe(0);
 
     const servers = await Bun.file(join(tmpDir, "servers.json")).json();
@@ -147,6 +168,7 @@ describe("mcpcli add", () => {
       "echo",
       "--url",
       "https://example.com",
+      "--no-index",
     ]);
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("Cannot specify both");
@@ -165,7 +187,7 @@ describe("mcpcli remove", () => {
   });
 
   test("removes a server", async () => {
-    await run(["-c", tmpDir, "add", "to-remove", "--command", "echo"]);
+    await run(["-c", tmpDir, "add", "to-remove", "--command", "echo", "--no-index"]);
     const { exitCode, stdout } = await run(["-c", tmpDir, "remove", "to-remove"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Removed server "to-remove"');
@@ -181,7 +203,7 @@ describe("mcpcli remove", () => {
   });
 
   test("dry-run shows what would happen without changing files", async () => {
-    await run(["-c", tmpDir, "add", "keep-me", "--command", "echo"]);
+    await run(["-c", tmpDir, "add", "keep-me", "--command", "echo", "--no-index"]);
     const { exitCode, stdout } = await run(["-c", tmpDir, "remove", "keep-me", "--dry-run"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Would remove");
@@ -192,7 +214,7 @@ describe("mcpcli remove", () => {
 
   test("removes auth by default", async () => {
     // Add a server, then manually write auth for it
-    await run(["-c", tmpDir, "add", "authed", "--url", "https://example.com"]);
+    await run(["-c", tmpDir, "add", "authed", "--url", "https://example.com", "--no-index"]);
     await Bun.write(
       join(tmpDir, "auth.json"),
       JSON.stringify({
@@ -211,7 +233,7 @@ describe("mcpcli remove", () => {
   });
 
   test("--keep-auth preserves auth", async () => {
-    await run(["-c", tmpDir, "add", "authed", "--url", "https://example.com"]);
+    await run(["-c", tmpDir, "add", "authed", "--url", "https://example.com", "--no-index"]);
     await Bun.write(
       join(tmpDir, "auth.json"),
       JSON.stringify({

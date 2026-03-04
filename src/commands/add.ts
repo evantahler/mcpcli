@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import type { ServerConfig } from "../config/schemas.ts";
 import { loadRawServers, saveServers } from "../config/loader.ts";
+import { runIndex } from "./index.ts";
 
 export function registerAddCommand(program: Command) {
   program
@@ -15,6 +16,7 @@ export function registerAddCommand(program: Command) {
     .option("--allowed-tools <tools>", "comma-separated list of allowed tools")
     .option("--disabled-tools <tools>", "comma-separated list of disabled tools")
     .option("-f, --force", "overwrite if server already exists")
+    .option("--no-index", "skip rebuilding the search index after adding")
     .action(
       async (
         name: string,
@@ -28,6 +30,7 @@ export function registerAddCommand(program: Command) {
           allowedTools?: string;
           disabledTools?: string;
           force?: boolean;
+          index?: boolean;
         },
       ) => {
         const hasCommand = !!options.command;
@@ -69,6 +72,11 @@ export function registerAddCommand(program: Command) {
         servers.mcpServers[name] = config;
         await saveServers(configDir, servers);
         console.log(`Added server "${name}" to ${configDir}/servers.json`);
+
+        // Commander treats --no-index as index=false (default true)
+        if (options.index !== false) {
+          await runIndex(program);
+        }
       },
     );
 }

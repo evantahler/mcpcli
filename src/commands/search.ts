@@ -1,6 +1,8 @@
 import type { Command } from "commander";
+import { yellow } from "ansis";
 import { getContext } from "../context.ts";
 import { search } from "../search/index.ts";
+import { getStaleServers } from "../search/staleness.ts";
 import { formatError, formatSearchResults } from "../output/formatter.ts";
 import { startSpinner } from "../output/spinner.ts";
 
@@ -17,6 +19,15 @@ export function registerSearchCommand(program: Command) {
       if (config.searchIndex.tools.length === 0) {
         console.error(formatError("No search index found. Run: mcpcli index", formatOptions));
         process.exit(1);
+      }
+
+      const stale = getStaleServers(config.searchIndex, config.servers);
+      if (stale.length > 0) {
+        process.stderr.write(
+          yellow(
+            `Warning: index has tools for removed servers: ${stale.join(", ")}. Run: mcpcli index\n`,
+          ),
+        );
       }
 
       const spinner = startSpinner("Searching...", formatOptions);

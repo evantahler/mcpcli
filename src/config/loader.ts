@@ -112,6 +112,12 @@ export async function saveAuth(configDir: string, auth: AuthFile): Promise<void>
   await Bun.write(join(configDir, "auth.json"), JSON.stringify(auth, null, 2) + "\n");
 }
 
+/** Load search.json from the config directory */
+export async function loadSearchIndex(configDir: string): Promise<SearchIndex> {
+  const raw = await readJsonFile(join(configDir, "search.json"));
+  return raw !== undefined ? validateSearchIndex(raw) : { ...EMPTY_SEARCH_INDEX };
+}
+
 /** Save search.json to the config directory */
 export async function saveSearchIndex(configDir: string, index: SearchIndex): Promise<void> {
   await Bun.write(join(configDir, "search.json"), JSON.stringify(index, null, 2) + "\n");
