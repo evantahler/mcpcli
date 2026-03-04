@@ -2,6 +2,7 @@ import { bold, cyan, dim, green, red, yellow } from "ansis";
 import type { Tool } from "../config/schemas.ts";
 import type { ToolWithServer } from "../client/manager.ts";
 import type { ValidationError } from "../validation/schema.ts";
+import type { SearchResult } from "../search/index.ts";
 
 export interface FormatOptions {
   json?: boolean;
@@ -265,6 +266,45 @@ export function formatValidationErrors(
   const header = `${red("error:")} invalid arguments for ${cyan(serverName)}/${bold(toolName)}`;
   const details = errors.map((e) => `  ${yellow(e.path)}: ${e.message}`).join("\n");
   return `${header}\n${details}`;
+}
+
+/** Format search results */
+export function formatSearchResults(results: SearchResult[], options: FormatOptions): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify(results, null, 2);
+  }
+
+  if (results.length === 0) {
+    return dim("No matching tools found");
+  }
+
+  const maxServer = Math.max(...results.map((r) => r.server.length));
+  const maxTool = Math.max(...results.map((r) => r.tool.length));
+
+  // First line of description only for the main row
+  const firstLine = (s: string) => s.split("\n")[0] ?? "";
+
+  return results
+    .map((r) => {
+      const server = cyan(r.server.padEnd(maxServer));
+      const tool = bold(r.tool.padEnd(maxTool));
+      const score = yellow(r.score.toFixed(2).padStart(5));
+      const summary = firstLine(r.description);
+      const line = `${server}  ${tool}  ${score}  ${dim(summary)}`;
+
+      // Show remaining description lines indented below
+      const descLines = r.description.split("\n").slice(1);
+      const extra = descLines.filter((l) => l.trim()).length > 0;
+      if (!extra) return line;
+
+      const indent = " ".repeat(maxServer + maxTool + 12);
+      const rest = descLines
+        .filter((l) => l.trim())
+        .map((l) => `${indent}${dim(l.trim())}`)
+        .join("\n");
+      return `${line}\n${rest}`;
+    })
+    .join("\n");
 }
 
 /** Format an error message */

@@ -9,8 +9,8 @@ export function registerAuthCommand(program: Command) {
   program
     .command("auth <server>")
     .description("authenticate with an HTTP MCP server")
-    .option("--status", "check auth status and token TTL")
-    .option("--refresh", "force token refresh")
+    .option("-s, --status", "check auth status and token TTL")
+    .option("-r, --refresh", "force token refresh")
     .action(async (server: string, options: { status?: boolean; refresh?: boolean }) => {
       const { config, formatOptions } = await getContext(program);
 
