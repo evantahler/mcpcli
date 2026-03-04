@@ -80,7 +80,6 @@ mcpcli search -q "manage pull requests"
 | `-v, --verbose`           | Show HTTP request/response headers and timing      |
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked) |
 | `-j, --json`              | Force JSON output (default when piped)             |
-| `--no-daemon`             | Disable connection pooling                         |
 
 ## Managing Servers
 
@@ -236,22 +235,14 @@ Scenarios and keywords are extracted heuristically from tool names and descripti
 
 ## Environment Variables
 
-| Variable             | Purpose                           | Default             |
-| -------------------- | --------------------------------- | ------------------- |
-| `MCP_CONFIG_PATH`    | Config directory path             | `~/.config/mcpcli/` |
-| `MCP_DEBUG`          | Enable debug output               | `false`             |
-| `MCP_TIMEOUT`        | Request timeout (seconds)         | `1800`              |
-| `MCP_CONCURRENCY`    | Parallel server connections       | `5`                 |
-| `MCP_MAX_RETRIES`    | Retry attempts                    | `3`                 |
-| `MCP_STRICT_ENV`     | Error on missing `${VAR}`         | `true`              |
-| `MCP_NO_DAEMON`      | Disable connection pooling        | `false`             |
-| `MCP_DAEMON_TIMEOUT` | Idle connection timeout (seconds) | `60`                |
-
-## Connection Pooling
-
-mcpcli runs a lightweight daemon that keeps MCP server connections warm. Stdio processes stay alive and HTTP connections are reused across invocations. The daemon exits after `MCP_DAEMON_TIMEOUT` seconds of inactivity (default 60s).
-
-Disable with `--no-daemon` or `MCP_NO_DAEMON=true` for one-shot usage.
+| Variable          | Purpose                     | Default             |
+| ----------------- | --------------------------- | ------------------- |
+| `MCP_CONFIG_PATH` | Config directory path       | `~/.config/mcpcli/` |
+| `MCP_DEBUG`       | Enable debug output         | `false`             |
+| `MCP_TIMEOUT`     | Request timeout (seconds)   | `1800`              |
+| `MCP_CONCURRENCY` | Parallel server connections | `5`                 |
+| `MCP_MAX_RETRIES` | Retry attempts              | `3`                 |
+| `MCP_STRICT_ENV`  | Error on missing `${VAR}`   | `true`              |
 
 ## OAuth Flow
 
