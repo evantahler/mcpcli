@@ -1,16 +1,47 @@
 import type { Command } from "commander";
 import { getContext } from "../context.ts";
-import { formatCallResult, formatError, formatValidationErrors } from "../output/formatter.ts";
+import {
+  formatCallResult,
+  formatError,
+  formatServerTools,
+  formatToolHelp,
+  formatValidationErrors,
+} from "../output/formatter.ts";
 import { startSpinner } from "../output/spinner.ts";
 import { validateToolInput } from "../validation/schema.ts";
 
 export function registerCallCommand(program: Command) {
   program
-    .command("call <server> <tool> [args]")
-    .description("validate inputs locally, then execute a tool")
-    .action(async (server: string, tool: string, argsStr: string | undefined) => {
+    .command("call <server> [tool] [args]")
+    .description("execute a tool (omit tool name to list available tools)")
+    .action(async (server: string, tool: string | undefined, argsStr: string | undefined) => {
       const { manager, formatOptions } = await getContext(program);
+
+      if (!tool) {
+        try {
+          const tools = await manager.listTools(server);
+          console.log(formatServerTools(server, tools, formatOptions));
+        } catch (err) {
+          console.error(formatError(String(err), formatOptions));
+          process.exit(1);
+        } finally {
+          await manager.close();
+        }
+        return;
+      }
       try {
+        // No args + interactive terminal → show tool help with example payload
+        const hasArgs = !!argsStr;
+        const hasStdin = !process.stdin.isTTY;
+        if (!hasArgs && !hasStdin) {
+          const toolSchema = await manager.getToolSchema(server, tool);
+          if (toolSchema) {
+            console.log(formatToolHelp(server, toolSchema, formatOptions));
+            await manager.close();
+            return;
+          }
+        }
+
         // Parse args from argument, stdin, or empty
         let args: Record<string, unknown> = {};
 

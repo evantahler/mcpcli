@@ -25,7 +25,7 @@ describe("ServerManager", () => {
   });
 
   test("connects to a stdio server and lists tools", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     const tools = await manager.listTools("mock");
     const names = tools.map((t) => t.name);
     expect(names).toContain("echo");
@@ -34,7 +34,7 @@ describe("ServerManager", () => {
   });
 
   test("calls a tool and gets a result", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     const result = (await manager.callTool("mock", "echo", { message: "hello" })) as {
       content: { type: string; text: string }[];
     };
@@ -42,7 +42,7 @@ describe("ServerManager", () => {
   });
 
   test("calls add tool", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     const result = (await manager.callTool("mock", "add", { a: 3, b: 4 })) as {
       content: { type: string; text: string }[];
     };
@@ -54,6 +54,8 @@ describe("ServerManager", () => {
       makeServersFile({
         allowedTools: ["echo"],
       }),
+      "/tmp",
+      {},
     );
     const tools = await manager.listTools("mock");
     expect(tools.map((t) => t.name)).toEqual(["echo"]);
@@ -64,6 +66,8 @@ describe("ServerManager", () => {
       makeServersFile({
         disabledTools: ["secret"],
       }),
+      "/tmp",
+      {},
     );
     const tools = await manager.listTools("mock");
     const names = tools.map((t) => t.name);
@@ -78,13 +82,15 @@ describe("ServerManager", () => {
         allowedTools: ["*"],
         disabledTools: ["secret"],
       }),
+      "/tmp",
+      {},
     );
     const tools = await manager.listTools("mock");
     expect(tools.map((t) => t.name)).not.toContain("secret");
   });
 
   test("getToolSchema returns a specific tool", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     const tool = await manager.getToolSchema("mock", "echo");
     expect(tool).toBeDefined();
     expect(tool!.name).toBe("echo");
@@ -92,33 +98,34 @@ describe("ServerManager", () => {
   });
 
   test("getToolSchema returns undefined for unknown tool", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     const tool = await manager.getToolSchema("mock", "nonexistent");
     expect(tool).toBeUndefined();
   });
 
   test("throws on unknown server", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     await expect(manager.listTools("nonexistent")).rejects.toThrow('Unknown server: "nonexistent"');
   });
 
   test("getAllTools returns tools with server names", async () => {
-    manager = new ServerManager(makeServersFile());
-    const allTools = await manager.getAllTools();
-    expect(allTools.length).toBeGreaterThan(0);
-    expect(allTools[0]!.server).toBe("mock");
-    expect(allTools[0]!.tool.name).toBeDefined();
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
+    const { tools, errors } = await manager.getAllTools();
+    expect(errors).toEqual([]);
+    expect(tools.length).toBeGreaterThan(0);
+    expect(tools[0]!.server).toBe("mock");
+    expect(tools[0]!.tool.name).toBeDefined();
   });
 
   test("caches client connections", async () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     const client1 = await manager.getClient("mock");
     const client2 = await manager.getClient("mock");
     expect(client1).toBe(client2);
   });
 
   test("getServerNames returns configured servers", () => {
-    manager = new ServerManager(makeServersFile());
+    manager = new ServerManager(makeServersFile(), "/tmp", {});
     expect(manager.getServerNames()).toEqual(["mock"]);
   });
 });

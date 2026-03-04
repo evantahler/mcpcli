@@ -6,6 +6,8 @@ import type { ValidationError } from "../validation/schema.ts";
 export interface FormatOptions {
   json?: boolean;
   withDescriptions?: boolean;
+  verbose?: boolean;
+  showSecrets?: boolean;
 }
 
 /** Check if stdout is a TTY (interactive terminal) */
@@ -140,10 +142,108 @@ function formatSchema(schema: Tool["inputSchema"], indent: number): string {
     .join("\n");
 }
 
+/** Format detailed tool help with example payload */
+export function formatToolHelp(serverName: string, tool: Tool, options: FormatOptions): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify(
+      {
+        server: serverName,
+        tool: tool.name,
+        description: tool.description ?? "",
+        inputSchema: tool.inputSchema,
+        example: generateExample(tool.inputSchema),
+      },
+      null,
+      2,
+    );
+  }
+
+  const lines: string[] = [];
+  lines.push(`${cyan(serverName)}/${bold(tool.name)}`);
+
+  if (tool.description) {
+    lines.push(dim(tool.description));
+  }
+
+  lines.push("");
+  lines.push(bold("Parameters:"));
+  lines.push(formatSchema(tool.inputSchema, 2));
+
+  const example = generateExample(tool.inputSchema);
+  lines.push("");
+  lines.push(bold("Example:"));
+  lines.push(dim(`  mcpcli call ${serverName} ${tool.name} '${JSON.stringify(example)}'`));
+
+  return lines.join("\n");
+}
+
+/** Generate an example payload from a JSON schema */
+function generateExample(schema: Tool["inputSchema"]): Record<string, unknown> {
+  const properties = schema.properties ?? {};
+  const required = new Set(schema.required ?? []);
+  const example: Record<string, unknown> = {};
+
+  for (const [name, prop] of Object.entries(properties)) {
+    const p = prop as Record<string, unknown>;
+    // Include required fields and first few optional fields
+    if (required.has(name) || Object.keys(example).length < 3) {
+      example[name] = exampleValue(name, p);
+    }
+  }
+
+  return example;
+}
+
+function exampleValue(name: string, prop: Record<string, unknown>): unknown {
+  // Use enum first choice if available
+  if (Array.isArray(prop.enum) && prop.enum.length > 0) {
+    return prop.enum[0];
+  }
+
+  // Use default if provided
+  if (prop.default !== undefined) {
+    return prop.default;
+  }
+
+  const type = prop.type as string | undefined;
+  switch (type) {
+    case "string":
+      return `<${name}>`;
+    case "number":
+    case "integer":
+      return 0;
+    case "boolean":
+      return true;
+    case "array":
+      return [];
+    case "object":
+      return {};
+    default:
+      return `<${name}>`;
+  }
+}
+
 /** Format a tool call result */
 export function formatCallResult(result: unknown, _options: FormatOptions): string {
-  // Call results are always JSON
-  return JSON.stringify(result, null, 2);
+  return JSON.stringify(parseNestedJson(result), null, 2);
+}
+
+/** Recursively parse JSON strings inside MCP content blocks */
+function parseNestedJson(value: unknown): unknown {
+  if (typeof value === "string") {
+    try {
+      return parseNestedJson(JSON.parse(value));
+    } catch {
+      return value;
+    }
+  }
+  if (Array.isArray(value)) {
+    return value.map(parseNestedJson);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, parseNestedJson(v)]));
+  }
+  return value;
 }
 
 /** Format validation errors for tool input */

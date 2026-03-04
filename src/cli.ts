@@ -5,7 +5,7 @@ import { registerListCommand } from "./commands/list.ts";
 import { registerInfoCommand } from "./commands/info.ts";
 import { registerSearchCommand } from "./commands/search.ts";
 import { registerCallCommand } from "./commands/call.ts";
-import { registerAuthCommand } from "./commands/auth.ts";
+import { registerAuthCommand, registerDeauthCommand } from "./commands/auth.ts";
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -18,6 +18,8 @@ program
   .option("-c, --config <path>", "config directory path")
   .option("-d, --with-descriptions", "include tool descriptions in output")
   .option("--json", "force JSON output")
+  .option("-v, --verbose", "show HTTP request/response details")
+  .option("--show-secrets", "show full auth tokens in verbose output")
   .option("--no-daemon", "disable connection pooling");
 
 registerListCommand(program);
@@ -25,5 +27,6 @@ registerInfoCommand(program);
 registerSearchCommand(program);
 registerCallCommand(program);
 registerAuthCommand(program);
+registerDeauthCommand(program);
 
 program.parse();

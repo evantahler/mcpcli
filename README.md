@@ -58,19 +58,24 @@ mcpcli search --semantic "manage pull requests"
 | `mcpcli search --keyword <pattern>`  | Keyword/glob search only                     |
 | `mcpcli search --semantic <query>`   | Semantic search only                         |
 | `mcpcli call <server> <tool> [json]` | Validate inputs locally, then execute tool   |
+| `mcpcli call <server>`               | List available tools for a server            |
 | `mcpcli auth <server>`               | Authenticate with an HTTP MCP server (OAuth) |
 | `mcpcli auth <server> --status`      | Check auth status and token TTL              |
+| `mcpcli auth <server> --refresh`     | Force token refresh                          |
+| `mcpcli deauth <server>`             | Remove stored authentication for a server    |
 
 ## Options
 
-| Flag                      | Purpose                                  |
-| ------------------------- | ---------------------------------------- |
-| `-h, --help`              | Show help                                |
-| `-v, --version`           | Show version                             |
-| `-d, --with-descriptions` | Include tool descriptions in list output |
-| `-c, --config <path>`     | Specify config file location             |
-| `--json`                  | Force JSON output (default when piped)   |
-| `--no-daemon`             | Disable connection pooling               |
+| Flag                      | Purpose                                            |
+| ------------------------- | -------------------------------------------------- |
+| `-h, --help`              | Show help                                          |
+| `-V, --version`           | Show version                                       |
+| `-d, --with-descriptions` | Include tool descriptions in list output           |
+| `-c, --config <path>`     | Specify config file location                       |
+| `-v, --verbose`           | Show HTTP request/response headers and timing      |
+| `--show-secrets`          | Show full auth tokens in verbose output (unmasked) |
+| `--json`                  | Force JSON output (default when piped)             |
+| `--no-daemon`             | Disable connection pooling                         |
 
 ## Configuration
 

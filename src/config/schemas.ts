@@ -1,8 +1,12 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { OAuthTokens, OAuthClientInformation } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type {
+  OAuthTokens,
+  OAuthClientInformation,
+  OAuthClientInformationMixed,
+} from "@modelcontextprotocol/sdk/shared/auth.js";
 
 // Re-export SDK types we use throughout the codebase
-export type { Tool, OAuthTokens, OAuthClientInformation };
+export type { Tool, OAuthTokens, OAuthClientInformation, OAuthClientInformationMixed };
 
 // --- Server config (our format, not MCP spec) ---
 
@@ -45,7 +49,8 @@ export interface ServersFile {
 export interface AuthEntry {
   tokens: OAuthTokens;
   expires_at?: string;
-  client_info?: OAuthClientInformation;
+  client_info?: OAuthClientInformationMixed;
+  complete?: boolean;
 }
 
 /** Top-level auth.json shape */

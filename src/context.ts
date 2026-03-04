@@ -18,12 +18,23 @@ export async function getContext(program: Command): Promise<AppContext> {
     configFlag: opts.config as string | undefined,
   });
 
+  const verbose = !!(opts.verbose as boolean | undefined);
+  const showSecrets = !!(opts.showSecrets as boolean | undefined);
   const concurrency = Number(process.env.MCP_CONCURRENCY ?? 5);
-  const manager = new ServerManager(config.servers, concurrency);
+  const manager = new ServerManager(
+    config.servers,
+    config.configDir,
+    config.auth,
+    concurrency,
+    verbose,
+    showSecrets,
+  );
 
   const formatOptions: FormatOptions = {
     json: opts.json as boolean | undefined,
     withDescriptions: opts.withDescriptions as boolean | undefined,
+    verbose,
+    showSecrets,
   };
 
   return { config, manager, formatOptions };

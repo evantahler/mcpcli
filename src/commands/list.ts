@@ -8,8 +8,16 @@ export function registerListCommand(program: Command) {
     const { manager, formatOptions } = await getContext(program);
     const spinner = startSpinner("Connecting to servers...", formatOptions);
     try {
-      const tools = await manager.getAllTools();
+      const { tools, errors } = await manager.getAllTools();
       spinner.stop();
+
+      if (errors.length > 0) {
+        for (const err of errors) {
+          console.error(`"${err.server}": ${err.message}`);
+        }
+        if (tools.length > 0) console.log("");
+      }
+
       console.log(formatToolList(tools, formatOptions));
     } catch (err) {
       spinner.error("Failed to list tools");

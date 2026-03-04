@@ -42,7 +42,7 @@ describe("mcpcli call", () => {
     expect(exitCode).toBe(0);
 
     const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("30");
+    expect(result.content[0].text).toBe(30);
   });
 
   test("reads args from stdin", async () => {

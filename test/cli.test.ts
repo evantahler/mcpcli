@@ -1,4 +1,7 @@
 import { describe, test, expect } from "bun:test";
+import { join } from "path";
+
+const CONFIG = join(import.meta.dir, "fixtures/mock-config");
 
 describe("mcpcli", () => {
   test("--help exits 0 and shows usage", async () => {
@@ -25,7 +28,7 @@ describe("mcpcli", () => {
   });
 
   test("default command runs without error", async () => {
-    const proc = Bun.spawn(["bun", "run", "src/cli.ts"], {
+    const proc = Bun.spawn(["bun", "run", "src/cli.ts", "-c", CONFIG], {
       stdout: "pipe",
       stderr: "pipe",
     });
