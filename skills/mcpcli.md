@@ -32,7 +32,7 @@ mcpcli call <server> <tool> '<json args>'
 
 - Always search before calling — don't assume tool names exist
 - Always inspect the schema before calling — validate you have the right arguments
-- Use `mcpcli search --keyword` for exact name matching
+- Use `mcpcli search -k` for exact name matching
 - Pipe results through `jq` when you need to extract specific fields
 - Tool call results are always JSON with nested JSON strings auto-parsed
 - Use `-v` for verbose HTTP debugging if a call fails unexpectedly
@@ -64,7 +64,7 @@ Some HTTP servers require OAuth. If you see an "Not authenticated" error:
 
 ```bash
 mcpcli auth <server>        # authenticate via browser
-mcpcli auth <server> --status  # check token status
+mcpcli auth <server> -s        # check token status
 mcpcli deauth <server>      # remove stored auth
 ```
 
@@ -79,4 +79,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli call <server> <tool> '<json>'` | Execute a tool                     |
 | `mcpcli info <server>/<tool>`          | Show tool schema                   |
 | `mcpcli search "<query>"`              | Search tools                       |
+| `mcpcli search -k "<pattern>"`         | Keyword/glob search only           |
+| `mcpcli search -q "<query>"`           | Semantic search only               |
+| `mcpcli index`                         | Build/rebuild search index         |
 | `mcpcli auth <server>`                 | Authenticate with OAuth            |

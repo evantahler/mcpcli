@@ -17,7 +17,7 @@
     "test": "bun test",
     "lint": "prettier --check .",
     "format": "prettier --write .",
-    "build": "bun build --compile --minify --sourcemap --bytecode ./src/cli.ts --outfile dist/mcpcli"
+    "build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpcli"
   },
   "publishConfig": {
     "access": "public"

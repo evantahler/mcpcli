@@ -63,7 +63,7 @@ jobs:
       - name: Build binary
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          bun build --compile --minify --sourcemap --bytecode \
+          bun build --compile --minify --sourcemap \
             --target=${{ matrix.target }} \
             --define BUILD_VERSION="'\"$VERSION\"'" \
             ./src/cli.ts --outfile dist/${{ matrix.artifact }}

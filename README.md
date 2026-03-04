@@ -17,7 +17,7 @@ bun install -g mcpcli
 curl -fsSL https://raw.githubusercontent.com/evantahler/mcpcli/main/install.sh | bash
 ```
 
-Requires [Bun](https://bun.sh) runtime.
+The curl installer downloads a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh).
 
 ## Quick Start
 
@@ -400,13 +400,13 @@ Always search before calling — don't assume tool names.
 bun install
 
 # Run in development
-bun run src/index.ts
+bun run dev
 
 # Run tests
 bun test
 
 # Build single binary
-bun build --compile src/index.ts --outfile mcpcli
+bun run build
 
 # Lint
 bun lint
@@ -420,7 +420,7 @@ bun lint
 | Language    | TypeScript                                            |
 | MCP Client  | `@modelcontextprotocol/sdk`                           |
 | CLI Parsing | `commander`                                           |
-| Validation  | Zod                                                   |
+| Validation  | `ajv` (JSON Schema)                                   |
 | Embeddings  | `@huggingface/transformers` (Xenova/all-MiniLM-L6-v2) |
 
 ## Inspiration
