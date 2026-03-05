@@ -17,10 +17,10 @@ mcpcli search "<what you want to do>"
 ## 2. Inspect the tool schema
 
 ```bash
-mcpcli call <server> <tool>
+mcpcli info <server>/<tool>
 ```
 
-This shows parameters, types, required fields, and an example payload.
+This shows parameters, types, required fields, and the full JSON Schema.
 
 ## 3. Call the tool
 
@@ -34,7 +34,6 @@ mcpcli call <server> <tool> '<json args>'
 - Always inspect the schema before calling — validate you have the right arguments
 - Use `mcpcli search -k` for exact name matching
 - Pipe results through `jq` when you need to extract specific fields
-- Tool call results are always JSON with nested JSON strings auto-parsed
 - Use `-v` for verbose HTTP debugging if a call fails unexpectedly
 
 ## Examples
@@ -44,14 +43,14 @@ mcpcli call <server> <tool> '<json args>'
 mcpcli search "send a message"
 
 # See what parameters Slack_SendMessage needs
-mcpcli call arcade Slack_SendMessage
+mcpcli info arcade/Slack_SendMessage
 
 # Send a message
 mcpcli call arcade Slack_SendMessage '{"channel":"#general","message":"hello"}'
 
 # Chain commands — search repos and read the first result
 mcpcli call github search_repositories '{"query":"mcp"}' \
-  | jq -r '.content[0].text.items[0].full_name' \
+  | jq -r '.content[0].text | fromjson | .items[0].full_name' \
   | xargs -I {} mcpcli call github get_file_contents '{"owner":"{}","path":"README.md"}'
 
 # Read args from stdin
@@ -64,7 +63,8 @@ Some HTTP servers require OAuth. If you see an "Not authenticated" error:
 
 ```bash
 mcpcli auth <server>        # authenticate via browser
-mcpcli auth <server> -s        # check token status
+mcpcli auth <server> -s     # check token status and TTL
+mcpcli auth <server> -r     # force token refresh
 mcpcli deauth <server>      # remove stored auth
 ```
 
@@ -74,12 +74,19 @@ mcpcli deauth <server>      # remove stored auth
 | -------------------------------------- | ---------------------------------- |
 | `mcpcli`                               | List all servers and tools         |
 | `mcpcli -d`                            | List with descriptions             |
-| `mcpcli call <server>`                 | List tools for a server            |
-| `mcpcli call <server> <tool>`          | Show tool help and example payload |
-| `mcpcli call <server> <tool> '<json>'` | Execute a tool                     |
+| `mcpcli info <server>`                 | Show tools for a server            |
 | `mcpcli info <server>/<tool>`          | Show tool schema                   |
-| `mcpcli search "<query>"`              | Search tools                       |
+| `mcpcli call <server>`                 | List tools for a server            |
+| `mcpcli call <server> <tool> '<json>'` | Execute a tool                     |
+| `mcpcli search "<query>"`              | Search tools (keyword + semantic)  |
 | `mcpcli search -k "<pattern>"`         | Keyword/glob search only           |
 | `mcpcli search -q "<query>"`           | Semantic search only               |
 | `mcpcli index`                         | Build/rebuild search index         |
+| `mcpcli index -i`                      | Show index status                  |
 | `mcpcli auth <server>`                 | Authenticate with OAuth            |
+| `mcpcli auth <server> -s`             | Check token status and TTL         |
+| `mcpcli auth <server> -r`             | Force token refresh                |
+| `mcpcli deauth <server>`               | Remove stored authentication       |
+| `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server             |
+| `mcpcli add <name> --url <url>`        | Add an HTTP MCP server             |
+| `mcpcli remove <name>`                 | Remove an MCP server               |
