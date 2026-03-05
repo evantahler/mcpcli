@@ -64,7 +64,7 @@ describe("stdio MCP server integration", () => {
       server: string;
       tool: string;
       inputSchema: { properties: Record<string, unknown> };
-    }>("info", "mock/echo");
+    }>("info", "mock", "echo");
     expect(result.server).toBe("mock");
     expect(result.tool).toBe("echo");
     expect(result.inputSchema.properties).toHaveProperty("message");

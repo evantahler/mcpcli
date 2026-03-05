@@ -25,8 +25,8 @@ describe("mcpcli info", () => {
     expect(result.tools.map((t: { name: string }) => t.name)).toContain("echo");
   });
 
-  test("info <server>/<tool> shows tool schema", async () => {
-    const proc = run("info", "mock/echo");
+  test("info <server> <tool> shows tool schema", async () => {
+    const proc = run("info", "mock", "echo");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -38,8 +38,8 @@ describe("mcpcli info", () => {
     expect(result.inputSchema.properties).toHaveProperty("message");
   });
 
-  test("info <server>/<tool> errors on unknown tool", async () => {
-    const proc = run("info", "mock/nonexistent");
+  test("info <server> <tool> errors on unknown tool", async () => {
+    const proc = run("info", "mock", "nonexistent");
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
