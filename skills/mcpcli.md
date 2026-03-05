@@ -84,8 +84,8 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli index`                         | Build/rebuild search index         |
 | `mcpcli index -i`                      | Show index status                  |
 | `mcpcli auth <server>`                 | Authenticate with OAuth            |
-| `mcpcli auth <server> -s`             | Check token status and TTL         |
-| `mcpcli auth <server> -r`             | Force token refresh                |
+| `mcpcli auth <server> -s`              | Check token status and TTL         |
+| `mcpcli auth <server> -r`              | Force token refresh                |
 | `mcpcli deauth <server>`               | Remove stored authentication       |
 | `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server             |
 | `mcpcli add <name> --url <url>`        | Add an HTTP MCP server             |
