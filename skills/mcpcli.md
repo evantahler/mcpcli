@@ -17,7 +17,7 @@ mcpcli search "<what you want to do>"
 ## 2. Inspect the tool schema
 
 ```bash
-mcpcli info <server>/<tool>
+mcpcli info <server> <tool>
 ```
 
 This shows parameters, types, required fields, and the full JSON Schema.
@@ -43,7 +43,7 @@ mcpcli call <server> <tool> '<json args>'
 mcpcli search "send a message"
 
 # See what parameters Slack_SendMessage needs
-mcpcli info arcade/Slack_SendMessage
+mcpcli info arcade Slack_SendMessage
 
 # Send a message
 mcpcli call arcade Slack_SendMessage '{"channel":"#general","message":"hello"}'
@@ -75,7 +75,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli`                               | List all servers and tools         |
 | `mcpcli -d`                            | List with descriptions             |
 | `mcpcli info <server>`                 | Show tools for a server            |
-| `mcpcli info <server>/<tool>`          | Show tool schema                   |
+| `mcpcli info <server> <tool>`          | Show tool schema                   |
 | `mcpcli call <server>`                 | List tools for a server            |
 | `mcpcli call <server> <tool> '<json>'` | Execute a tool                     |
 | `mcpcli search "<query>"`              | Search tools (keyword + semantic)  |

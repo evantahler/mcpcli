@@ -32,7 +32,7 @@ mcpcli -d
 mcpcli info github
 
 # Inspect a specific tool
-mcpcli info github/search_repositories
+mcpcli info github search_repositories
 
 # Call a tool
 mcpcli call github search_repositories '{"query": "mcp server"}'
@@ -53,7 +53,7 @@ mcpcli search -q "manage pull requests"
 | ------------------------------------ | -------------------------------------------- |
 | `mcpcli`                             | List all configured servers and tools        |
 | `mcpcli info <server>`               | Show tools for a server                      |
-| `mcpcli info <server>/<tool>`        | Show tool schema                             |
+| `mcpcli info <server> <tool>`        | Show tool schema                             |
 | `mcpcli search <query>`              | Search tools (keyword + semantic)            |
 | `mcpcli search -k <pattern>`         | Keyword/glob search only                     |
 | `mcpcli search -q <query>`           | Semantic search only                         |
@@ -415,7 +415,7 @@ cp skills/mcpcli.md ~/.claude/skills/mcpcli.md
 Then in any Claude Code session, the agent can use `/mcpcli` or the skill triggers automatically when the agent needs to interact with external services. The skill instructs the agent to:
 
 1. **Search first** — `mcpcli search "<intent>"` to find relevant tools
-2. **Inspect** — `mcpcli info <server>/<tool>` to get the schema before calling
+2. **Inspect** — `mcpcli info <server> <tool>` to get the schema before calling
 3. **Call** — `mcpcli call <server> <tool> '<json>'` to execute
 
 This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
@@ -430,7 +430,7 @@ You have access to MCP tools via the `mcpcli` CLI.
 To discover tools:
   mcpcli search "<what you want to do>"    # combined keyword + semantic
   mcpcli search -k "<pattern>"             # keyword/glob only
-  mcpcli info <server>/<tool>              # tool schema
+  mcpcli info <server> <tool>              # tool schema
 
 To call tools:
   mcpcli call <server> <tool> '<json args>'

@@ -5,31 +5,27 @@ import { startSpinner } from "../output/spinner.ts";
 
 export function registerInfoCommand(program: Command) {
   program
-    .command("info <target>")
+    .command("info <server> [tool]")
     .description("show tools for a server, or schema for a specific tool")
-    .action(async (target: string) => {
+    .action(async (server: string, tool: string | undefined) => {
       const { manager, formatOptions } = await getContext(program);
+      const target = tool ? `${server}/${tool}` : server;
       const spinner = startSpinner(`Connecting to ${target}...`, formatOptions);
       try {
-        // Parse "server/tool" or "server tool" format
-        const slashIndex = target.indexOf("/");
-        if (slashIndex !== -1) {
-          const serverName = target.slice(0, slashIndex);
-          const toolName = target.slice(slashIndex + 1);
-          const tool = await manager.getToolSchema(serverName, toolName);
+        if (tool) {
+          const toolSchema = await manager.getToolSchema(server, tool);
           spinner.stop();
-          if (!tool) {
+          if (!toolSchema) {
             console.error(
-              formatError(`Tool "${toolName}" not found on server "${serverName}"`, formatOptions),
+              formatError(`Tool "${tool}" not found on server "${server}"`, formatOptions),
             );
             process.exit(1);
           }
-          console.log(formatToolSchema(serverName, tool, formatOptions));
+          console.log(formatToolSchema(server, toolSchema, formatOptions));
         } else {
-          // Just a server name — list its tools
-          const tools = await manager.listTools(target);
+          const tools = await manager.listTools(server);
           spinner.stop();
-          console.log(formatServerTools(target, tools, formatOptions));
+          console.log(formatServerTools(server, tools, formatOptions));
         }
       } catch (err) {
         spinner.error(`Failed to connect to ${target}`);
