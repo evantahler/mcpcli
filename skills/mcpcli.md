@@ -70,23 +70,23 @@ mcpcli deauth <server>      # remove stored auth
 
 ## Available commands
 
-| Command                                | Purpose                            |
-| -------------------------------------- | ---------------------------------- |
-| `mcpcli`                               | List all servers and tools         |
-| `mcpcli -d`                            | List with descriptions             |
-| `mcpcli info <server>`                 | Show tools for a server            |
-| `mcpcli info <server> <tool>`          | Show tool schema                   |
-| `mcpcli call <server>`                 | List tools for a server            |
-| `mcpcli call <server> <tool> '<json>'` | Execute a tool                     |
-| `mcpcli search "<query>"`              | Search tools (keyword + semantic)  |
-| `mcpcli search -k "<pattern>"`         | Keyword/glob search only           |
-| `mcpcli search -q "<query>"`           | Semantic search only               |
-| `mcpcli index`                         | Build/rebuild search index         |
-| `mcpcli index -i`                      | Show index status                  |
-| `mcpcli auth <server>`                 | Authenticate with OAuth            |
-| `mcpcli auth <server> -s`              | Check token status and TTL         |
-| `mcpcli auth <server> -r`              | Force token refresh                |
-| `mcpcli deauth <server>`               | Remove stored authentication       |
-| `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server             |
-| `mcpcli add <name> --url <url>`        | Add an HTTP MCP server             |
-| `mcpcli remove <name>`                 | Remove an MCP server               |
+| Command                                | Purpose                           |
+| -------------------------------------- | --------------------------------- |
+| `mcpcli`                               | List all servers and tools        |
+| `mcpcli -d`                            | List with descriptions            |
+| `mcpcli info <server>`                 | Show tools for a server           |
+| `mcpcli info <server> <tool>`          | Show tool schema                  |
+| `mcpcli call <server>`                 | List tools for a server           |
+| `mcpcli call <server> <tool> '<json>'` | Execute a tool                    |
+| `mcpcli search "<query>"`              | Search tools (keyword + semantic) |
+| `mcpcli search -k "<pattern>"`         | Keyword/glob search only          |
+| `mcpcli search -q "<query>"`           | Semantic search only              |
+| `mcpcli index`                         | Build/rebuild search index        |
+| `mcpcli index -i`                      | Show index status                 |
+| `mcpcli auth <server>`                 | Authenticate with OAuth           |
+| `mcpcli auth <server> -s`              | Check token status and TTL        |
+| `mcpcli auth <server> -r`              | Force token refresh               |
+| `mcpcli deauth <server>`               | Remove stored authentication      |
+| `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server            |
+| `mcpcli add <name> --url <url>`        | Add an HTTP MCP server            |
+| `mcpcli remove <name>`                 | Remove an MCP server              |
