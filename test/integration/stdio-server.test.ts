@@ -32,12 +32,13 @@ describe("stdio MCP server integration", () => {
   test("lists all tools from the mock stdio server", async () => {
     const tools = await runAndParse<{ server: string; tool: string }[]>();
     expect(tools).toBeInstanceOf(Array);
-    expect(tools.length).toBe(3);
+    expect(tools.length).toBe(4);
 
     const names = tools.map((t) => t.tool);
     expect(names).toContain("echo");
     expect(names).toContain("add");
     expect(names).toContain("secret");
+    expect(names).toContain("noop");
 
     // Every tool should be from the "mock" server
     for (const t of tools) {
@@ -55,7 +56,7 @@ describe("stdio MCP server integration", () => {
   test("inspects a specific server to list its tools", async () => {
     const result = await runAndParse<{ server: string; tools: { name: string }[] }>("info", "mock");
     expect(result.server).toBe("mock");
-    expect(result.tools.length).toBe(3);
+    expect(result.tools.length).toBe(4);
   });
 
   test("inspects a specific tool to show its schema", async () => {
