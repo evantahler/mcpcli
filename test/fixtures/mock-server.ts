@@ -72,6 +72,11 @@ function handleMessage(line: string) {
           description: "A secret tool",
           inputSchema: { type: "object" },
         },
+        {
+          name: "noop",
+          description: "A tool that takes no arguments",
+          inputSchema: { type: "object", properties: {} },
+        },
       ],
     });
   } else if (msg.method === "tools/call") {
@@ -85,6 +90,10 @@ function handleMessage(line: string) {
       const b = Number(params.arguments?.b ?? 0);
       respond(msg.id, {
         content: [{ type: "text", text: String(a + b) }],
+      });
+    } else if (params.name === "noop") {
+      respond(msg.id, {
+        content: [{ type: "text", text: "ok" }],
       });
     } else {
       respond(msg.id, {

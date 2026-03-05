@@ -4,7 +4,6 @@ import {
   formatCallResult,
   formatError,
   formatServerTools,
-  formatToolHelp,
   formatValidationErrors,
 } from "../output/formatter.ts";
 import { startSpinner } from "../output/spinner.ts";
@@ -30,18 +29,6 @@ export function registerCallCommand(program: Command) {
         return;
       }
       try {
-        // No args + interactive terminal → show tool help with example payload
-        const hasArgs = !!argsStr;
-        const hasStdin = !process.stdin.isTTY;
-        if (!hasArgs && !hasStdin) {
-          const toolSchema = await manager.getToolSchema(server, tool);
-          if (toolSchema) {
-            console.log(formatToolHelp(server, toolSchema, formatOptions));
-            await manager.close();
-            return;
-          }
-        }
-
         // Parse args from argument, stdin, or empty
         let args: Record<string, unknown> = {};
 
