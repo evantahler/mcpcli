@@ -55,6 +55,16 @@ describe("mcpcli call", () => {
     expect(result.content[0].text).toBe("from stdin");
   });
 
+  test("calls a tool with no args (no {} required)", async () => {
+    const proc = run("call", "mock", "noop");
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("ok");
+  });
+
   test("errors on invalid JSON", async () => {
     const proc = run("call", "mock", "echo", "not json");
     const exitCode = await proc.exited;
