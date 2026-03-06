@@ -36,11 +36,75 @@ function handleMessage(line: string) {
   if (msg.method === "initialize") {
     respond(msg.id, {
       protocolVersion: "2025-03-26",
-      capabilities: { tools: {} },
+      capabilities: { tools: {}, resources: {}, prompts: {} },
       serverInfo: { name: "mock-server", version: "1.0.0" },
     });
   } else if (msg.method === "notifications/initialized") {
     // No response needed for notifications
+  } else if (msg.method === "resources/list") {
+    respond(msg.id, {
+      resources: [
+        {
+          uri: "file:///hello.txt",
+          name: "Hello File",
+          description: "A simple greeting file",
+          mimeType: "text/plain",
+        },
+        {
+          uri: "file:///data.json",
+          name: "Data File",
+          description: "Some JSON data",
+          mimeType: "application/json",
+        },
+      ],
+    });
+  } else if (msg.method === "resources/read") {
+    const params = msg.params as { uri: string };
+    if (params.uri === "file:///hello.txt") {
+      respond(msg.id, {
+        contents: [{ uri: params.uri, mimeType: "text/plain", text: "Hello, World!" }],
+      });
+    } else if (params.uri === "file:///data.json") {
+      respond(msg.id, {
+        contents: [
+          { uri: params.uri, mimeType: "application/json", text: '{"key":"value","count":42}' },
+        ],
+      });
+    } else {
+      respond(msg.id, { error: { code: -32602, message: `Resource not found: ${params.uri}` } });
+    }
+  } else if (msg.method === "prompts/list") {
+    respond(msg.id, {
+      prompts: [
+        {
+          name: "greet",
+          description: "Generate a greeting message",
+          arguments: [{ name: "name", description: "Name to greet", required: true }],
+        },
+        {
+          name: "summarize",
+          description: "Summarize some text",
+          arguments: [{ name: "text", description: "Text to summarize", required: false }],
+        },
+      ],
+    });
+  } else if (msg.method === "prompts/get") {
+    const params = msg.params as { name: string; arguments?: Record<string, string> };
+    if (params.name === "greet") {
+      const name = params.arguments?.name ?? "World";
+      respond(msg.id, {
+        description: "A greeting prompt",
+        messages: [{ role: "user", content: { type: "text", text: `Hello, ${name}!` } }],
+      });
+    } else if (params.name === "summarize") {
+      const text = params.arguments?.text ?? "(no text provided)";
+      respond(msg.id, {
+        description: "A summarize prompt",
+        messages: [{ role: "user", content: { type: "text", text: `Please summarize: ${text}` } }],
+      });
+    } else {
+      respond(msg.id, { error: { code: -32602, message: `Prompt not found: ${params.name}` } });
+    }
   } else if (msg.method === "tools/list") {
     respond(msg.id, {
       tools: [

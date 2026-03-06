@@ -11,6 +11,8 @@ import { registerAddCommand } from "./commands/add.ts";
 import { registerRemoveCommand } from "./commands/remove.ts";
 import { registerSkillCommand } from "./commands/skill.ts";
 import { registerPingCommand } from "./commands/ping.ts";
+import { registerResourceCommand } from "./commands/resource.ts";
+import { registerPromptCommand } from "./commands/prompt.ts";
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -37,5 +39,7 @@ registerAddCommand(program);
 registerRemoveCommand(program);
 registerSkillCommand(program);
 registerPingCommand(program);
+registerResourceCommand(program);
+registerPromptCommand(program);
 
 program.parse();

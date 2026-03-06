@@ -1,7 +1,14 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import picomatch from "picomatch";
-import type { Tool, ServerConfig, ServersFile, AuthFile } from "../config/schemas.ts";
+import type {
+  Tool,
+  Resource,
+  Prompt,
+  ServerConfig,
+  ServersFile,
+  AuthFile,
+} from "../config/schemas.ts";
 import { isStdioServer, isHttpServer } from "../config/schemas.ts";
 import { createStdioTransport } from "./stdio.ts";
 import { createHttpTransport } from "./http.ts";
@@ -10,6 +17,16 @@ import { McpOAuthProvider } from "./oauth.ts";
 export interface ToolWithServer {
   server: string;
   tool: Tool;
+}
+
+export interface ResourceWithServer {
+  server: string;
+  resource: Resource;
+}
+
+export interface PromptWithServer {
+  server: string;
+  prompt: Prompt;
 }
 
 export interface ServerError {
@@ -30,6 +47,7 @@ export interface ServerManagerOptions {
 
 export class ServerManager {
   private clients = new Map<string, Client>();
+  private connecting = new Map<string, Promise<Client>>();
   private transports = new Map<string, Transport>();
   private oauthProviders = new Map<string, McpOAuthProvider>();
   private servers: ServersFile;
@@ -57,32 +75,45 @@ export class ServerManager {
     const existing = this.clients.get(serverName);
     if (existing) return existing;
 
+    // If a connection is already in flight, wait for it instead of opening a second one
+    const inflight = this.connecting.get(serverName);
+    if (inflight) return inflight;
+
     const config = this.servers.mcpServers[serverName];
     if (!config) {
       throw new Error(`Unknown server: "${serverName}"`);
     }
 
-    // Auto-refresh expired OAuth tokens before connecting to HTTP servers
-    if (isHttpServer(config)) {
-      const provider = this.getOrCreateOAuthProvider(serverName);
-      if (!provider.isComplete()) {
-        throw new Error(`Not authenticated with "${serverName}". Run: mcpcli auth ${serverName}`);
+    const connectPromise = (async () => {
+      // Auto-refresh expired OAuth tokens before connecting to HTTP servers
+      if (isHttpServer(config)) {
+        const provider = this.getOrCreateOAuthProvider(serverName);
+        if (!provider.isComplete()) {
+          throw new Error(`Not authenticated with "${serverName}". Run: mcpcli auth ${serverName}`);
+        }
+        try {
+          await provider.refreshIfNeeded(config.url);
+        } catch {
+          // If refresh fails, continue — the transport will send the existing token
+        }
       }
-      try {
-        await provider.refreshIfNeeded(config.url);
-      } catch {
-        // If refresh fails, continue — the transport will send the existing token
-      }
-    }
 
-    const transport = this.createTransport(serverName, config);
-    this.transports.set(serverName, transport);
+      const transport = this.createTransport(serverName, config);
+      this.transports.set(serverName, transport);
 
-    const client = new Client({ name: "mcpcli", version: "0.1.0" });
-    await this.withTimeout(client.connect(transport), `connect(${serverName})`);
-    this.clients.set(serverName, client);
+      const client = new Client({ name: "mcpcli", version: "0.1.0" });
+      await this.withTimeout(client.connect(transport), `connect(${serverName})`);
+      this.clients.set(serverName, client);
+      this.connecting.delete(serverName);
 
-    return client;
+      return client;
+    })().catch((err) => {
+      this.connecting.delete(serverName);
+      throw err;
+    });
+
+    this.connecting.set(serverName, connectPromise);
+    return connectPromise;
   }
 
   private getOrCreateOAuthProvider(serverName: string): McpOAuthProvider {
@@ -150,6 +181,7 @@ export class ServerManager {
             // ignore close errors
           }
           this.clients.delete(serverName);
+          this.connecting.delete(serverName);
           this.transports.delete(serverName);
         }
       }
@@ -228,6 +260,128 @@ export class ServerManager {
     return tools.find((t) => t.name === toolName);
   }
 
+  /** List resources for a single server */
+  async listResources(serverName: string): Promise<Resource[]> {
+    return this.withRetry(
+      async () => {
+        const client = await this.getClient(serverName);
+        const result = await this.withTimeout(
+          client.listResources(),
+          `listResources(${serverName})`,
+        );
+        return result.resources;
+      },
+      `listResources(${serverName})`,
+      serverName,
+    );
+  }
+
+  /** List resources across all configured servers */
+  async getAllResources(): Promise<{ resources: ResourceWithServer[]; errors: ServerError[] }> {
+    const serverNames = Object.keys(this.servers.mcpServers);
+    const resources: ResourceWithServer[] = [];
+    const errors: ServerError[] = [];
+
+    for (let i = 0; i < serverNames.length; i += this.concurrency) {
+      const batch = serverNames.slice(i, i + this.concurrency);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (name) => {
+          const serverResources = await this.listResources(name);
+          return serverResources.map((resource) => ({ server: name, resource }));
+        }),
+      );
+
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j]!;
+        if (result.status === "fulfilled") {
+          resources.push(...result.value);
+        } else {
+          const name = batch[j]!;
+          const message =
+            result.reason instanceof Error ? result.reason.message : String(result.reason);
+          errors.push({ server: name, message });
+        }
+      }
+    }
+
+    return { resources, errors };
+  }
+
+  /** Read a specific resource by URI */
+  async readResource(serverName: string, uri: string): Promise<unknown> {
+    return this.withRetry(
+      async () => {
+        const client = await this.getClient(serverName);
+        return this.withTimeout(client.readResource({ uri }), `readResource(${serverName}/${uri})`);
+      },
+      `readResource(${serverName}/${uri})`,
+      serverName,
+    );
+  }
+
+  /** List prompts for a single server */
+  async listPrompts(serverName: string): Promise<Prompt[]> {
+    return this.withRetry(
+      async () => {
+        const client = await this.getClient(serverName);
+        const result = await this.withTimeout(client.listPrompts(), `listPrompts(${serverName})`);
+        return result.prompts;
+      },
+      `listPrompts(${serverName})`,
+      serverName,
+    );
+  }
+
+  /** List prompts across all configured servers */
+  async getAllPrompts(): Promise<{ prompts: PromptWithServer[]; errors: ServerError[] }> {
+    const serverNames = Object.keys(this.servers.mcpServers);
+    const prompts: PromptWithServer[] = [];
+    const errors: ServerError[] = [];
+
+    for (let i = 0; i < serverNames.length; i += this.concurrency) {
+      const batch = serverNames.slice(i, i + this.concurrency);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (name) => {
+          const serverPrompts = await this.listPrompts(name);
+          return serverPrompts.map((prompt) => ({ server: name, prompt }));
+        }),
+      );
+
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j]!;
+        if (result.status === "fulfilled") {
+          prompts.push(...result.value);
+        } else {
+          const name = batch[j]!;
+          const message =
+            result.reason instanceof Error ? result.reason.message : String(result.reason);
+          errors.push({ server: name, message });
+        }
+      }
+    }
+
+    return { prompts, errors };
+  }
+
+  /** Get a specific prompt by name, optionally with arguments */
+  async getPrompt(
+    serverName: string,
+    name: string,
+    args?: Record<string, string>,
+  ): Promise<unknown> {
+    return this.withRetry(
+      async () => {
+        const client = await this.getClient(serverName);
+        return this.withTimeout(
+          client.getPrompt({ name, arguments: args }),
+          `getPrompt(${serverName}/${name})`,
+        );
+      },
+      `getPrompt(${serverName}/${name})`,
+      serverName,
+    );
+  }
+
   /** Get all server names */
   getServerNames(): string[] {
     return Object.keys(this.servers.mcpServers);
@@ -245,6 +399,7 @@ export class ServerManager {
       this.transports.delete(name);
     });
     await Promise.allSettled(closePromises);
+    this.connecting.clear();
   }
 }
 

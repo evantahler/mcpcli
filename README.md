@@ -49,28 +49,34 @@ mcpcli search -q "manage pull requests"
 
 ## Commands
 
-| Command                              | Description                                  |
-| ------------------------------------ | -------------------------------------------- |
-| `mcpcli`                             | List all configured servers and tools        |
-| `mcpcli info <server>`               | Show tools for a server                      |
-| `mcpcli info <server> <tool>`        | Show tool schema                             |
-| `mcpcli search <query>`              | Search tools (keyword + semantic)            |
-| `mcpcli search -k <pattern>`         | Keyword/glob search only                     |
-| `mcpcli search -q <query>`           | Semantic search only                         |
-| `mcpcli index`                       | Build/rebuild the search index               |
-| `mcpcli index -i`                    | Show index status                            |
-| `mcpcli exec <server> <tool> [json]` | Validate inputs locally, then execute tool   |
-| `mcpcli exec <server>`               | List available tools for a server            |
-| `mcpcli auth <server>`               | Authenticate with an HTTP MCP server (OAuth) |
-| `mcpcli auth <server> -s`            | Check auth status and token TTL              |
-| `mcpcli auth <server> -r`            | Force token refresh                          |
-| `mcpcli deauth <server>`             | Remove stored authentication for a server    |
-| `mcpcli add <name> --command <cmd>`  | Add a stdio MCP server to your config        |
-| `mcpcli add <name> --url <url>`      | Add an HTTP MCP server to your config        |
-| `mcpcli remove <name>`               | Remove an MCP server from your config        |
-| `mcpcli ping`                        | Check connectivity to all configured servers |
-| `mcpcli ping <server> [server2...]`  | Check connectivity to specific server(s)     |
-| `mcpcli skill install --claude`      | Install the mcpcli skill for Claude Code     |
+| Command                                | Description                                  |
+| -------------------------------------- | -------------------------------------------- |
+| `mcpcli`                               | List all configured servers and tools        |
+| `mcpcli info <server>`                 | Show tools for a server                      |
+| `mcpcli info <server> <tool>`          | Show tool schema                             |
+| `mcpcli search <query>`                | Search tools (keyword + semantic)            |
+| `mcpcli search -k <pattern>`           | Keyword/glob search only                     |
+| `mcpcli search -q <query>`             | Semantic search only                         |
+| `mcpcli index`                         | Build/rebuild the search index               |
+| `mcpcli index -i`                      | Show index status                            |
+| `mcpcli exec <server> <tool> [json]`   | Validate inputs locally, then execute tool   |
+| `mcpcli exec <server>`                 | List available tools for a server            |
+| `mcpcli auth <server>`                 | Authenticate with an HTTP MCP server (OAuth) |
+| `mcpcli auth <server> -s`              | Check auth status and token TTL              |
+| `mcpcli auth <server> -r`              | Force token refresh                          |
+| `mcpcli deauth <server>`               | Remove stored authentication for a server    |
+| `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server to your config        |
+| `mcpcli add <name> --url <url>`        | Add an HTTP MCP server to your config        |
+| `mcpcli remove <name>`                 | Remove an MCP server from your config        |
+| `mcpcli ping`                          | Check connectivity to all configured servers |
+| `mcpcli ping <server> [server2...]`    | Check connectivity to specific server(s)     |
+| `mcpcli skill install --claude`        | Install the mcpcli skill for Claude Code     |
+| `mcpcli resource`                      | List all resources across all servers        |
+| `mcpcli resource <server>`             | List resources for a server                  |
+| `mcpcli resource <server> <uri>`       | Read a specific resource                     |
+| `mcpcli prompt`                        | List all prompts across all servers          |
+| `mcpcli prompt <server>`               | List prompts for a server                    |
+| `mcpcli prompt <server> <name> [json]` | Get a specific prompt                        |
 
 ## Options
 

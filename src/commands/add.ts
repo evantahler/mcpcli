@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import type { ServerConfig } from "../config/schemas.ts";
 import { loadRawAuth, loadRawServers, saveServers } from "../config/loader.ts";
-import { tryOAuthIfSupported } from "../client/oauth.ts";
+import { tryOAuthIfSupported, resolveResourceUrl } from "../client/oauth.ts";
 import { runIndex } from "./index.ts";
 
 export function registerAddCommand(program: Command) {
@@ -72,6 +72,20 @@ export function registerAddCommand(program: Command) {
           config.disabledTools = options.disabledTools.split(",").map((t) => t.trim());
         }
 
+        // For HTTP servers, resolve the canonical resource URL before saving.
+        // Some servers (e.g. hf.co → huggingface.co) advertise a different canonical
+        // URL in their OAuth protected resource metadata, and the SDK enforces that the
+        // stored URL matches this canonical URL during the OAuth token flow.
+        let effectiveUrl = options.url!;
+        if (hasUrl && options.auth !== false) {
+          const canonical = await resolveResourceUrl(effectiveUrl);
+          if (canonical !== effectiveUrl) {
+            (config as { url: string }).url = canonical;
+            effectiveUrl = canonical;
+            console.log(`Resolved canonical URL: ${canonical}`);
+          }
+        }
+
         servers.mcpServers[name] = config;
         await saveServers(configDir, servers);
         console.log(`Added server "${name}" to ${configDir}/servers.json`);
@@ -85,7 +99,7 @@ export function registerAddCommand(program: Command) {
             showSecrets: false,
           };
           try {
-            await tryOAuthIfSupported(name, options.url!, configDir, auth, formatOptions);
+            await tryOAuthIfSupported(name, effectiveUrl, configDir, auth, formatOptions);
           } catch {
             console.error(`Warning: OAuth authentication failed. Run: mcpcli auth ${name}`);
           }

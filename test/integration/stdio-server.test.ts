@@ -29,26 +29,36 @@ async function runAndParse<T = unknown>(...args: string[]): Promise<T> {
 }
 
 describe("stdio MCP server integration", () => {
-  test("lists all tools from the mock stdio server", async () => {
-    const tools = await runAndParse<{ server: string; tool: string }[]>();
-    expect(tools).toBeInstanceOf(Array);
+  test("lists all tools, resources, and prompts from the mock stdio server", async () => {
+    const items = await runAndParse<{ server: string; type: string; name: string }[]>();
+    expect(items).toBeInstanceOf(Array);
+
+    const tools = items.filter((i) => i.type === "tool");
+    const resources = items.filter((i) => i.type === "resource");
+    const prompts = items.filter((i) => i.type === "prompt");
+
     expect(tools.length).toBe(4);
+    expect(resources.length).toBeGreaterThan(0);
+    expect(prompts.length).toBeGreaterThan(0);
 
-    const names = tools.map((t) => t.tool);
-    expect(names).toContain("echo");
-    expect(names).toContain("add");
-    expect(names).toContain("secret");
-    expect(names).toContain("noop");
+    const toolNames = tools.map((t) => t.name);
+    expect(toolNames).toContain("echo");
+    expect(toolNames).toContain("add");
+    expect(toolNames).toContain("secret");
+    expect(toolNames).toContain("noop");
 
-    // Every tool should be from the "mock" server
-    for (const t of tools) {
-      expect(t.server).toBe("mock");
+    // Every item should be from the "mock" server
+    for (const item of items) {
+      expect(item.server).toBe("mock");
     }
   });
 
-  test("lists tools with descriptions", async () => {
-    const tools = await runAndParse<{ server: string; tool: string; description: string }[]>("-d");
-    const echo = tools.find((t) => t.tool === "echo");
+  test("lists items with descriptions", async () => {
+    const items =
+      await runAndParse<{ server: string; type: string; name: string; description: string }[]>(
+        "-d",
+      );
+    const echo = items.find((i) => i.type === "tool" && i.name === "echo");
     expect(echo).toBeDefined();
     expect(echo!.description).toContain("Echoes");
   });
