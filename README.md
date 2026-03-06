@@ -134,7 +134,7 @@ mcpcli remove my-api --dry-run
 
 ## Configuration
 
-Config lives in `~/.config/mcpcli/` (or the current directory). Three files:
+Config lives in `~/.mcpcli/` (or the current directory). Three files:
 
 ### `servers.json` — MCP Server Definitions
 
@@ -231,18 +231,18 @@ Scenarios and keywords are extracted heuristically from tool names and descripti
 1. `MCP_CONFIG_PATH` environment variable
 2. `-c / --config` flag
 3. `./servers.json` (current directory)
-4. `~/.config/mcpcli/servers.json`
+4. `~/.mcpcli/servers.json`
 
 ## Environment Variables
 
-| Variable          | Purpose                     | Default             |
-| ----------------- | --------------------------- | ------------------- |
-| `MCP_CONFIG_PATH` | Config directory path       | `~/.config/mcpcli/` |
-| `MCP_DEBUG`       | Enable debug output         | `false`             |
-| `MCP_TIMEOUT`     | Request timeout (seconds)   | `1800`              |
-| `MCP_CONCURRENCY` | Parallel server connections | `5`                 |
-| `MCP_MAX_RETRIES` | Retry attempts              | `3`                 |
-| `MCP_STRICT_ENV`  | Error on missing `${VAR}`   | `true`              |
+| Variable          | Purpose                     | Default      |
+| ----------------- | --------------------------- | ------------ |
+| `MCP_CONFIG_PATH` | Config directory path       | `~/.mcpcli/` |
+| `MCP_DEBUG`       | Enable debug output         | `false`      |
+| `MCP_TIMEOUT`     | Request timeout (seconds)   | `1800`       |
+| `MCP_CONCURRENCY` | Parallel server connections | `5`          |
+| `MCP_MAX_RETRIES` | Retry attempts              | `3`          |
+| `MCP_STRICT_ENV`  | Error on missing `${VAR}`   | `true`       |
 
 ## OAuth Flow
 
