@@ -34,8 +34,8 @@ mcpcli info github
 # Inspect a specific tool
 mcpcli info github search_repositories
 
-# Call a tool
-mcpcli call github search_repositories '{"query": "mcp server"}'
+# Execute a tool
+mcpcli exec github search_repositories '{"query": "mcp server"}'
 
 # Search tools — combines keyword and semantic matching
 mcpcli search "post a ticket to linear"
@@ -59,8 +59,8 @@ mcpcli search -q "manage pull requests"
 | `mcpcli search -q <query>`           | Semantic search only                         |
 | `mcpcli index`                       | Build/rebuild the search index               |
 | `mcpcli index -i`                    | Show index status                            |
-| `mcpcli call <server> <tool> [json]` | Validate inputs locally, then execute tool   |
-| `mcpcli call <server>`               | List available tools for a server            |
+| `mcpcli exec <server> <tool> [json]` | Validate inputs locally, then execute tool   |
+| `mcpcli exec <server>`               | List available tools for a server            |
 | `mcpcli auth <server>`               | Authenticate with an HTTP MCP server (OAuth) |
 | `mcpcli auth <server> -s`            | Check auth status and token TTL              |
 | `mcpcli auth <server> -r`            | Force token refresh                          |
@@ -193,7 +193,7 @@ Stores OAuth tokens for HTTP MCP servers. You don't edit this directly — manag
 }
 ```
 
-Tokens are automatically refreshed when expired (if a refresh token is available). Any command that connects to a server (`call`, `info`, `search`, listing) will refresh tokens transparently. `mcpcli auth <server> --status` shows current token state and TTL.
+Tokens are automatically refreshed when expired (if a refresh token is available). Any command that connects to a server (`exec`, `info`, `search`, listing) will refresh tokens transparently. `mcpcli auth <server> --status` shows current token state and TTL.
 
 ### `search.json` — Semantic Search Index (managed automatically)
 
@@ -308,7 +308,7 @@ The index updates incrementally — only new or changed tools are re-indexed. Th
 
 ```bash
 # See full HTTP traffic
-mcpcli -v call arcade Gmail_WhoAmI
+mcpcli -v exec arcade Gmail_WhoAmI
 
 # > POST https://api.arcade.dev/mcp/evan-coding
 # > authorization: Bearer eyJhbGci...
@@ -329,7 +329,7 @@ mcpcli -v call arcade Gmail_WhoAmI
 # { "content": [ ... ] }
 
 # Debug on stderr, clean JSON on stdout
-mcpcli -v call arcade Gmail_WhoAmI | jq .
+mcpcli -v exec arcade Gmail_WhoAmI | jq .
 
 # Show full auth tokens (unmasked)
 mcpcli -v -S call arcade Gmail_WhoAmI
@@ -339,19 +339,19 @@ The `>` / `<` convention matches curl — `>` for request, `<` for response. The
 
 ## Input Validation
 
-`mcpcli call` validates tool arguments locally before sending them to the server. MCP tools advertise a JSON Schema for their inputs — mcpcli uses this to catch errors fast, without a round-trip.
+`mcpcli exec` validates tool arguments locally before sending them to the server. MCP tools advertise a JSON Schema for their inputs — mcpcli uses this to catch errors fast, without a round-trip.
 
 ```bash
 # Missing required field — caught locally
-mcpcli call github create_issue '{"title": "bug"}'
+mcpcli exec github create_issue '{"title": "bug"}'
 # => error: missing required field "repo" (github/create_issue)
 
 # Wrong type — caught locally
-mcpcli call github create_issue '{"repo": "foo", "title": 123}'
+mcpcli exec github create_issue '{"repo": "foo", "title": 123}'
 # => error: "title" must be a string, got number (github/create_issue)
 
 # Valid — sent to server
-mcpcli call github create_issue '{"repo": "foo", "title": "bug"}'
+mcpcli exec github create_issue '{"repo": "foo", "title": "bug"}'
 # => { ... }
 ```
 
@@ -362,7 +362,7 @@ Validation covers:
 - **Enum values** — rejects values not in the allowed set
 - **Nested objects** — validates recursively
 
-If a tool's `inputSchema` is unavailable (some servers don't provide one), the call proceeds without local validation.
+If a tool's `inputSchema` is unavailable (some servers don't provide one), execution proceeds without local validation.
 
 ## Shell Output & Piping
 
@@ -379,26 +379,26 @@ mcpcli info github | jq '.tools[].name'
 mcpcli info github --json
 ```
 
-Tool call results are always JSON, designed for chaining:
+Tool results are always JSON, designed for chaining:
 
 ```bash
 # Search repos and read the first result
-mcpcli call github search_repositories '{"query":"mcp"}' \
+mcpcli exec github search_repositories '{"query":"mcp"}' \
   | jq -r '.content[0].text | fromjson | .items[0].full_name' \
-  | xargs -I {} mcpcli call github get_file_contents '{"owner":"{}","path":"README.md"}'
+  | xargs -I {} mcpcli exec github get_file_contents '{"owner":"{}","path":"README.md"}'
 
 # Conditional execution
-mcpcli call filesystem list_directory '{"path":"."}' \
+mcpcli exec filesystem list_directory '{"path":"."}' \
   | jq -e '.content[0].text | contains("package.json")' \
-  && mcpcli call filesystem read_file '{"path":"./package.json"}'
+  && mcpcli exec filesystem read_file '{"path":"./package.json"}'
 ```
 
 Stdin works for tool arguments:
 
 ```bash
-echo '{"path":"./README.md"}' | mcpcli call filesystem read_file
+echo '{"path":"./README.md"}' | mcpcli exec filesystem read_file
 
-cat params.json | mcpcli call server tool
+cat params.json | mcpcli exec server tool
 ```
 
 ## Agent Integration
@@ -416,7 +416,7 @@ Then in any Claude Code session, the agent can use `/mcpcli` or the skill trigge
 
 1. **Search first** — `mcpcli search "<intent>"` to find relevant tools
 2. **Inspect** — `mcpcli info <server> <tool>` to get the schema before calling
-3. **Call** — `mcpcli call <server> <tool> '<json>'` to execute
+3. **Execute** — `mcpcli exec <server> <tool> '<json>'` to execute
 
 This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
 
@@ -432,10 +432,10 @@ To discover tools:
   mcpcli search -k "<pattern>"             # keyword/glob only
   mcpcli info <server> <tool>              # tool schema
 
-To call tools:
-  mcpcli call <server> <tool> '<json args>'
+To execute tools:
+  mcpcli exec <server> <tool> '<json args>'
 
-Always search before calling — don't assume tool names.
+Always search before executing — don't assume tool names.
 ```
 
 ## Development

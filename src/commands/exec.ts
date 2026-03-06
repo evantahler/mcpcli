@@ -9,9 +9,9 @@ import {
 import { logger } from "../output/logger.ts";
 import { validateToolInput } from "../validation/schema.ts";
 
-export function registerCallCommand(program: Command) {
+export function registerExecCommand(program: Command) {
   program
-    .command("call <server> [tool] [args]")
+    .command("exec <server> [tool] [args]")
     .description("execute a tool (omit tool name to list available tools)")
     .action(async (server: string, tool: string | undefined, argsStr: string | undefined) => {
       const { manager, formatOptions } = await getContext(program);
@@ -52,7 +52,7 @@ export function registerCallCommand(program: Command) {
           }
         }
 
-        const spinner = logger.startSpinner(`Calling ${server}/${tool}...`, formatOptions);
+        const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
         const result = await manager.callTool(server, tool, args);
         spinner.stop();
         console.log(formatCallResult(result, formatOptions));
