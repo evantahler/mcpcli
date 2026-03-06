@@ -87,6 +87,8 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli auth <server> -s`              | Check token status and TTL        |
 | `mcpcli auth <server> -r`              | Force token refresh               |
 | `mcpcli deauth <server>`               | Remove stored authentication      |
+| `mcpcli ping`                          | Check connectivity to all servers |
+| `mcpcli ping <server> [server2...]`    | Check specific server(s)          |
 | `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server            |
 | `mcpcli add <name> --url <url>`        | Add an HTTP MCP server            |
 | `mcpcli remove <name>`                 | Remove an MCP server              |

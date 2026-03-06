@@ -10,6 +10,7 @@ import { registerIndexCommand } from "./commands/index.ts";
 import { registerAddCommand } from "./commands/add.ts";
 import { registerRemoveCommand } from "./commands/remove.ts";
 import { registerSkillCommand } from "./commands/skill.ts";
+import { registerPingCommand } from "./commands/ping.ts";
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -35,5 +36,6 @@ registerIndexCommand(program);
 registerAddCommand(program);
 registerRemoveCommand(program);
 registerSkillCommand(program);
+registerPingCommand(program);
 
 program.parse();
