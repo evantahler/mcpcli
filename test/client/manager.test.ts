@@ -1,7 +1,8 @@
-import { describe, test, expect, afterEach } from "bun:test";
+import { describe, test, expect, afterEach, spyOn } from "bun:test";
 import { join } from "path";
 import { ServerManager } from "../../src/client/manager.ts";
-import type { ServersFile } from "../../src/config/schemas.ts";
+import { McpOAuthProvider } from "../../src/client/oauth.ts";
+import type { ServersFile, AuthFile } from "../../src/config/schemas.ts";
 
 const MOCK_SERVER = join(import.meta.dir, "../fixtures/mock-server.ts");
 
@@ -143,5 +144,106 @@ describe("ServerManager", () => {
     });
     const tools = await manager.listTools("mock");
     expect(tools.length).toBeGreaterThan(0);
+  });
+});
+
+describe("ServerManager with HTTP servers", () => {
+  let manager: ServerManager;
+
+  afterEach(async () => {
+    if (manager) await manager.close();
+  });
+
+  test("calls refreshIfNeeded for HTTP server with expired OAuth tokens", async () => {
+    const auth: AuthFile = {
+      "http-server": {
+        tokens: {
+          access_token: "expired-token",
+          token_type: "Bearer",
+          refresh_token: "my-refresh-token",
+        },
+        expires_at: new Date(Date.now() - 60000).toISOString(),
+        client_info: { client_id: "client-123" },
+        complete: true,
+      },
+    };
+
+    manager = new ServerManager({
+      servers: { mcpServers: { "http-server": { url: "http://localhost:19999/mcp" } } },
+      configDir: "/tmp",
+      auth,
+      timeout: 1000,
+      maxRetries: 0,
+    });
+
+    const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
+      undefined,
+    );
+
+    try {
+      await manager.getClient("http-server");
+    } catch {
+      // Connection failure expected — no real HTTP server
+    }
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect(refreshSpy).toHaveBeenCalledWith("http://localhost:19999/mcp");
+    refreshSpy.mockRestore();
+  });
+
+  test("throws when HTTP server auth is not complete", async () => {
+    const auth: AuthFile = {
+      "http-server": {
+        tokens: { access_token: "token", token_type: "Bearer" },
+        // complete is missing
+      },
+    };
+
+    manager = new ServerManager({
+      servers: { mcpServers: { "http-server": { url: "http://localhost:19999/mcp" } } },
+      configDir: "/tmp",
+      auth,
+      timeout: 1000,
+      maxRetries: 0,
+    });
+
+    await expect(manager.getClient("http-server")).rejects.toThrow("Not authenticated");
+  });
+
+  test("continues even if refreshIfNeeded throws", async () => {
+    const auth: AuthFile = {
+      "http-server": {
+        tokens: {
+          access_token: "expired-token",
+          token_type: "Bearer",
+          refresh_token: "bad-refresh-token",
+        },
+        expires_at: new Date(Date.now() - 60000).toISOString(),
+        client_info: { client_id: "client-123" },
+        complete: true,
+      },
+    };
+
+    manager = new ServerManager({
+      servers: { mcpServers: { "http-server": { url: "http://localhost:19999/mcp" } } },
+      configDir: "/tmp",
+      auth,
+      timeout: 1000,
+      maxRetries: 0,
+    });
+
+    const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockRejectedValue(
+      new Error("Refresh failed"),
+    );
+
+    try {
+      await manager.getClient("http-server");
+    } catch (err) {
+      // The error should be a connection error, not a refresh error
+      expect((err as Error).message).not.toContain("Refresh failed");
+    }
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    refreshSpy.mockRestore();
   });
 });

@@ -1,9 +1,26 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm } from "fs/promises";
+import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
+import { mkdtemp, rm, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { McpOAuthProvider, startCallbackServer } from "../../src/client/oauth.ts";
 import type { AuthFile } from "../../src/config/schemas.ts";
+
+// Mock the SDK's refreshAuthorization before importing the provider
+const mockRefreshAuthorization = mock(() =>
+  Promise.resolve({
+    access_token: "refreshed-access-token",
+    token_type: "Bearer",
+    expires_in: 7200,
+    refresh_token: "new-refresh-token",
+  }),
+);
+
+mock.module("@modelcontextprotocol/sdk/client/auth.js", () => ({
+  auth: mock(),
+  discoverOAuthServerInfo: mock(),
+  refreshAuthorization: mockRefreshAuthorization,
+}));
+
+import { McpOAuthProvider, startCallbackServer } from "../../src/client/oauth.ts";
 
 function makeProvider(auth: AuthFile = {}, serverName = "test-server") {
   const configDir = "/tmp/mcpcli-test";
@@ -180,6 +197,73 @@ describe("refreshIfNeeded", () => {
     await expect(provider.refreshIfNeeded("http://example.com")).rejects.toThrow(
       "no refresh token available",
     );
+  });
+
+  test("throws when expired with refresh token but no client info", async () => {
+    const auth: AuthFile = {
+      "test-server": {
+        tokens: {
+          access_token: "old-token",
+          token_type: "Bearer",
+          refresh_token: "my-refresh-token",
+        },
+        expires_at: new Date(Date.now() - 60000).toISOString(),
+      },
+    };
+    const provider = makeProvider(auth);
+    await expect(provider.refreshIfNeeded("http://example.com")).rejects.toThrow(
+      "No client information",
+    );
+  });
+
+  test("refreshes token when expired with refresh token and client info", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-refresh-"));
+    try {
+      const auth: AuthFile = {
+        "test-server": {
+          tokens: {
+            access_token: "old-expired-token",
+            token_type: "Bearer",
+            refresh_token: "my-refresh-token",
+          },
+          expires_at: new Date(Date.now() - 60000).toISOString(),
+          client_info: { client_id: "my-client", client_secret: "my-secret" },
+          complete: true,
+        },
+      };
+      const provider = new McpOAuthProvider({
+        serverName: "test-server",
+        configDir: dir,
+        auth,
+      });
+
+      mockRefreshAuthorization.mockClear();
+
+      await provider.refreshIfNeeded("http://example.com");
+
+      // Verify refreshAuthorization was called with correct args
+      expect(mockRefreshAuthorization).toHaveBeenCalledTimes(1);
+      expect(mockRefreshAuthorization).toHaveBeenCalledWith("http://example.com", {
+        clientInformation: { client_id: "my-client", client_secret: "my-secret" },
+        refreshToken: "my-refresh-token",
+      });
+
+      // Verify new tokens were saved in memory
+      const tokens = provider.tokens();
+      expect(tokens?.access_token).toBe("refreshed-access-token");
+      expect(tokens?.refresh_token).toBe("new-refresh-token");
+
+      // Verify expires_at was updated to a future date
+      const expiresAt = new Date(auth["test-server"]!.expires_at!).getTime();
+      expect(expiresAt).toBeGreaterThan(Date.now());
+
+      // Verify auth.json was written to disk
+      const diskContent = await readFile(join(dir, "auth.json"), "utf-8");
+      const diskAuth = JSON.parse(diskContent);
+      expect(diskAuth["test-server"].tokens.access_token).toBe("refreshed-access-token");
+    } finally {
+      await rm(dir, { recursive: true });
+    }
   });
 });
 
