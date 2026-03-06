@@ -68,6 +68,7 @@ mcpcli search -q "manage pull requests"
 | `mcpcli add <name> --command <cmd>`  | Add a stdio MCP server to your config        |
 | `mcpcli add <name> --url <url>`      | Add an HTTP MCP server to your config        |
 | `mcpcli remove <name>`               | Remove an MCP server from your config        |
+| `mcpcli skill install --claude`      | Install the mcpcli skill for Claude Code     |
 
 ## Options
 
@@ -405,11 +406,20 @@ cat params.json | mcpcli exec server tool
 
 ### Claude Code Skill
 
-mcpcli ships a Claude Code skill at `skills/mcpcli.md` that teaches Claude Code how to discover and use MCP tools. Install it:
+mcpcli ships a Claude Code skill at `.claude/skills/mcpcli.md` that teaches Claude Code how to discover and use MCP tools. Install it:
 
 ```bash
-# Copy the skill to your global Claude Code skills
-cp skills/mcpcli.md ~/.claude/skills/mcpcli.md
+# Install to the current project (.claude/skills/mcpcli.md)
+mcpcli skill install --claude
+
+# Install globally (~/.claude/skills/mcpcli.md)
+mcpcli skill install --claude --global
+
+# Install to both locations
+mcpcli skill install --claude --global --project
+
+# Overwrite an existing skill file
+mcpcli skill install --claude --force
 ```
 
 Then in any Claude Code session, the agent can use `/mcpcli` or the skill triggers automatically when the agent needs to interact with external services. The skill instructs the agent to:

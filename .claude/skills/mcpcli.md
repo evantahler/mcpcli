@@ -90,3 +90,4 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server            |
 | `mcpcli add <name> --url <url>`        | Add an HTTP MCP server            |
 | `mcpcli remove <name>`                 | Remove an MCP server              |
+| `mcpcli skill install --claude`        | Install mcpcli skill for Claude   |

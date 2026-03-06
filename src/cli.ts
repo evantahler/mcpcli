@@ -9,6 +9,7 @@ import { registerAuthCommand, registerDeauthCommand } from "./commands/auth.ts";
 import { registerIndexCommand } from "./commands/index.ts";
 import { registerAddCommand } from "./commands/add.ts";
 import { registerRemoveCommand } from "./commands/remove.ts";
+import { registerSkillCommand } from "./commands/skill.ts";
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -33,5 +34,6 @@ registerDeauthCommand(program);
 registerIndexCommand(program);
 registerAddCommand(program);
 registerRemoveCommand(program);
+registerSkillCommand(program);
 
 program.parse();
