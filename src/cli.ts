@@ -4,7 +4,7 @@ import { program } from "commander";
 import { registerListCommand } from "./commands/list.ts";
 import { registerInfoCommand } from "./commands/info.ts";
 import { registerSearchCommand } from "./commands/search.ts";
-import { registerCallCommand } from "./commands/call.ts";
+import { registerExecCommand } from "./commands/exec.ts";
 import { registerAuthCommand, registerDeauthCommand } from "./commands/auth.ts";
 import { registerIndexCommand } from "./commands/index.ts";
 import { registerAddCommand } from "./commands/add.ts";
@@ -27,7 +27,7 @@ program
 registerListCommand(program);
 registerInfoCommand(program);
 registerSearchCommand(program);
-registerCallCommand(program);
+registerExecCommand(program);
 registerAuthCommand(program);
 registerDeauthCommand(program);
 registerIndexCommand(program);

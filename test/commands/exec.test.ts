@@ -24,9 +24,9 @@ function runWithStdin(stdin: string, ...args: string[]) {
   return proc;
 }
 
-describe("mcpcli call", () => {
+describe("mcpcli exec", () => {
   test("calls a tool with inline JSON args", async () => {
-    const proc = run("call", "mock", "echo", '{"message": "hello world"}');
+    const proc = run("exec", "mock", "echo", '{"message": "hello world"}');
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -36,7 +36,7 @@ describe("mcpcli call", () => {
   });
 
   test("calls add tool", async () => {
-    const proc = run("call", "mock", "add", '{"a": 10, "b": 20}');
+    const proc = run("exec", "mock", "add", '{"a": 10, "b": 20}');
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -46,7 +46,7 @@ describe("mcpcli call", () => {
   });
 
   test("reads args from stdin", async () => {
-    const proc = runWithStdin('{"message": "from stdin"}', "call", "mock", "echo");
+    const proc = runWithStdin('{"message": "from stdin"}', "exec", "mock", "echo");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -56,7 +56,7 @@ describe("mcpcli call", () => {
   });
 
   test("calls a tool with no args (no {} required)", async () => {
-    const proc = run("call", "mock", "noop");
+    const proc = run("exec", "mock", "noop");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -66,7 +66,7 @@ describe("mcpcli call", () => {
   });
 
   test("errors on invalid JSON", async () => {
-    const proc = run("call", "mock", "echo", "not json");
+    const proc = run("exec", "mock", "echo", "not json");
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
@@ -74,7 +74,7 @@ describe("mcpcli call", () => {
   });
 
   test("errors on unknown server", async () => {
-    const proc = run("call", "nonexistent", "tool", "{}");
+    const proc = run("exec", "nonexistent", "tool", "{}");
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
@@ -82,7 +82,7 @@ describe("mcpcli call", () => {
   });
 
   test("validates missing required field", async () => {
-    const proc = run("call", "mock", "echo", "{}");
+    const proc = run("exec", "mock", "echo", "{}");
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
@@ -90,7 +90,7 @@ describe("mcpcli call", () => {
   });
 
   test("validates wrong type", async () => {
-    const proc = run("call", "mock", "add", '{"a": "not a number", "b": 1}');
+    const proc = run("exec", "mock", "add", '{"a": "not a number", "b": 1}');
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
@@ -98,7 +98,7 @@ describe("mcpcli call", () => {
   });
 
   test("passes validation with correct args", async () => {
-    const proc = run("call", "mock", "echo", '{"message": "valid"}');
+    const proc = run("exec", "mock", "echo", '{"message": "valid"}');
     const exitCode = await proc.exited;
     expect(exitCode).toBe(0);
   });

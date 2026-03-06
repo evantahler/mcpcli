@@ -22,19 +22,19 @@ mcpcli info <server> <tool>
 
 This shows parameters, types, required fields, and the full JSON Schema.
 
-## 3. Call the tool
+## 3. Execute the tool
 
 ```bash
-mcpcli call <server> <tool> '<json args>'
+mcpcli exec <server> <tool> '<json args>'
 ```
 
 ## Rules
 
-- Always search before calling — don't assume tool names exist
-- Always inspect the schema before calling — validate you have the right arguments
+- Always search before executing — don't assume tool names exist
+- Always inspect the schema before executing — validate you have the right arguments
 - Use `mcpcli search -k` for exact name matching
 - Pipe results through `jq` when you need to extract specific fields
-- Use `-v` for verbose HTTP debugging if a call fails unexpectedly
+- Use `-v` for verbose HTTP debugging if an exec fails unexpectedly
 
 ## Examples
 
@@ -46,15 +46,15 @@ mcpcli search "send a message"
 mcpcli info arcade Slack_SendMessage
 
 # Send a message
-mcpcli call arcade Slack_SendMessage '{"channel":"#general","message":"hello"}'
+mcpcli exec arcade Slack_SendMessage '{"channel":"#general","message":"hello"}'
 
 # Chain commands — search repos and read the first result
-mcpcli call github search_repositories '{"query":"mcp"}' \
+mcpcli exec github search_repositories '{"query":"mcp"}' \
   | jq -r '.content[0].text | fromjson | .items[0].full_name' \
-  | xargs -I {} mcpcli call github get_file_contents '{"owner":"{}","path":"README.md"}'
+  | xargs -I {} mcpcli exec github get_file_contents '{"owner":"{}","path":"README.md"}'
 
 # Read args from stdin
-echo '{"path":"./README.md"}' | mcpcli call filesystem read_file
+echo '{"path":"./README.md"}' | mcpcli exec filesystem read_file
 ```
 
 ## Authentication
@@ -76,8 +76,8 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli -d`                            | List with descriptions            |
 | `mcpcli info <server>`                 | Show tools for a server           |
 | `mcpcli info <server> <tool>`          | Show tool schema                  |
-| `mcpcli call <server>`                 | List tools for a server           |
-| `mcpcli call <server> <tool> '<json>'` | Execute a tool                    |
+| `mcpcli exec <server>`                 | List tools for a server           |
+| `mcpcli exec <server> <tool> '<json>'` | Execute a tool                    |
 | `mcpcli search "<query>"`              | Search tools (keyword + semantic) |
 | `mcpcli search -k "<pattern>"`         | Keyword/glob search only          |
 | `mcpcli search -q "<query>"`           | Semantic search only              |
