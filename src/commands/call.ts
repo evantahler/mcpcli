@@ -6,7 +6,7 @@ import {
   formatServerTools,
   formatValidationErrors,
 } from "../output/formatter.ts";
-import { startSpinner } from "../output/spinner.ts";
+import { logger } from "../output/logger.ts";
 import { validateToolInput } from "../validation/schema.ts";
 
 export function registerCallCommand(program: Command) {
@@ -52,7 +52,7 @@ export function registerCallCommand(program: Command) {
           }
         }
 
-        const spinner = startSpinner(`Calling ${server}/${tool}...`, formatOptions);
+        const spinner = logger.startSpinner(`Calling ${server}/${tool}...`, formatOptions);
         const result = await manager.callTool(server, tool, args);
         spinner.stop();
         console.log(formatCallResult(result, formatOptions));

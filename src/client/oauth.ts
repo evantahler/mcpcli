@@ -13,7 +13,7 @@ import type {
 import type { AuthFile } from "../config/schemas.ts";
 import { saveAuth } from "../config/loader.ts";
 import type { FormatOptions } from "../output/formatter.ts";
-import { startSpinner } from "../output/spinner.ts";
+import { logger } from "../output/logger.ts";
 
 export class McpOAuthProvider implements OAuthClientProvider {
   private serverName: string;
@@ -83,10 +83,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
   async redirectToAuthorization(url: URL): Promise<void> {
     const urlStr = url.toString();
 
-    if (process.stderr.isTTY) {
-      const { dim } = await import("ansis");
-      process.stderr.write(`${dim(urlStr)}\n`);
-    }
+    logger.info(urlStr);
 
     const cmd =
       process.platform === "darwin"
@@ -195,6 +192,8 @@ export class McpOAuthProvider implements OAuthClientProvider {
     });
 
     await this.saveTokens(tokens);
+
+    logger.info(`Token refreshed for "${this.serverName}"`);
   }
 }
 
@@ -269,7 +268,7 @@ export async function tryOAuthIfSupported(
   if (!oauthSupported) return false;
 
   const provider = new McpOAuthProvider({ serverName, configDir, auth });
-  const spinner = startSpinner(`Authenticating with "${serverName}"…`, formatOptions);
+  const spinner = logger.startSpinner(`Authenticating with "${serverName}"…`, formatOptions);
   try {
     await runOAuthFlow(serverUrl, provider);
     spinner.success(`Authenticated with "${serverName}"`);

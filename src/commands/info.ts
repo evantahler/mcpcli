@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { getContext } from "../context.ts";
 import { formatServerTools, formatToolSchema, formatError } from "../output/formatter.ts";
-import { startSpinner } from "../output/spinner.ts";
+import { logger } from "../output/logger.ts";
 
 export function registerInfoCommand(program: Command) {
   program
@@ -10,7 +10,7 @@ export function registerInfoCommand(program: Command) {
     .action(async (server: string, tool: string | undefined) => {
       const { manager, formatOptions } = await getContext(program);
       const target = tool ? `${server}/${tool}` : server;
-      const spinner = startSpinner(`Connecting to ${target}...`, formatOptions);
+      const spinner = logger.startSpinner(`Connecting to ${target}...`, formatOptions);
       try {
         if (tool) {
           const toolSchema = await manager.getToolSchema(server, tool);

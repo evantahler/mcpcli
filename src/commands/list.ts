@@ -1,12 +1,12 @@
 import type { Command } from "commander";
 import { getContext } from "../context.ts";
 import { formatToolList, formatError } from "../output/formatter.ts";
-import { startSpinner } from "../output/spinner.ts";
+import { logger } from "../output/logger.ts";
 
 export function registerListCommand(program: Command) {
   program.action(async () => {
     const { manager, formatOptions } = await getContext(program);
-    const spinner = startSpinner("Connecting to servers...", formatOptions);
+    const spinner = logger.startSpinner("Connecting to servers...", formatOptions);
     try {
       const { tools, errors } = await manager.getAllTools();
       spinner.stop();

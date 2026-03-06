@@ -3,7 +3,7 @@ import { getContext } from "../context.ts";
 import { isHttpServer } from "../config/schemas.ts";
 import { saveAuth } from "../config/loader.ts";
 import { McpOAuthProvider, runOAuthFlow } from "../client/oauth.ts";
-import { startSpinner } from "../output/spinner.ts";
+import { logger } from "../output/logger.ts";
 import { runIndex } from "./index.ts";
 
 export function registerAuthCommand(program: Command) {
@@ -41,7 +41,7 @@ export function registerAuthCommand(program: Command) {
         }
 
         if (options.refresh) {
-          const spinner = startSpinner(`Refreshing token for "${server}"…`, formatOptions);
+          const spinner = logger.startSpinner(`Refreshing token for "${server}"…`, formatOptions);
           try {
             await provider.refreshIfNeeded(serverConfig.url);
             spinner.success(`Token refreshed for "${server}"`);
@@ -53,7 +53,7 @@ export function registerAuthCommand(program: Command) {
         }
 
         // Default: full OAuth flow
-        const spinner = startSpinner(`Authenticating with "${server}"…`, formatOptions);
+        const spinner = logger.startSpinner(`Authenticating with "${server}"…`, formatOptions);
         try {
           await runOAuthFlow(serverConfig.url, provider);
           spinner.success(`Authenticated with "${server}"`);
