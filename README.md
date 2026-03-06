@@ -68,6 +68,8 @@ mcpcli search -q "manage pull requests"
 | `mcpcli add <name> --command <cmd>`  | Add a stdio MCP server to your config        |
 | `mcpcli add <name> --url <url>`      | Add an HTTP MCP server to your config        |
 | `mcpcli remove <name>`               | Remove an MCP server from your config        |
+| `mcpcli ping`                        | Check connectivity to all configured servers |
+| `mcpcli ping <server> [server2...]`  | Check connectivity to specific server(s)     |
 | `mcpcli skill install --claude`      | Install the mcpcli skill for Claude Code     |
 
 ## Options
