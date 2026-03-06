@@ -45,7 +45,7 @@ describe("mcpcli", () => {
     const stdout = await new Response(proc.stdout).text();
     expect(stdout).toContain("info");
     expect(stdout).toContain("search");
-    expect(stdout).toContain("call");
+    expect(stdout).toContain("exec");
     expect(stdout).toContain("auth");
   });
 });

@@ -6,7 +6,7 @@ const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
 
 /**
  * Integration tests proving that mcpcli can connect to a local stdio MCP server,
- * discover its tools, inspect schemas, and call tools end-to-end.
+ * discover its tools, inspect schemas, and execute tools end-to-end.
  */
 
 function run(...args: string[]) {
@@ -72,7 +72,7 @@ describe("stdio MCP server integration", () => {
 
   test("calls echo tool and gets response", async () => {
     const result = await runAndParse<{ content: { type: string; text: string }[] }>(
-      "call",
+      "exec",
       "mock",
       "echo",
       '{"message":"hello world"}',
@@ -83,7 +83,7 @@ describe("stdio MCP server integration", () => {
 
   test("calls add tool with numeric arguments", async () => {
     const result = await runAndParse<{ content: { type: string; text: string }[] }>(
-      "call",
+      "exec",
       "mock",
       "add",
       '{"a":10,"b":32}',
@@ -92,7 +92,7 @@ describe("stdio MCP server integration", () => {
   });
 
   test("validates tool input and rejects missing required fields", async () => {
-    const proc = run("call", "mock", "echo", "{}");
+    const proc = run("exec", "mock", "echo", "{}");
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
@@ -100,7 +100,7 @@ describe("stdio MCP server integration", () => {
   });
 
   test("validates tool input and rejects wrong types", async () => {
-    const proc = run("call", "mock", "add", '{"a":"not a number","b":1}');
+    const proc = run("exec", "mock", "add", '{"a":"not a number","b":1}');
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);
@@ -108,7 +108,7 @@ describe("stdio MCP server integration", () => {
   });
 
   test("reads tool arguments from stdin", async () => {
-    const proc = Bun.spawn(["bun", "run", CLI, "-c", CONFIG, "--json", "call", "mock", "echo"], {
+    const proc = Bun.spawn(["bun", "run", CLI, "-c", CONFIG, "--json", "exec", "mock", "echo"], {
       stdout: "pipe",
       stderr: "pipe",
       stdin: "pipe",
@@ -124,14 +124,14 @@ describe("stdio MCP server integration", () => {
   });
 
   test("exits with error for unknown server", async () => {
-    const proc = run("call", "nonexistent", "sometool", "{}");
+    const proc = run("exec", "nonexistent", "sometool", "{}");
     const exitCode = await proc.exited;
     expect(exitCode).toBe(1);
   });
 
   test("MCP_DEBUG=1 enables verbose output on stderr", async () => {
     const proc = Bun.spawn(
-      ["bun", "run", CLI, "-c", CONFIG, "--json", "call", "mock", "echo", '{"message":"test"}'],
+      ["bun", "run", CLI, "-c", CONFIG, "--json", "exec", "mock", "echo", '{"message":"test"}'],
       {
         stdout: "pipe",
         stderr: "pipe",
