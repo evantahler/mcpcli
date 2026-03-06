@@ -3,6 +3,7 @@ import { loadConfig, type LoadConfigOptions } from "./config/loader.ts";
 import { ServerManager } from "./client/manager.ts";
 import type { Config } from "./config/schemas.ts";
 import type { FormatOptions } from "./output/formatter.ts";
+import { logger } from "./output/logger.ts";
 
 export interface AppContext {
   config: Config;
@@ -45,6 +46,8 @@ export async function getContext(program: Command): Promise<AppContext> {
     verbose,
     showSecrets,
   };
+
+  logger.configure(formatOptions);
 
   return { config, manager, formatOptions };
 }

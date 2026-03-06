@@ -1,6 +1,7 @@
 import type { ServerManager, ToolWithServer } from "../client/manager.ts";
 import type { SearchIndex, IndexedTool } from "../config/schemas.ts";
 import { generateEmbedding } from "./semantic.ts";
+import { logger } from "../output/logger.ts";
 
 /** Extract keywords from a tool name by splitting on separators and camelCase */
 export function extractKeywords(name: string): string[] {
@@ -70,7 +71,7 @@ export async function buildSearchIndex(
 
   if (errors.length > 0) {
     for (const err of errors) {
-      process.stderr.write(`warning: ${err.server}: ${err.message}\n`);
+      logger.warn(`${err.server}: ${err.message}`);
     }
   }
 
