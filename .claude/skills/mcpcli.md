@@ -93,3 +93,9 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli add <name> --url <url>`        | Add an HTTP MCP server            |
 | `mcpcli remove <name>`                 | Remove an MCP server              |
 | `mcpcli skill install --claude`        | Install mcpcli skill for Claude   |
+| `mcpcli resource`                     | List all resources across servers |
+| `mcpcli resource <server>`            | List resources for a server       |
+| `mcpcli resource <server> <uri>`      | Read a specific resource          |
+| `mcpcli prompt`                       | List all prompts across servers   |
+| `mcpcli prompt <server>`              | List prompts for a server         |
+| `mcpcli prompt <server> <name> '<json>'` | Get a specific prompt          |

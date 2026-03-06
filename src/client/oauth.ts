@@ -248,6 +248,23 @@ export function startCallbackServer(): {
   return { server, authCodePromise };
 }
 
+/** Resolve the canonical resource URL for an HTTP MCP server.
+ * Some servers advertise a canonical URL in their OAuth protected resource metadata
+ * that may differ from the URL provided by the user (e.g. hf.co → huggingface.co).
+ * Returns the canonical URL if found, or the original URL otherwise. */
+export async function resolveResourceUrl(serverUrl: string): Promise<string> {
+  try {
+    const info = await discoverOAuthServerInfo(serverUrl);
+    const canonical = info.resourceMetadata?.resource;
+    if (canonical && canonical !== serverUrl) {
+      return canonical;
+    }
+  } catch {
+    // OAuth discovery not available — use original URL
+  }
+  return serverUrl;
+}
+
 /** Probe for OAuth support and run the auth flow if the server supports it.
  * Returns true if auth ran, false if server doesn't support OAuth (silent skip). */
 export async function tryOAuthIfSupported(

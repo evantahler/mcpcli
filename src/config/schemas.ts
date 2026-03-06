@@ -1,4 +1,4 @@
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool, Resource, Prompt } from "@modelcontextprotocol/sdk/types.js";
 import type {
   OAuthTokens,
   OAuthClientInformation,
@@ -6,7 +6,14 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 
 // Re-export SDK types we use throughout the codebase
-export type { Tool, OAuthTokens, OAuthClientInformation, OAuthClientInformationMixed };
+export type {
+  Tool,
+  Resource,
+  Prompt,
+  OAuthTokens,
+  OAuthClientInformation,
+  OAuthClientInformationMixed,
+};
 
 // --- Server config (our format, not MCP spec) ---
 
