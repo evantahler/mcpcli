@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { mkdtemp, rm, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -21,6 +21,7 @@ mock.module("@modelcontextprotocol/sdk/client/auth.js", () => ({
 }));
 
 import { McpOAuthProvider, startCallbackServer } from "../../src/client/oauth.ts";
+import { logger } from "../../src/output/logger.ts";
 
 function makeProvider(auth: AuthFile = {}, serverName = "test-server") {
   const configDir = "/tmp/mcpcli-test";
@@ -218,6 +219,10 @@ describe("refreshIfNeeded", () => {
 
   test("refreshes token when expired with refresh token and client info", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-refresh-"));
+    const origIsTTY = process.stderr.isTTY;
+    Object.defineProperty(process.stderr, "isTTY", { value: true, writable: true });
+    const stderrSpy = spyOn(process.stderr, "write").mockReturnValue(true);
+    logger.configure({});
     try {
       const auth: AuthFile = {
         "test-server": {
@@ -261,7 +266,14 @@ describe("refreshIfNeeded", () => {
       const diskContent = await readFile(join(dir, "auth.json"), "utf-8");
       const diskAuth = JSON.parse(diskContent);
       expect(diskAuth["test-server"].tokens.access_token).toBe("refreshed-access-token");
+
+      // Verify refresh was logged to stderr
+      expect(stderrSpy).toHaveBeenCalled();
+      const written = stderrSpy.mock.calls.map((c) => String(c[0])).join("");
+      expect(written).toContain('Token refreshed for "test-server"');
     } finally {
+      stderrSpy.mockRestore();
+      Object.defineProperty(process.stderr, "isTTY", { value: origIsTTY, writable: true });
       await rm(dir, { recursive: true });
     }
   });

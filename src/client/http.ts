@@ -2,6 +2,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { dim } from "ansis";
 import type { HttpServerConfig } from "../config/schemas.ts";
+import { logger } from "../output/logger.ts";
 
 type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -51,7 +52,7 @@ function createDebugFetch(showSecrets: boolean): FetchLike {
 }
 
 function log(line: string) {
-  process.stderr.write(line + "\n");
+  logger.writeRaw(line + "\n");
 }
 
 function logHeaders(
