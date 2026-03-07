@@ -13,6 +13,7 @@ import { registerSkillCommand } from "./commands/skill.ts";
 import { registerPingCommand } from "./commands/ping.ts";
 import { registerResourceCommand } from "./commands/resource.ts";
 import { registerPromptCommand } from "./commands/prompt.ts";
+import { registerServersCommand } from "./commands/servers.ts";
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -41,5 +42,25 @@ registerSkillCommand(program);
 registerPingCommand(program);
 registerResourceCommand(program);
 registerPromptCommand(program);
+registerServersCommand(program);
+
+// Detect unknown subcommands before commander misreports them as "too many arguments"
+const knownCommands = new Set(program.commands.map((c) => c.name()));
+const cliArgs = process.argv.slice(2);
+let firstCommand: string | undefined;
+for (let i = 0; i < cliArgs.length; i++) {
+  const a = cliArgs[i];
+  if (a === "-c" || a === "--config") {
+    i++; // skip the config path value
+    continue;
+  }
+  if (a.startsWith("-")) continue;
+  firstCommand = a;
+  break;
+}
+if (firstCommand && !knownCommands.has(firstCommand)) {
+  console.error(`error: unknown command '${firstCommand}'. See 'mcpcli --help'.`);
+  process.exit(1);
+}
 
 program.parse();

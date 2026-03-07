@@ -52,6 +52,7 @@ mcpcli search -q "manage pull requests"
 | Command                                | Description                                  |
 | -------------------------------------- | -------------------------------------------- |
 | `mcpcli`                               | List all configured servers and tools        |
+| `mcpcli servers`                       | List configured servers (name, type, detail) |
 | `mcpcli info <server>`                 | Show tools for a server                      |
 | `mcpcli info <server> <tool>`          | Show tool schema                             |
 | `mcpcli search <query>`                | Search tools (keyword + semantic)            |

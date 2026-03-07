@@ -73,6 +73,7 @@ mcpcli deauth <server>      # remove stored auth
 | Command                                | Purpose                           |
 | -------------------------------------- | --------------------------------- |
 | `mcpcli`                               | List all servers and tools        |
+| `mcpcli servers`                       | List servers (name, type, detail) |
 | `mcpcli -d`                            | List with descriptions            |
 | `mcpcli info <server>`                 | Show tools for a server           |
 | `mcpcli info <server> <tool>`          | Show tool schema                  |
