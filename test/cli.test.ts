@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { join } from "path";
+import pkg from "../package.json";
 
 const CONFIG = join(import.meta.dir, "fixtures/mock-config");
 
@@ -24,7 +25,7 @@ describe("mcpcli", () => {
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
-    expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
+    expect(stdout.trim()).toBe(pkg.version);
   });
 
   test("default command runs without error", async () => {
