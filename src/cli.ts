@@ -15,14 +15,12 @@ import { registerResourceCommand } from "./commands/resource.ts";
 import { registerPromptCommand } from "./commands/prompt.ts";
 import { registerServersCommand } from "./commands/servers.ts";
 
-declare const BUILD_VERSION: string | undefined;
-
-const version = typeof BUILD_VERSION !== "undefined" ? BUILD_VERSION : "0.1.0-dev";
+import pkg from "../package.json";
 
 program
   .name("mcpcli")
   .description("A command-line interface for MCP servers. curl for MCP.")
-  .version(version)
+  .version(pkg.version)
   .option("-c, --config <path>", "config directory path")
   .option("-d, --with-descriptions", "include tool descriptions in output")
   .option("-j, --json", "force JSON output")
