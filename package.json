@@ -1,10 +1,6 @@
 {
   "name": "@evantahler/mcpcli",
-<<<<<<< HEAD
   "version": "0.8.0",
-=======
-  "version": "0.8.0",
->>>>>>> b65d5f1 (Add SSE transport support with auto-fallback and explicit override)
   "description": "A command-line interface for MCP servers. curl for MCP.",
   "type": "module",
   "bin": {
