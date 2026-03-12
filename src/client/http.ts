@@ -3,6 +3,7 @@ import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.
 import { dim } from "ansis";
 import type { HttpServerConfig } from "../config/schemas.ts";
 import { logger } from "../output/logger.ts";
+import pkg from "../../package.json";
 
 type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -13,13 +14,15 @@ export function createHttpTransport(
   showSecrets = false,
 ): StreamableHTTPClientTransport {
   const requestInit: RequestInit = {};
-  if (config.headers) {
-    requestInit.headers = config.headers;
-  }
+  const userAgent = `${pkg.name}/${pkg.version}`;
+  requestInit.headers = {
+    "User-Agent": userAgent,
+    ...config.headers,
+  };
 
   return new StreamableHTTPClientTransport(new URL(config.url), {
     authProvider,
-    requestInit: Object.keys(requestInit).length > 0 ? requestInit : undefined,
+    requestInit,
     fetch: verbose ? createDebugFetch(showSecrets) : undefined,
   });
 }

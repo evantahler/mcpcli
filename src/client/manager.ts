@@ -1,6 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import picomatch from "picomatch";
+import pkg from "../../package.json";
 import type {
   Tool,
   Resource,
@@ -101,7 +102,7 @@ export class ServerManager {
       const transport = this.createTransport(serverName, config);
       this.transports.set(serverName, transport);
 
-      const client = new Client({ name: "mcpcli", version: "0.1.0" });
+      const client = new Client({ name: pkg.name, version: pkg.version });
       await this.withTimeout(client.connect(transport), `connect(${serverName})`);
       this.clients.set(serverName, client);
       this.connecting.delete(serverName);
