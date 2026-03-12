@@ -152,6 +152,83 @@ describe("mcpcli add", () => {
     expect(servers.mcpServers["dupe"].command).toBe("cat");
   });
 
+  test("adds an http server with --transport sse", async () => {
+    const { exitCode } = await run([
+      "-c",
+      tmpDir,
+      "add",
+      "my-sse",
+      "--url",
+      "https://example.com/sse",
+      "--transport",
+      "sse",
+      "--no-index",
+    ]);
+    expect(exitCode).toBe(0);
+
+    const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+    expect(servers.mcpServers["my-sse"]).toEqual({
+      url: "https://example.com/sse",
+      transport: "sse",
+    });
+  });
+
+  test("adds an http server with --transport streamable-http", async () => {
+    const { exitCode } = await run([
+      "-c",
+      tmpDir,
+      "add",
+      "my-streamable",
+      "--url",
+      "https://example.com/mcp",
+      "--transport",
+      "streamable-http",
+      "--no-index",
+    ]);
+    expect(exitCode).toBe(0);
+
+    const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+    expect(servers.mcpServers["my-streamable"]).toEqual({
+      url: "https://example.com/mcp",
+      transport: "streamable-http",
+    });
+  });
+
+  test("adds an http server without --transport (auto-detect)", async () => {
+    const { exitCode } = await run([
+      "-c",
+      tmpDir,
+      "add",
+      "my-auto",
+      "--url",
+      "https://example.com/mcp",
+      "--no-index",
+    ]);
+    expect(exitCode).toBe(0);
+
+    const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+    expect(servers.mcpServers["my-auto"]).toEqual({
+      url: "https://example.com/mcp",
+    });
+    expect(servers.mcpServers["my-auto"].transport).toBeUndefined();
+  });
+
+  test("errors on invalid --transport value", async () => {
+    const { exitCode, stderr } = await run([
+      "-c",
+      tmpDir,
+      "add",
+      "bad-transport",
+      "--url",
+      "https://example.com",
+      "--transport",
+      "websocket",
+      "--no-index",
+    ]);
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("--transport must be");
+  });
+
   test("errors if neither --command nor --url", async () => {
     const { exitCode, stderr } = await run(["-c", tmpDir, "add", "bad"]);
     expect(exitCode).not.toBe(0);

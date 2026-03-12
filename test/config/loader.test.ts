@@ -76,6 +76,41 @@ describe("validateServersFile", () => {
     }
   });
 
+  test("accepts valid transport values", async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    try {
+      await Bun.write(
+        join(tmpDir, "servers.json"),
+        JSON.stringify({
+          mcpServers: {
+            sse: { url: "https://example.com/sse", transport: "sse" },
+            streamable: { url: "https://example.com/mcp", transport: "streamable-http" },
+            auto: { url: "https://example.com/mcp" },
+          },
+        }),
+      );
+      const config = await loadConfig({ configFlag: tmpDir });
+      expect(Object.keys(config.servers.mcpServers)).toEqual(["sse", "streamable", "auto"]);
+    } finally {
+      await rm(tmpDir, { recursive: true });
+    }
+  });
+
+  test("rejects invalid transport value", async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    try {
+      await Bun.write(
+        join(tmpDir, "servers.json"),
+        JSON.stringify({
+          mcpServers: { bad: { url: "https://example.com", transport: "websocket" } },
+        }),
+      );
+      await expect(loadConfig({ configFlag: tmpDir })).rejects.toThrow("invalid transport");
+    } finally {
+      await rm(tmpDir, { recursive: true });
+    }
+  });
+
   test("rejects server without command or url", async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
     try {

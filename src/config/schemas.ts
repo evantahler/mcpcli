@@ -31,6 +31,7 @@ export interface StdioServerConfig {
 export interface HttpServerConfig {
   url: string;
   headers?: Record<string, string>;
+  transport?: "sse" | "streamable-http";
   allowedTools?: string[];
   disabledTools?: string[];
 }
@@ -117,6 +118,13 @@ export function validateServersFile(data: unknown): ServersFile {
     const hasUrl = typeof c.url === "string";
     if (!hasCommand && !hasUrl) {
       throw new Error(`Server "${name}" must have either "command" (stdio) or "url" (http)`);
+    }
+    if (hasUrl && c.transport !== undefined) {
+      if (c.transport !== "sse" && c.transport !== "streamable-http") {
+        throw new Error(
+          `Server "${name}" has invalid transport "${c.transport}" — must be "sse" or "streamable-http"`,
+        );
+      }
     }
   }
 

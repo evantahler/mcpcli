@@ -14,6 +14,7 @@ export function registerAddCommand(program: Command) {
     .option("--cwd <dir>", "working directory for the command")
     .option("--url <url>", "server URL (HTTP server)")
     .option("--header <h>", "header in Key:Value format (repeatable)", collect, [])
+    .option("--transport <type>", 'transport for HTTP servers: "sse" or "streamable-http"')
     .option("--allowed-tools <tools>", "comma-separated list of allowed tools")
     .option("--disabled-tools <tools>", "comma-separated list of disabled tools")
     .option("-f, --force", "overwrite if server already exists")
@@ -29,6 +30,7 @@ export function registerAddCommand(program: Command) {
           cwd?: string;
           url?: string;
           header?: string[];
+          transport?: string;
           allowedTools?: string;
           disabledTools?: string;
           force?: boolean;
@@ -62,6 +64,14 @@ export function registerAddCommand(program: Command) {
           config = buildStdioConfig(options);
         } else {
           config = buildHttpConfig(options);
+        }
+
+        if (hasUrl && options.transport) {
+          if (options.transport !== "sse" && options.transport !== "streamable-http") {
+            console.error('--transport must be "sse" or "streamable-http"');
+            process.exit(1);
+          }
+          (config as { transport: string }).transport = options.transport;
         }
 
         // Common options

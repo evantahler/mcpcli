@@ -92,6 +92,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli ping <server> [server2...]`    | Check specific server(s)          |
 | `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server            |
 | `mcpcli add <name> --url <url>`        | Add an HTTP MCP server            |
+| `mcpcli add <name> --url <url> --transport sse` | Add a legacy SSE server  |
 | `mcpcli remove <name>`                 | Remove an MCP server              |
 | `mcpcli skill install --claude`        | Install mcpcli skill for Claude   |
 | `mcpcli resource`                     | List all resources across servers |
