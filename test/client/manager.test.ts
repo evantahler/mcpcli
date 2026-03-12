@@ -2,7 +2,9 @@ import { describe, test, expect, afterEach, spyOn } from "bun:test";
 import { join } from "path";
 import { ServerManager } from "../../src/client/manager.ts";
 import { McpOAuthProvider } from "../../src/client/oauth.ts";
-import type { ServersFile, AuthFile } from "../../src/config/schemas.ts";
+import type { ServersFile, AuthFile, HttpServerConfig } from "../../src/config/schemas.ts";
+import * as httpModule from "../../src/client/http.ts";
+import * as sseModule from "../../src/client/sse.ts";
 
 const MOCK_SERVER = join(import.meta.dir, "../fixtures/mock-server.ts");
 
@@ -244,6 +246,125 @@ describe("ServerManager with HTTP servers", () => {
     }
 
     expect(refreshSpy).toHaveBeenCalledTimes(1);
+    refreshSpy.mockRestore();
+  });
+
+  test("uses SSE transport when transport is explicitly 'sse'", async () => {
+    const auth: AuthFile = {
+      "sse-server": {
+        tokens: { access_token: "token", token_type: "Bearer" },
+        complete: true,
+      },
+    };
+
+    const sseSpy = spyOn(sseModule, "createSseTransport");
+    const httpSpy = spyOn(httpModule, "createHttpTransport");
+    const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
+      undefined,
+    );
+
+    manager = new ServerManager({
+      servers: {
+        mcpServers: {
+          "sse-server": { url: "http://localhost:19999/sse", transport: "sse" } as HttpServerConfig,
+        },
+      },
+      configDir: "/tmp",
+      auth,
+      timeout: 1000,
+      maxRetries: 0,
+    });
+
+    try {
+      await manager.getClient("sse-server");
+    } catch {
+      // Connection failure expected — no real server
+    }
+
+    expect(sseSpy).toHaveBeenCalledTimes(1);
+    expect(httpSpy).not.toHaveBeenCalled();
+
+    sseSpy.mockRestore();
+    httpSpy.mockRestore();
+    refreshSpy.mockRestore();
+  });
+
+  test("uses Streamable HTTP when transport is explicitly 'streamable-http'", async () => {
+    const auth: AuthFile = {
+      "streamable-server": {
+        tokens: { access_token: "token", token_type: "Bearer" },
+        complete: true,
+      },
+    };
+
+    const sseSpy = spyOn(sseModule, "createSseTransport");
+    const httpSpy = spyOn(httpModule, "createHttpTransport");
+    const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
+      undefined,
+    );
+
+    manager = new ServerManager({
+      servers: {
+        mcpServers: {
+          "streamable-server": {
+            url: "http://localhost:19999/mcp",
+            transport: "streamable-http",
+          } as HttpServerConfig,
+        },
+      },
+      configDir: "/tmp",
+      auth,
+      timeout: 1000,
+      maxRetries: 0,
+    });
+
+    try {
+      await manager.getClient("streamable-server");
+    } catch {
+      // Connection failure expected — no real server
+    }
+
+    expect(httpSpy).toHaveBeenCalledTimes(1);
+    expect(sseSpy).not.toHaveBeenCalled();
+
+    sseSpy.mockRestore();
+    httpSpy.mockRestore();
+    refreshSpy.mockRestore();
+  });
+
+  test("does not fallback to SSE when explicit transport is set", async () => {
+    const auth: AuthFile = {
+      "explicit-server": {
+        tokens: { access_token: "token", token_type: "Bearer" },
+        complete: true,
+      },
+    };
+
+    const sseSpy = spyOn(sseModule, "createSseTransport");
+    const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
+      undefined,
+    );
+
+    manager = new ServerManager({
+      servers: {
+        mcpServers: {
+          "explicit-server": {
+            url: "http://localhost:19999/mcp",
+            transport: "streamable-http",
+          } as HttpServerConfig,
+        },
+      },
+      configDir: "/tmp",
+      auth,
+      timeout: 1000,
+      maxRetries: 0,
+    });
+
+    await expect(manager.getClient("explicit-server")).rejects.toThrow();
+    // SSE should NOT be attempted as fallback since transport was explicitly set
+    expect(sseSpy).not.toHaveBeenCalled();
+
+    sseSpy.mockRestore();
     refreshSpy.mockRestore();
   });
 });

@@ -105,6 +105,9 @@ mcpcli add my-api --url https://api.example.com/mcp --header "Authorization:Bear
 # Add with tool filtering
 mcpcli add github --url https://mcp.github.com --allowed-tools "search_*,get_*"
 
+# Add a legacy SSE server (explicit transport)
+mcpcli add legacy-api --url https://api.example.com/sse --transport sse
+
 # Add with environment variables
 mcpcli add my-server --command node --args "server.js" --env "API_KEY=sk-123,DEBUG=true"
 
@@ -131,6 +134,7 @@ mcpcli remove my-api --dry-run
 | `--cwd <dir>`              | Working directory for the command      |
 | `--url <url>`              | Server URL (HTTP server)               |
 | `--header <Key:Value>`     | HTTP header (repeatable)               |
+| `--transport <type>`       | Transport: `sse` or `streamable-http`  |
 | `--allowed-tools <t1,t2>`  | Comma-separated allowed tool patterns  |
 | `--disabled-tools <t1,t2>` | Comma-separated disabled tool patterns |
 | `-f, --force`              | Overwrite if server already exists     |
@@ -166,13 +170,17 @@ Standard MCP server config format. Supports both stdio and HTTP servers.
     "internal-api": {
       "url": "https://mcp.internal.example.com",
       "headers": { "Authorization": "Bearer ${TOKEN}" }
+    },
+    "legacy-sse": {
+      "url": "https://legacy.example.com/sse",
+      "transport": "sse"
     }
   }
 }
 ```
 
 **Stdio servers** — `command` + `args`, spawned as child processes
-**HTTP servers** — `url`, with optional static `headers` for pre-shared tokens. OAuth is auto-discovered at connection time via `.well-known/oauth-authorization-server` — no config needed.
+**HTTP servers** — `url`, with optional static `headers` for pre-shared tokens. OAuth is auto-discovered at connection time via `.well-known/oauth-authorization-server` — no config needed. By default, mcpcli tries Streamable HTTP first and automatically falls back to legacy SSE if the server doesn't support it. Set `"transport": "sse"` or `"transport": "streamable-http"` to skip auto-detection.
 
 Environment variables are interpolated via `${VAR_NAME}` syntax. Set `MCP_STRICT_ENV=false` to warn instead of error on missing variables.
 

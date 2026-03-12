@@ -13,7 +13,9 @@ import type {
 import { isStdioServer, isHttpServer } from "../config/schemas.ts";
 import { createStdioTransport } from "./stdio.ts";
 import { createHttpTransport } from "./http.ts";
+import { createSseTransport } from "./sse.ts";
 import { McpOAuthProvider } from "./oauth.ts";
+import { logger } from "../output/logger.ts";
 
 export interface ToolWithServer {
   server: string;
@@ -102,8 +104,35 @@ export class ServerManager {
       const transport = this.createTransport(serverName, config);
       this.transports.set(serverName, transport);
 
-      const client = new Client({ name: pkg.name, version: pkg.version });
-      await this.withTimeout(client.connect(transport), `connect(${serverName})`);
+      let client = new Client({ name: pkg.name, version: pkg.version });
+      try {
+        await this.withTimeout(client.connect(transport), `connect(${serverName})`);
+      } catch (err) {
+        // Auto-fallback: if no explicit transport was set on an HTTP server,
+        // retry with the legacy SSE transport
+        if (isHttpServer(config) && !config.transport) {
+          if (this.verbose) {
+            logger.writeRaw(`Streamable HTTP failed for "${serverName}", trying SSE…\n`);
+          }
+          try {
+            await transport.close?.();
+          } catch {
+            // ignore close errors
+          }
+          const provider = this.getOrCreateOAuthProvider(serverName);
+          const sseTransport = createSseTransport(
+            config,
+            provider.isComplete() ? provider : undefined,
+            this.verbose,
+            this.showSecrets,
+          );
+          this.transports.set(serverName, sseTransport);
+          client = new Client({ name: pkg.name, version: pkg.version });
+          await this.withTimeout(client.connect(sseTransport), `connect-sse(${serverName})`);
+        } else {
+          throw err;
+        }
+      }
       this.clients.set(serverName, client);
       this.connecting.delete(serverName);
 
@@ -140,12 +169,14 @@ export class ServerManager {
       // auto-trigger the browser OAuth flow on 401, which fails because
       // there's no callback server running. Users must run `mcpcli auth <server>` first.
       const provider = this.getOrCreateOAuthProvider(serverName);
-      return createHttpTransport(
-        config,
-        provider.isComplete() ? provider : undefined,
-        this.verbose,
-        this.showSecrets,
-      );
+      const authProvider = provider.isComplete() ? provider : undefined;
+
+      if (config.transport === "sse") {
+        return createSseTransport(config, authProvider, this.verbose, this.showSecrets);
+      }
+      // Default (including explicit "streamable-http") uses Streamable HTTP.
+      // When no transport is set, getClient() will auto-fallback to SSE on failure.
+      return createHttpTransport(config, authProvider, this.verbose, this.showSecrets);
     }
     throw new Error("Invalid server config");
   }
