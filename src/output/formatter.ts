@@ -25,15 +25,47 @@ export function isInteractive(options: FormatOptions): boolean {
   return process.stdout.isTTY ?? false;
 }
 
-/** Get terminal width, or undefined if not a TTY */
+/** Get terminal width, or undefined if not a TTY. Subtracts 1 for safety margin. */
 function getTerminalWidth(): number | undefined {
-  if (process.stdout.isTTY) return process.stdout.columns;
+  if (process.stdout.isTTY) return Math.max(process.stdout.columns - 1, 40);
   return undefined;
 }
 
 /** Measure visible length of a string (excluding ANSI escape codes) */
 function visibleLength(s: string): number {
   return ansis.strip(s).length;
+}
+
+/** Word-wrap text to a max width, hard-breaking words that exceed it */
+function wrapLines(text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  if (words.length === 0) return [""];
+
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    if (word.length > maxWidth) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      for (let j = 0; j < word.length; j += maxWidth) {
+        lines.push(word.slice(j, j + maxWidth));
+      }
+      continue;
+    }
+    if (current.length === 0) {
+      current = word;
+    } else if (current.length + 1 + word.length <= maxWidth) {
+      current += " " + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
 }
 
 /**
@@ -45,26 +77,22 @@ function visibleLength(s: string): number {
  */
 export function wrapDescription(text: string, prefixWidth: number, termWidth: number): string {
   const available = termWidth - prefixWidth;
-  if (available < 20) return dim(text);
 
-  const words = text.split(/\s+/).filter((w) => w.length > 0);
-  if (words.length === 0) return dim("");
-
-  const lines: string[] = [];
-  let current = words[0];
-
-  for (let i = 1; i < words.length; i++) {
-    if (current.length + 1 + words[i].length <= available) {
-      current += " " + words[i];
-    } else {
-      lines.push(current);
-      current = words[i];
+  // If prefix is so wide there's barely room, wrap onto the next line with a small indent
+  if (available < 20) {
+    const fallbackIndent = Math.min(prefixWidth, 4);
+    const fallbackAvail = termWidth - fallbackIndent;
+    if (fallbackAvail < 20) {
+      return dim(text.length > termWidth ? text.slice(0, termWidth - 3) + "..." : text);
     }
+    const wrapped = wrapLines(text, fallbackAvail);
+    const indent = " ".repeat(fallbackIndent);
+    return wrapped.map((l) => `\n${indent}${dim(l)}`).join("");
   }
-  lines.push(current);
 
+  const wrapped = wrapLines(text, available);
   const indent = " ".repeat(prefixWidth);
-  return lines.map((l, i) => (i === 0 ? dim(l) : `\n${indent}${dim(l)}`)).join("");
+  return wrapped.map((l, i) => (i === 0 ? dim(l) : `\n${indent}${dim(l)}`)).join("");
 }
 
 export interface ServerOverview {
@@ -434,17 +462,12 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
     return dim("No matching tools found");
   }
 
-  const maxServer = Math.max(...results.map((r) => r.server.length));
-  const maxTool = Math.max(...results.map((r) => r.tool.length));
   const termWidth = getTerminalWidth();
+  const descIndent = 2;
 
   return results
     .map((r) => {
-      const server = cyan(r.server.padEnd(maxServer));
-      const tool = bold(r.tool.padEnd(maxTool));
-      const score = yellow(r.score.toFixed(2).padStart(5));
-      const prefix = `${server}  ${tool}  ${score}`;
-      const pw = visibleLength(prefix) + 2;
+      const header = `${cyan(r.server)}  ${bold(r.tool)}  ${yellow(r.score.toFixed(2))}`;
 
       // Join all description lines into a single string for wrapping
       const fullDesc = r.description
@@ -453,10 +476,13 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
         .filter((l) => l.length > 0)
         .join(" ");
 
-      const desc = termWidth != null ? wrapDescription(fullDesc, pw, termWidth) : dim(fullDesc);
-      return `${prefix}  ${desc}`;
+      const indent = " ".repeat(descIndent);
+      const desc =
+        termWidth != null ? wrapDescription(fullDesc, descIndent, termWidth) : dim(fullDesc);
+
+      return `${header}\n${indent}${desc}`;
     })
-    .join("\n");
+    .join("\n\n");
 }
 
 /** Format a list of resources with server names */
