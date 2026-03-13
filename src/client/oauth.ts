@@ -257,7 +257,16 @@ export async function resolveResourceUrl(serverUrl: string): Promise<string> {
     const info = await discoverOAuthServerInfo(serverUrl);
     const canonical = info.resourceMetadata?.resource;
     if (canonical && canonical !== serverUrl) {
-      return canonical;
+      // Preserve the path/query/hash from the original URL — the canonical URL
+      // from OAuth resource metadata identifies the origin (scheme + host + port),
+      // not the endpoint path (e.g. /mcp).
+      const orig = new URL(serverUrl);
+      const canon = new URL(canonical);
+      canon.pathname = orig.pathname;
+      canon.search = orig.search;
+      canon.hash = orig.hash;
+      const merged = canon.toString();
+      return merged === serverUrl ? serverUrl : merged;
     }
   } catch {
     // OAuth discovery not available — use original URL
