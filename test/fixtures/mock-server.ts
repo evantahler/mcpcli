@@ -9,6 +9,12 @@ import { readFileSync } from "fs";
 
 let buffer = "";
 
+// In-memory task store for testing
+const tasks = new Map<
+  string,
+  { taskId: string; status: string; message: string; pollCount: number; createdAt: string }
+>();
+
 process.stdin.setEncoding("utf-8");
 process.stdin.on("data", (chunk: string) => {
   buffer += chunk;
@@ -36,7 +42,13 @@ function handleMessage(line: string) {
   if (msg.method === "initialize") {
     respond(msg.id, {
       protocolVersion: "2025-03-26",
-      capabilities: { tools: {}, resources: {}, prompts: {}, logging: {} },
+      capabilities: {
+        tools: {},
+        resources: {},
+        prompts: {},
+        logging: {},
+        tasks: { requests: { tools: { call: {} } }, list: {}, cancel: {} },
+      },
       serverInfo: { name: "mock-server", version: "1.0.0" },
       instructions: "Mock server for testing",
     });
@@ -142,12 +154,28 @@ function handleMessage(line: string) {
           description: "A tool that takes no arguments",
           inputSchema: { type: "object", properties: {} },
         },
+        {
+          name: "slow_echo",
+          description: "Echoes back the input after a simulated delay (supports tasks)",
+          inputSchema: {
+            type: "object",
+            properties: {
+              message: { type: "string", description: "Message to echo" },
+            },
+            required: ["message"],
+          },
+          execution: { taskSupport: "optional" },
+        },
       ],
     });
   } else if (msg.method === "logging/setLevel") {
     respond(msg.id, {});
   } else if (msg.method === "tools/call") {
-    const params = msg.params as { name: string; arguments?: Record<string, unknown> };
+    const params = msg.params as {
+      name: string;
+      arguments?: Record<string, unknown>;
+      task?: { ttl?: number };
+    };
     // Emit log notifications at various levels when a tool is called
     notify("notifications/message", {
       level: "debug",
@@ -163,7 +191,29 @@ function handleMessage(line: string) {
       level: "warning",
       data: `tool ${params.name} is deprecated`,
     });
-    if (params.name === "echo") {
+    if (params.name === "slow_echo" && params.task) {
+      // Task-augmented call: return CreateTaskResult
+      const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const now = new Date().toISOString();
+      tasks.set(taskId, {
+        taskId,
+        status: "working",
+        message: String(params.arguments?.message ?? ""),
+        pollCount: 0,
+        createdAt: now,
+      });
+      respond(msg.id, {
+        task: {
+          taskId,
+          status: "working",
+          statusMessage: "Processing your request...",
+          createdAt: now,
+          lastUpdatedAt: now,
+          ttl: params.task.ttl ?? 60000,
+          pollInterval: 100,
+        },
+      });
+    } else if (params.name === "echo" || params.name === "slow_echo") {
       respond(msg.id, {
         content: [{ type: "text", text: String(params.arguments?.message ?? "") }],
       });
@@ -183,6 +233,81 @@ function handleMessage(line: string) {
         isError: true,
       });
     }
+  } else if (msg.method === "tasks/get") {
+    const params = msg.params as { taskId: string };
+    const task = tasks.get(params.taskId);
+    if (!task) {
+      respondError(msg.id, -32602, `Task not found: ${params.taskId}`);
+      return;
+    }
+    // Auto-complete after 2 polls
+    task.pollCount++;
+    if (task.pollCount >= 2 && task.status === "working") {
+      task.status = "completed";
+    }
+    const now = new Date().toISOString();
+    respond(msg.id, {
+      taskId: task.taskId,
+      status: task.status,
+      statusMessage: task.status === "completed" ? "Done" : "Processing...",
+      createdAt: task.createdAt,
+      lastUpdatedAt: now,
+      ttl: 60000,
+      pollInterval: 100,
+    });
+  } else if (msg.method === "tasks/result") {
+    const params = msg.params as { taskId: string };
+    const task = tasks.get(params.taskId);
+    if (!task) {
+      respondError(msg.id, -32602, `Task not found: ${params.taskId}`);
+      return;
+    }
+    if (task.status === "cancelled") {
+      respondError(msg.id, -32603, `Task was cancelled`);
+      return;
+    }
+    // Return the actual tool result
+    respond(msg.id, {
+      content: [{ type: "text", text: task.message }],
+      _meta: {
+        "io.modelcontextprotocol/related-task": { taskId: task.taskId },
+      },
+    });
+  } else if (msg.method === "tasks/list") {
+    const taskList = [...tasks.values()].map((t) => ({
+      taskId: t.taskId,
+      status: t.status,
+      createdAt: t.createdAt,
+      lastUpdatedAt: new Date().toISOString(),
+      ttl: 60000,
+      pollInterval: 100,
+    }));
+    respond(msg.id, { tasks: taskList });
+  } else if (msg.method === "tasks/cancel") {
+    const params = msg.params as { taskId: string };
+    const task = tasks.get(params.taskId);
+    if (!task) {
+      respondError(msg.id, -32602, `Task not found: ${params.taskId}`);
+      return;
+    }
+    if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+      respondError(
+        msg.id,
+        -32602,
+        `Cannot cancel task: already in terminal status '${task.status}'`,
+      );
+      return;
+    }
+    task.status = "cancelled";
+    const now = new Date().toISOString();
+    respond(msg.id, {
+      taskId: task.taskId,
+      status: "cancelled",
+      statusMessage: "The task was cancelled by request.",
+      createdAt: task.createdAt,
+      lastUpdatedAt: now,
+      ttl: 60000,
+    });
   } else if (msg.method === "ping") {
     respond(msg.id, {});
   }
@@ -191,6 +316,12 @@ function handleMessage(line: string) {
 function respond(id: number | undefined, result: unknown) {
   if (id === undefined) return;
   const response = JSON.stringify({ jsonrpc: "2.0", id, result });
+  process.stdout.write(response + "\n");
+}
+
+function respondError(id: number | undefined, code: number, message: string) {
+  if (id === undefined) return;
+  const response = JSON.stringify({ jsonrpc: "2.0", id, error: { code, message } });
   process.stdout.write(response + "\n");
 }
 

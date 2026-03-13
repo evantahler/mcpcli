@@ -671,6 +671,99 @@ export function formatUnifiedList(items: UnifiedItem[], options: FormatOptions):
     .join("\n");
 }
 
+/** Format a single task status */
+export function formatTaskStatus(
+  task: { taskId: string; status: string; [key: string]: unknown },
+  options: FormatOptions,
+): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify(task, null, 2);
+  }
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case "completed":
+        return green(s);
+      case "working":
+        return yellow(s);
+      case "failed":
+      case "cancelled":
+        return red(s);
+      case "input_required":
+        return yellow(s);
+      default:
+        return s;
+    }
+  };
+
+  const lines: string[] = [];
+  lines.push(`${bold("Task:")} ${cyan(task.taskId)}`);
+  lines.push(`${bold("Status:")} ${statusColor(task.status)}`);
+  if (task.statusMessage) lines.push(`${bold("Message:")} ${dim(String(task.statusMessage))}`);
+  if (task.createdAt) lines.push(`${bold("Created:")} ${dim(String(task.createdAt))}`);
+  if (task.lastUpdatedAt) lines.push(`${bold("Updated:")} ${dim(String(task.lastUpdatedAt))}`);
+  if (task.ttl != null) lines.push(`${bold("TTL:")} ${dim(String(task.ttl) + "ms")}`);
+  if (task.pollInterval != null)
+    lines.push(`${bold("Poll interval:")} ${dim(String(task.pollInterval) + "ms")}`);
+  return lines.join("\n");
+}
+
+/** Format a list of tasks */
+export function formatTasksList(
+  tasks: Array<{ taskId: string; status: string; [key: string]: unknown }>,
+  nextCursor: string | undefined,
+  options: FormatOptions,
+): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify({ tasks, ...(nextCursor ? { nextCursor } : {}) }, null, 2);
+  }
+
+  if (tasks.length === 0) {
+    return dim("No tasks found");
+  }
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case "completed":
+        return green(s.padEnd(14));
+      case "working":
+        return yellow(s.padEnd(14));
+      case "failed":
+      case "cancelled":
+        return red(s.padEnd(14));
+      default:
+        return s.padEnd(14);
+    }
+  };
+
+  const maxId = Math.max(...tasks.map((t) => t.taskId.length));
+
+  const lines = tasks.map((t) => {
+    const id = cyan(t.taskId.padEnd(maxId));
+    const status = statusColor(t.status);
+    const updated = t.lastUpdatedAt ? dim(String(t.lastUpdatedAt)) : "";
+    return `${id}  ${status}  ${updated}`;
+  });
+
+  if (nextCursor) {
+    lines.push("");
+    lines.push(dim(`Next cursor: ${nextCursor}`));
+  }
+
+  return lines.join("\n");
+}
+
+/** Format task creation output (for --no-wait) */
+export function formatTaskCreated(
+  task: { taskId: string; status: string; [key: string]: unknown },
+  options: FormatOptions,
+): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify({ task }, null, 2);
+  }
+  return `${green("Task created:")} ${cyan(task.taskId)} ${dim(`(status: ${task.status})`)}`;
+}
+
 /** Format an error message */
 export function formatError(message: string, options: FormatOptions): string {
   if (!isInteractive(options)) {

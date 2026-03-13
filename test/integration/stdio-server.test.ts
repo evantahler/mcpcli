@@ -37,7 +37,7 @@ describe("stdio MCP server integration", () => {
     const resources = items.filter((i) => i.type === "resource");
     const prompts = items.filter((i) => i.type === "prompt");
 
-    expect(tools.length).toBe(4);
+    expect(tools.length).toBe(5);
     expect(resources.length).toBeGreaterThan(0);
     expect(prompts.length).toBeGreaterThan(0);
 
@@ -46,6 +46,7 @@ describe("stdio MCP server integration", () => {
     expect(toolNames).toContain("add");
     expect(toolNames).toContain("secret");
     expect(toolNames).toContain("noop");
+    expect(toolNames).toContain("slow_echo");
 
     // Every item should be from the "mock" server
     for (const item of items) {
@@ -66,7 +67,7 @@ describe("stdio MCP server integration", () => {
   test("inspects a specific server to list its tools", async () => {
     const result = await runAndParse<{ server: string; tools: { name: string }[] }>("info", "mock");
     expect(result.server).toBe("mock");
-    expect(result.tools.length).toBe(4);
+    expect(result.tools.length).toBe(5);
   });
 
   test("inspects a specific tool to show its schema", async () => {

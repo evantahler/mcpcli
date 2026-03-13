@@ -1,10 +1,21 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { LoggingMessageNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
-import type { LoggingLevel } from "@modelcontextprotocol/sdk/types.js";
+import type { ResponseMessage } from "@modelcontextprotocol/sdk/shared/responseMessage.js";
+import {
+  LoggingMessageNotificationSchema,
+  CallToolResultSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import type {
+  LoggingLevel,
+  ServerCapabilities,
+  CallToolResult,
+  Task,
+  GetTaskResult,
+  ListTasksResult,
+  CancelTaskResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
-import type { ServerCapabilities } from "@modelcontextprotocol/sdk/types.js";
 import type {
   Tool,
   Resource,
@@ -459,6 +470,71 @@ export class ServerManager {
       },
       `getPrompt(${serverName}/${name})`,
       serverName,
+    );
+  }
+
+  /** Check if a server supports task-augmented tool calls */
+  async serverSupportsTask(serverName: string): Promise<boolean> {
+    const client = await this.getClient(serverName);
+    const caps = client.getServerCapabilities() as Record<string, unknown> | undefined;
+    const tasks = caps?.tasks as Record<string, unknown> | undefined;
+    const requests = tasks?.requests as Record<string, unknown> | undefined;
+    const tools = requests?.tools as Record<string, unknown> | undefined;
+    return !!tools?.call;
+  }
+
+  /** Call a tool with task-augmented streaming, yielding status updates */
+  async *callToolStream(
+    serverName: string,
+    toolName: string,
+    args: Record<string, unknown> = {},
+    taskOptions?: { ttl?: number; signal?: AbortSignal },
+  ): AsyncGenerator<ResponseMessage<CallToolResult>> {
+    const client = await this.getClient(serverName);
+    const stream = client.experimental.tasks.callToolStream(
+      { name: toolName, arguments: args },
+      CallToolResultSchema,
+      {
+        task: { ttl: taskOptions?.ttl },
+        signal: taskOptions?.signal,
+      },
+    );
+    yield* stream;
+  }
+
+  /** Get the status of a task */
+  async getTask(serverName: string, taskId: string): Promise<GetTaskResult> {
+    const client = await this.getClient(serverName);
+    return this.withTimeout(
+      client.experimental.tasks.getTask(taskId),
+      `getTask(${serverName}/${taskId})`,
+    );
+  }
+
+  /** Retrieve the result of a completed task */
+  async getTaskResult(serverName: string, taskId: string): Promise<CallToolResult> {
+    const client = await this.getClient(serverName);
+    return this.withTimeout(
+      client.experimental.tasks.getTaskResult(taskId, CallToolResultSchema),
+      `getTaskResult(${serverName}/${taskId})`,
+    ) as Promise<CallToolResult>;
+  }
+
+  /** List tasks on a server */
+  async listTasks(serverName: string, cursor?: string): Promise<ListTasksResult> {
+    const client = await this.getClient(serverName);
+    return this.withTimeout(
+      client.experimental.tasks.listTasks(cursor),
+      `listTasks(${serverName})`,
+    );
+  }
+
+  /** Cancel a running task */
+  async cancelTask(serverName: string, taskId: string): Promise<CancelTaskResult> {
+    const client = await this.getClient(serverName);
+    return this.withTimeout(
+      client.experimental.tasks.cancelTask(taskId),
+      `cancelTask(${serverName}/${taskId})`,
     );
   }
 

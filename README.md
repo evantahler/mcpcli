@@ -52,37 +52,43 @@ mcpcli search -q "manage pull requests"
 
 ## Commands
 
-| Command                                | Description                                            |
-| -------------------------------------- | ------------------------------------------------------ |
-| `mcpcli`                               | List all configured servers and tools                  |
-| `mcpcli servers`                       | List configured servers (name, type, detail)           |
-| `mcpcli info <server>`                 | Server overview (version, capabilities, tools, counts) |
-| `mcpcli info <server> <tool>`          | Show tool schema                                       |
-| `mcpcli search <query>`                | Search tools (keyword + semantic)                      |
-| `mcpcli search -k <pattern>`           | Keyword/glob search only                               |
-| `mcpcli search -q <query>`             | Semantic search only                                   |
-| `mcpcli index`                         | Build/rebuild the search index                         |
-| `mcpcli index -i`                      | Show index status                                      |
-| `mcpcli exec <server> <tool> [json]`   | Validate inputs locally, then execute tool             |
-| `mcpcli exec <server> <tool> -f file`  | Read tool args from a JSON file                        |
-| `mcpcli exec <server>`                 | List available tools for a server                      |
-| `mcpcli auth <server>`                 | Authenticate with an HTTP MCP server (OAuth)           |
-| `mcpcli auth <server> -s`              | Check auth status and token TTL                        |
-| `mcpcli auth <server> -r`              | Force token refresh                                    |
-| `mcpcli deauth <server>`               | Remove stored authentication for a server              |
-| `mcpcli add <name> --command <cmd>`    | Add a stdio MCP server to your config                  |
-| `mcpcli add <name> --url <url>`        | Add an HTTP MCP server to your config                  |
-| `mcpcli remove <name>`                 | Remove an MCP server from your config                  |
-| `mcpcli ping`                          | Check connectivity to all configured servers           |
-| `mcpcli ping <server> [server2...]`    | Check connectivity to specific server(s)               |
-| `mcpcli skill install --claude`        | Install the mcpcli skill for Claude Code               |
-| `mcpcli skill install --cursor`        | Install the mcpcli rule for Cursor                     |
-| `mcpcli resource`                      | List all resources across all servers                  |
-| `mcpcli resource <server>`             | List resources for a server                            |
-| `mcpcli resource <server> <uri>`       | Read a specific resource                               |
-| `mcpcli prompt`                        | List all prompts across all servers                    |
-| `mcpcli prompt <server>`               | List prompts for a server                              |
-| `mcpcli prompt <server> <name> [json]` | Get a specific prompt                                  |
+| Command                                  | Description                                            |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `mcpcli`                                 | List all configured servers and tools                  |
+| `mcpcli servers`                         | List configured servers (name, type, detail)           |
+| `mcpcli info <server>`                   | Server overview (version, capabilities, tools, counts) |
+| `mcpcli info <server> <tool>`            | Show tool schema                                       |
+| `mcpcli search <query>`                  | Search tools (keyword + semantic)                      |
+| `mcpcli search -k <pattern>`             | Keyword/glob search only                               |
+| `mcpcli search -q <query>`               | Semantic search only                                   |
+| `mcpcli index`                           | Build/rebuild the search index                         |
+| `mcpcli index -i`                        | Show index status                                      |
+| `mcpcli exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
+| `mcpcli exec <server> <tool> -f file`    | Read tool args from a JSON file                        |
+| `mcpcli exec <server>`                   | List available tools for a server                      |
+| `mcpcli auth <server>`                   | Authenticate with an HTTP MCP server (OAuth)           |
+| `mcpcli auth <server> -s`                | Check auth status and token TTL                        |
+| `mcpcli auth <server> -r`                | Force token refresh                                    |
+| `mcpcli deauth <server>`                 | Remove stored authentication for a server              |
+| `mcpcli add <name> --command <cmd>`      | Add a stdio MCP server to your config                  |
+| `mcpcli add <name> --url <url>`          | Add an HTTP MCP server to your config                  |
+| `mcpcli remove <name>`                   | Remove an MCP server from your config                  |
+| `mcpcli ping`                            | Check connectivity to all configured servers           |
+| `mcpcli ping <server> [server2...]`      | Check connectivity to specific server(s)               |
+| `mcpcli skill install --claude`          | Install the mcpcli skill for Claude Code               |
+| `mcpcli skill install --cursor`          | Install the mcpcli rule for Cursor                     |
+| `mcpcli resource`                        | List all resources across all servers                  |
+| `mcpcli resource <server>`               | List resources for a server                            |
+| `mcpcli resource <server> <uri>`         | Read a specific resource                               |
+| `mcpcli prompt`                          | List all prompts across all servers                    |
+| `mcpcli prompt <server>`                 | List prompts for a server                              |
+| `mcpcli prompt <server> <name> [json]`   | Get a specific prompt                                  |
+| `mcpcli exec <server> <tool> --no-wait`  | Execute as async task, return task handle immediately  |
+| `mcpcli exec <server> <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
+| `mcpcli task list <server>`              | List tasks on a server                                 |
+| `mcpcli task get <server> <taskId>`      | Get task status                                        |
+| `mcpcli task result <server> <taskId>`   | Retrieve completed task result                         |
+| `mcpcli task cancel <server> <taskId>`   | Cancel a running task                                  |
 
 ## Options
 
@@ -332,6 +338,33 @@ The combined search pipeline:
 4. **Return** — top results with similarity scores
 
 The index updates incrementally — only new or changed tools are re-indexed. The first run indexes everything; subsequent runs are fast.
+
+## Tasks (Async Tool Execution)
+
+MCP servers can declare support for [tasks](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/tasks) — long-running operations that return a task handle instead of blocking until completion. When a tool supports tasks (`execution.taskSupport: "optional"` or `"required"`), mcpcli automatically uses task-augmented execution.
+
+```bash
+# Default: wait for the task to complete, showing progress updates
+mcpcli exec my-server long_running_tool '{"input": "data"}'
+
+# Return immediately with a task handle (useful for scripting)
+mcpcli exec my-server long_running_tool '{"input": "data"}' --no-wait
+# => Task created: task-abc123 (status: working)
+
+# Check task status
+mcpcli task get my-server task-abc123
+
+# Retrieve the result once complete
+mcpcli task result my-server task-abc123
+
+# List all tasks on a server
+mcpcli task list my-server
+
+# Cancel a running task
+mcpcli task cancel my-server task-abc123
+```
+
+For tools that don't support tasks, `exec` works exactly as before — no changes needed.
 
 ## Debugging with Verbose Mode
 
