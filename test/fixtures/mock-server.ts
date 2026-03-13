@@ -36,7 +36,7 @@ function handleMessage(line: string) {
   if (msg.method === "initialize") {
     respond(msg.id, {
       protocolVersion: "2025-03-26",
-      capabilities: { tools: {}, resources: {}, prompts: {} },
+      capabilities: { tools: {}, resources: {}, prompts: {}, logging: {} },
       serverInfo: { name: "mock-server", version: "1.0.0" },
     });
   } else if (msg.method === "notifications/initialized") {
@@ -143,8 +143,25 @@ function handleMessage(line: string) {
         },
       ],
     });
+  } else if (msg.method === "logging/setLevel") {
+    respond(msg.id, {});
   } else if (msg.method === "tools/call") {
     const params = msg.params as { name: string; arguments?: Record<string, unknown> };
+    // Emit log notifications at various levels when a tool is called
+    notify("notifications/message", {
+      level: "debug",
+      logger: "mock",
+      data: `resolving tool: ${params.name}`,
+    });
+    notify("notifications/message", {
+      level: "info",
+      logger: "mock",
+      data: `calling tool: ${params.name}`,
+    });
+    notify("notifications/message", {
+      level: "warning",
+      data: `tool ${params.name} is deprecated`,
+    });
     if (params.name === "echo") {
       respond(msg.id, {
         content: [{ type: "text", text: String(params.arguments?.message ?? "") }],
@@ -174,4 +191,9 @@ function respond(id: number | undefined, result: unknown) {
   if (id === undefined) return;
   const response = JSON.stringify({ jsonrpc: "2.0", id, result });
   process.stdout.write(response + "\n");
+}
+
+function notify(method: string, params: unknown) {
+  const message = JSON.stringify({ jsonrpc: "2.0", method, params });
+  process.stdout.write(message + "\n");
 }

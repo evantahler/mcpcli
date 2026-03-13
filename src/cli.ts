@@ -53,8 +53,8 @@ const cliArgs = process.argv.slice(2);
 let firstCommand: string | undefined;
 for (let i = 0; i < cliArgs.length; i++) {
   const a = cliArgs[i];
-  if (a === "-c" || a === "--config") {
-    i++; // skip the config path value
+  if (a === "-c" || a === "--config" || a === "-l" || a === "--log-level") {
+    i++; // skip the option's value argument
     continue;
   }
   if (a.startsWith("-")) continue;
