@@ -88,16 +88,23 @@ export class ServerManager {
     }
 
     const connectPromise = (async () => {
-      // Auto-refresh expired OAuth tokens before connecting to HTTP servers
+      // Auto-refresh expired OAuth tokens before connecting to HTTP servers.
+      // Only enforce auth if the server has a partial/incomplete auth entry —
+      // servers that don't require OAuth won't have an auth entry at all.
       if (isHttpServer(config)) {
-        const provider = this.getOrCreateOAuthProvider(serverName);
-        if (!provider.isComplete()) {
-          throw new Error(`Not authenticated with "${serverName}". Run: mcpcli auth ${serverName}`);
-        }
-        try {
-          await provider.refreshIfNeeded(config.url);
-        } catch {
-          // If refresh fails, continue — the transport will send the existing token
+        const hasAuthEntry = !!this.auth[serverName];
+        if (hasAuthEntry) {
+          const provider = this.getOrCreateOAuthProvider(serverName);
+          if (!provider.isComplete()) {
+            throw new Error(
+              `Not authenticated with "${serverName}". Run: mcpcli auth ${serverName}`,
+            );
+          }
+          try {
+            await provider.refreshIfNeeded(config.url);
+          } catch {
+            // If refresh fails, continue — the transport will send the existing token
+          }
         }
       }
 
