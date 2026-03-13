@@ -626,6 +626,8 @@ Inspired by [mcp-cli](https://github.com/philschmid/mcp-cli) by Phil Schmid, whi
 
 ## Why mcpx?
 
+mcpx is the client. If you need the server side — auth, governance, and production tools at scale — check out [Arcade](https://arcade.dev).
+
 The full story: [curl for MCP: Why Coding Agents Are Happier Using the CLI](https://arcade.dev/blog/curl-for-mcp)
 
 ## License
