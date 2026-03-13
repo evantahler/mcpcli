@@ -72,6 +72,7 @@ mcpcli search -q "manage pull requests"
 | `mcpcli ping`                          | Check connectivity to all configured servers |
 | `mcpcli ping <server> [server2...]`    | Check connectivity to specific server(s)     |
 | `mcpcli skill install --claude`        | Install the mcpcli skill for Claude Code     |
+| `mcpcli skill install --cursor`        | Install the mcpcli rule for Cursor           |
 | `mcpcli resource`                      | List all resources across all servers        |
 | `mcpcli resource <server>`             | List resources for a server                  |
 | `mcpcli resource <server> <uri>`       | Read a specific resource                     |
@@ -451,6 +452,24 @@ Then in any Claude Code session, the agent can use `/mcpcli` or the skill trigge
 3. **Execute** — `mcpcli exec <server> <tool> '<json>'` to execute
 
 This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
+
+### Cursor Rule
+
+mcpcli ships a Cursor rule at `.cursor/rules/mcpcli.mdc` that teaches Cursor how to discover and use MCP tools. Install it:
+
+```bash
+# Install to the current project (.cursor/rules/mcpcli.mdc)
+mcpcli skill install --cursor
+
+# Install globally (~/.cursor/rules/mcpcli.mdc)
+mcpcli skill install --cursor --global
+
+# Install both Claude and Cursor at once
+mcpcli skill install --claude --cursor
+
+# Overwrite an existing rule file
+mcpcli skill install --cursor --force
+```
 
 ### Raw System Prompt (other agents)
 

@@ -9,6 +9,7 @@
   "files": [
     "src",
     ".claude",
+    ".cursor",
     "README.md",
     "LICENSE"
   ],

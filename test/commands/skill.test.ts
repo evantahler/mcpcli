@@ -28,16 +28,17 @@ describe("mcpcli skill install", () => {
     await rm(tmpDir, { recursive: true });
   });
 
-  test("errors without --claude flag", async () => {
+  test("errors without any agent flag", async () => {
     const { exitCode, stderr } = await run(["skill", "install"], tmpDir);
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("--claude");
+    expect(stderr).toContain("--cursor");
   });
 
-  test("installs to project directory by default", async () => {
+  test("installs to project directory by default with --claude", async () => {
     const { exitCode, stdout } = await run(["skill", "install", "--claude"], tmpDir);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("Installed mcpcli skill (project):");
+    expect(stdout).toContain("Installed mcpcli skill for Claude Code (project):");
 
     const dest = join(tmpDir, ".claude", "skills", "mcpcli.md");
     const content = await readFile(dest, "utf-8");
@@ -45,9 +46,32 @@ describe("mcpcli skill install", () => {
     expect(content).toContain("search");
   });
 
+  test("installs to project directory with --cursor", async () => {
+    const { exitCode, stdout } = await run(["skill", "install", "--cursor"], tmpDir);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Installed mcpcli skill for Cursor (project):");
+
+    const dest = join(tmpDir, ".cursor", "rules", "mcpcli.mdc");
+    const content = await readFile(dest, "utf-8");
+    expect(content).toContain("mcpcli");
+    expect(content).toContain("alwaysApply: true");
+  });
+
+  test("installs both with --claude --cursor", async () => {
+    const { exitCode, stdout } = await run(["skill", "install", "--claude", "--cursor"], tmpDir);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Claude Code");
+    expect(stdout).toContain("Cursor");
+
+    const claudeDest = join(tmpDir, ".claude", "skills", "mcpcli.md");
+    const cursorDest = join(tmpDir, ".cursor", "rules", "mcpcli.mdc");
+    const claudeContent = await readFile(claudeDest, "utf-8");
+    const cursorContent = await readFile(cursorDest, "utf-8");
+    expect(claudeContent).toContain("trigger:");
+    expect(cursorContent).toContain("alwaysApply:");
+  });
+
   test("installs to global directory with --global", async () => {
-    // We can't write to the real ~/.claude, so just verify the --project path works
-    // and test --global + --project together using --project to confirm both targets
     const { exitCode, stdout } = await run(["skill", "install", "--claude", "--project"], tmpDir);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("project");
