@@ -1,7 +1,7 @@
 ---
-name: mcpcli
 description: Discover and use MCP tools via the mcpcli CLI
-trigger: when the user wants to interact with external services, APIs, or MCP tools
+globs:
+alwaysApply: true
 ---
 
 # mcpcli — MCP Tool Discovery and Execution
