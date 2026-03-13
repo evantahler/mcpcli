@@ -64,6 +64,7 @@ mcpcli search -q "manage pull requests"
 | `mcpcli index`                         | Build/rebuild the search index                         |
 | `mcpcli index -i`                      | Show index status                                      |
 | `mcpcli exec <server> <tool> [json]`   | Validate inputs locally, then execute tool             |
+| `mcpcli exec <server> <tool> -f file`  | Read tool args from a JSON file                        |
 | `mcpcli exec <server>`                 | List available tools for a server                      |
 | `mcpcli auth <server>`                 | Authenticate with an HTTP MCP server (OAuth)           |
 | `mcpcli auth <server> -s`              | Check auth status and token TTL                        |
@@ -85,15 +86,18 @@ mcpcli search -q "manage pull requests"
 
 ## Options
 
-| Flag                      | Purpose                                            |
-| ------------------------- | -------------------------------------------------- |
-| `-h, --help`              | Show help                                          |
-| `-V, --version`           | Show version                                       |
-| `-d, --with-descriptions` | Include tool descriptions in list output           |
-| `-c, --config <path>`     | Specify config file location                       |
-| `-v, --verbose`           | Show HTTP request/response headers and timing      |
-| `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked) |
-| `-j, --json`              | Force JSON output (default when piped)             |
+| Flag                      | Purpose                                                  |
+| ------------------------- | -------------------------------------------------------- |
+| `-h, --help`              | Show help                                                |
+| `-V, --version`           | Show version                                             |
+| `-d, --with-descriptions` | Include tool descriptions in list output                 |
+| `-c, --config <path>`     | Specify config file location                             |
+| `-v, --verbose`           | Show HTTP request/response headers and timing            |
+| `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
+| `-j, --json`              | Force JSON output (default when piped)                   |
+| `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
+
+Server log messages (`notifications/message`) are displayed on stderr with level-appropriate coloring. Valid levels (in ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. When a server declares logging capability, mcpcli sends `logging/setLevel` to request messages at the configured threshold and above.
 
 ## Managing Servers
 
@@ -420,12 +424,20 @@ mcpcli exec filesystem list_directory '{"path":"."}' \
   && mcpcli exec filesystem read_file '{"path":"./package.json"}'
 ```
 
-Stdin works for tool arguments:
+Stdin and file input work for tool arguments:
 
 ```bash
+# Pipe JSON directly
 echo '{"path":"./README.md"}' | mcpcli exec filesystem read_file
 
+# Pipe from a file
 cat params.json | mcpcli exec server tool
+
+# Shell redirect from a file
+mcpcli exec server tool < params.json
+
+# Read args from a file with --file flag
+mcpcli exec filesystem read_file -f params.json
 ```
 
 ## Agent Integration
@@ -488,6 +500,7 @@ To discover tools:
 
 To execute tools:
   mcpcli exec <server> <tool> '<json args>'
+  mcpcli exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.
 ```

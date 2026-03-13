@@ -2,6 +2,41 @@ import { createSpinner } from "nanospinner";
 import { dim, yellow, red } from "ansis";
 import type { FormatOptions } from "./formatter.ts";
 
+/** MCP log levels ordered by severity (RFC 5424) */
+const LOG_LEVELS = [
+  "debug",
+  "info",
+  "notice",
+  "warning",
+  "error",
+  "critical",
+  "alert",
+  "emergency",
+] as const;
+
+type LogLevel = (typeof LOG_LEVELS)[number];
+
+function logLevelIndex(level: string): number {
+  const idx = LOG_LEVELS.indexOf(level as LogLevel);
+  return idx === -1 ? 0 : idx;
+}
+
+function colorForLevel(level: string): (s: string) => string {
+  switch (level) {
+    case "debug":
+      return dim;
+    case "warning":
+      return yellow;
+    case "error":
+    case "critical":
+    case "alert":
+    case "emergency":
+      return red;
+    default:
+      return (s: string) => s;
+  }
+}
+
 export interface Spinner {
   update(text: string): void;
   success(text?: string): void;
@@ -76,6 +111,30 @@ class Logger {
     } else {
       process.stderr.write(msg);
     }
+  }
+
+  /** Display a structured server log message. Suppressed if below configured log level. */
+  logServerMessage(
+    serverName: string,
+    params: { level: string; logger?: string; data: unknown },
+  ): void {
+    const minLevel = this.formatOptions.logLevel ?? "warning";
+    if (logLevelIndex(params.level) < logLevelIndex(minLevel)) return;
+
+    if (this.formatOptions.json) {
+      // JSON mode: structured object to stderr
+      const obj = { server: serverName, ...params };
+      process.stderr.write(JSON.stringify(obj) + "\n");
+      return;
+    }
+
+    if (!(process.stderr.isTTY ?? false)) return;
+
+    const prefix = params.logger ? `[${serverName}/${params.logger}]` : `[${serverName}]`;
+    const dataStr = typeof params.data === "string" ? params.data : JSON.stringify(params.data);
+    const line = `${prefix} ${params.level}: ${dataStr}`;
+    const color = colorForLevel(params.level);
+    this.writeStderr(color(line));
   }
 
   /** Start a spinner. Returns the Spinner interface. */
