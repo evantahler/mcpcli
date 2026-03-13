@@ -9,6 +9,7 @@ import {
 } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
 import { validateToolInput } from "../validation/schema.ts";
+import { parseJsonArgs, readStdin } from "../lib/input.ts";
 
 export function registerExecCommand(program: Command) {
   program
@@ -152,29 +153,4 @@ export function registerExecCommand(program: Command) {
         }
       },
     );
-}
-
-function parseJsonArgs(str: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(str);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      throw new Error("Tool arguments must be a JSON object");
-    }
-    return parsed as Record<string, unknown>;
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error(`Invalid JSON: ${err.message}`);
-    }
-    throw err;
-  }
-}
-
-async function readStdin(): Promise<string> {
-  const chunks: string[] = [];
-  const reader = process.stdin;
-  reader.setEncoding("utf-8");
-  for await (const chunk of reader) {
-    chunks.push(chunk as string);
-  }
-  return chunks.join("");
 }

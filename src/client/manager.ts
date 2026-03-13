@@ -236,6 +236,34 @@ export class ServerManager {
     throw new Error("Invalid server config");
   }
 
+  /** Process all servers in concurrent batches, collecting results and errors. */
+  private async gatherFromServers<T>(
+    fetchFn: (serverName: string) => Promise<T[]>,
+  ): Promise<{ items: T[]; errors: ServerError[] }> {
+    const serverNames = Object.keys(this.servers.mcpServers);
+    const items: T[] = [];
+    const errors: ServerError[] = [];
+
+    for (let i = 0; i < serverNames.length; i += this.concurrency) {
+      const batch = serverNames.slice(i, i + this.concurrency);
+      const batchResults = await Promise.allSettled(batch.map((name) => fetchFn(name)));
+
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j]!;
+        if (result.status === "fulfilled") {
+          items.push(...result.value);
+        } else {
+          const name = batch[j]!;
+          const message =
+            result.reason instanceof Error ? result.reason.message : String(result.reason);
+          errors.push({ server: name, message });
+        }
+      }
+    }
+
+    return { items, errors };
+  }
+
   /** Race a promise against a timeout */
   private withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
     if (this.timeout <= 0) return promise;
@@ -292,33 +320,10 @@ export class ServerManager {
 
   /** List tools across all configured servers */
   async getAllTools(): Promise<{ tools: ToolWithServer[]; errors: ServerError[] }> {
-    const serverNames = Object.keys(this.servers.mcpServers);
-    const tools: ToolWithServer[] = [];
-    const errors: ServerError[] = [];
-
-    // Process in batches of `concurrency`
-    for (let i = 0; i < serverNames.length; i += this.concurrency) {
-      const batch = serverNames.slice(i, i + this.concurrency);
-      const batchResults = await Promise.allSettled(
-        batch.map(async (name) => {
-          const serverTools = await this.listTools(name);
-          return serverTools.map((tool) => ({ server: name, tool }));
-        }),
-      );
-
-      for (let j = 0; j < batchResults.length; j++) {
-        const result = batchResults[j]!;
-        if (result.status === "fulfilled") {
-          tools.push(...result.value);
-        } else {
-          const name = batch[j]!;
-          const message =
-            result.reason instanceof Error ? result.reason.message : String(result.reason);
-          errors.push({ server: name, message });
-        }
-      }
-    }
-
+    const { items: tools, errors } = await this.gatherFromServers(async (name) => {
+      const serverTools = await this.listTools(name);
+      return serverTools.map((tool) => ({ server: name, tool }));
+    });
     return { tools, errors };
   }
 
@@ -375,34 +380,12 @@ export class ServerManager {
 
   /** List resources across all configured servers (skips servers without resources capability) */
   async getAllResources(): Promise<{ resources: ResourceWithServer[]; errors: ServerError[] }> {
-    const serverNames = Object.keys(this.servers.mcpServers);
-    const resources: ResourceWithServer[] = [];
-    const errors: ServerError[] = [];
-
-    for (let i = 0; i < serverNames.length; i += this.concurrency) {
-      const batch = serverNames.slice(i, i + this.concurrency);
-      const batchResults = await Promise.allSettled(
-        batch.map(async (name) => {
-          const client = await this.getClient(name);
-          if (!client.getServerCapabilities()?.resources) return [];
-          const serverResources = await this.listResources(name);
-          return serverResources.map((resource) => ({ server: name, resource }));
-        }),
-      );
-
-      for (let j = 0; j < batchResults.length; j++) {
-        const result = batchResults[j]!;
-        if (result.status === "fulfilled") {
-          resources.push(...result.value);
-        } else {
-          const name = batch[j]!;
-          const message =
-            result.reason instanceof Error ? result.reason.message : String(result.reason);
-          errors.push({ server: name, message });
-        }
-      }
-    }
-
+    const { items: resources, errors } = await this.gatherFromServers(async (name) => {
+      const client = await this.getClient(name);
+      if (!client.getServerCapabilities()?.resources) return [];
+      const serverResources = await this.listResources(name);
+      return serverResources.map((resource) => ({ server: name, resource }));
+    });
     return { resources, errors };
   }
 
@@ -433,34 +416,12 @@ export class ServerManager {
 
   /** List prompts across all configured servers (skips servers without prompts capability) */
   async getAllPrompts(): Promise<{ prompts: PromptWithServer[]; errors: ServerError[] }> {
-    const serverNames = Object.keys(this.servers.mcpServers);
-    const prompts: PromptWithServer[] = [];
-    const errors: ServerError[] = [];
-
-    for (let i = 0; i < serverNames.length; i += this.concurrency) {
-      const batch = serverNames.slice(i, i + this.concurrency);
-      const batchResults = await Promise.allSettled(
-        batch.map(async (name) => {
-          const client = await this.getClient(name);
-          if (!client.getServerCapabilities()?.prompts) return [];
-          const serverPrompts = await this.listPrompts(name);
-          return serverPrompts.map((prompt) => ({ server: name, prompt }));
-        }),
-      );
-
-      for (let j = 0; j < batchResults.length; j++) {
-        const result = batchResults[j]!;
-        if (result.status === "fulfilled") {
-          prompts.push(...result.value);
-        } else {
-          const name = batch[j]!;
-          const message =
-            result.reason instanceof Error ? result.reason.message : String(result.reason);
-          errors.push({ server: name, message });
-        }
-      }
-    }
-
+    const { items: prompts, errors } = await this.gatherFromServers(async (name) => {
+      const client = await this.getClient(name);
+      if (!client.getServerCapabilities()?.prompts) return [];
+      const serverPrompts = await this.listPrompts(name);
+      return serverPrompts.map((prompt) => ({ server: name, prompt }));
+    });
     return { prompts, errors };
   }
 

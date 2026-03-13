@@ -1,20 +1,13 @@
 import { describe, test, expect } from "bun:test";
-import { join } from "path";
+import { run } from "../helpers/run.ts";
 
-const CLI = join(import.meta.dir, "../../src/cli.ts");
-const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
-
-function run(...args: string[]) {
-  return Bun.spawn(["bun", "run", CLI, "-c", CONFIG, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    cwd: join(import.meta.dir, "../.."),
-  });
+function runJson(...args: string[]) {
+  return run("--json", ...args);
 }
 
 describe("mcpcli (list)", () => {
   test("lists tools, resources, and prompts from mock server as JSON when piped", async () => {
-    const proc = run("--json");
+    const proc = runJson();
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -34,7 +27,7 @@ describe("mcpcli (list)", () => {
   });
 
   test("items include server and name fields", async () => {
-    const proc = run("--json");
+    const proc = runJson();
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -46,7 +39,7 @@ describe("mcpcli (list)", () => {
   });
 
   test("lists items with descriptions when -d flag is set", async () => {
-    const proc = run("--json", "-d");
+    const proc = runJson("-d");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -57,7 +50,7 @@ describe("mcpcli (list)", () => {
   });
 
   test("items are sorted by server, then type (tool < resource < prompt), then name", async () => {
-    const proc = run("--json");
+    const proc = runJson();
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
