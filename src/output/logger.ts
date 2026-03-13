@@ -141,8 +141,8 @@ class Logger {
   startSpinner(text: string, options?: FormatOptions): Spinner {
     const opts = options ?? this.formatOptions;
 
-    // No spinner in JSON/piped mode
-    if (opts.json || !(process.stderr.isTTY ?? false)) {
+    // No spinner in JSON/piped/verbose mode — verbose writeRaw output conflicts with spinner rendering
+    if (opts.json || opts.verbose || !(process.stderr.isTTY ?? false)) {
       return { update() {}, success() {}, error() {}, stop() {} };
     }
 
