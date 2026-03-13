@@ -13,56 +13,76 @@ export function registerExecCommand(program: Command) {
   program
     .command("exec <server> [tool] [args]")
     .description("execute a tool (omit tool name to list available tools)")
-    .action(async (server: string, tool: string | undefined, argsStr: string | undefined) => {
-      const { manager, formatOptions } = await getContext(program);
+    .option("-f, --file <path>", "read JSON args from a file")
+    .action(
+      async (
+        server: string,
+        tool: string | undefined,
+        argsStr: string | undefined,
+        options: { file?: string },
+      ) => {
+        const { manager, formatOptions } = await getContext(program);
 
-      if (!tool) {
+        if (!tool) {
+          try {
+            const tools = await manager.listTools(server);
+            console.log(formatServerTools(server, tools, formatOptions));
+          } catch (err) {
+            console.error(formatError(String(err), formatOptions));
+            process.exit(1);
+          } finally {
+            await manager.close();
+          }
+          return;
+        }
         try {
-          const tools = await manager.listTools(server);
-          console.log(formatServerTools(server, tools, formatOptions));
+          // Error if both --file and positional arg provided
+          if (options.file && argsStr) {
+            throw new Error("Cannot specify both --file and inline JSON args");
+          }
+
+          // Parse args from: --file > positional arg > stdin > empty
+          let args: Record<string, unknown> = {};
+
+          if (options.file) {
+            const file = Bun.file(options.file);
+            if (!(await file.exists())) {
+              throw new Error(`File not found: ${options.file}`);
+            }
+            const content = await file.text();
+            args = parseJsonArgs(content);
+          } else if (argsStr) {
+            args = parseJsonArgs(argsStr);
+          } else if (!process.stdin.isTTY) {
+            // Read from stdin
+            const stdin = await readStdin();
+            if (stdin.trim()) {
+              args = parseJsonArgs(stdin);
+            }
+          }
+
+          // Validate args against tool inputSchema before calling
+          const toolSchema = await manager.getToolSchema(server, tool);
+          if (toolSchema) {
+            const validation = validateToolInput(server, toolSchema, args);
+            if (!validation.valid) {
+              console.error(formatValidationErrors(server, tool, validation.errors, formatOptions));
+              process.exit(1);
+            }
+          }
+
+          const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
+          const result = await manager.callTool(server, tool, args);
+          spinner.stop();
+          console.log(formatCallResult(result, formatOptions));
         } catch (err) {
           console.error(formatError(String(err), formatOptions));
           process.exit(1);
         } finally {
           await manager.close();
         }
-        return;
-      }
-      try {
-        // Parse args from argument, stdin, or empty
-        let args: Record<string, unknown> = {};
-
-        if (argsStr) {
-          args = parseJsonArgs(argsStr);
-        } else if (!process.stdin.isTTY) {
-          // Read from stdin
-          const stdin = await readStdin();
-          if (stdin.trim()) {
-            args = parseJsonArgs(stdin);
-          }
-        }
-
-        // Validate args against tool inputSchema before calling
-        const toolSchema = await manager.getToolSchema(server, tool);
-        if (toolSchema) {
-          const validation = validateToolInput(server, toolSchema, args);
-          if (!validation.valid) {
-            console.error(formatValidationErrors(server, tool, validation.errors, formatOptions));
-            process.exit(1);
-          }
-        }
-
-        const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
-        const result = await manager.callTool(server, tool, args);
-        spinner.stop();
-        console.log(formatCallResult(result, formatOptions));
-      } catch (err) {
-        console.error(formatError(String(err), formatOptions));
-        process.exit(1);
-      } finally {
-        await manager.close();
-      }
-    });
+      },
+    );
 }
 
 function parseJsonArgs(str: string): Record<string, unknown> {
