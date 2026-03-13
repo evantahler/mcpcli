@@ -1,6 +1,6 @@
 {
   "name": "@evantahler/mcpcli",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "A command-line interface for MCP servers. curl for MCP.",
   "type": "module",
   "bin": {
@@ -15,6 +15,7 @@
   "scripts": {
     "dev": "bun run src/cli.ts",
     "test": "bun test",
+    "test:e2e": "bun test test/integration/remote-server.test.ts",
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpcli"
