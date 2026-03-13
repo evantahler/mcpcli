@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="evantahler/mcpcli"
-INSTALL_DIR="${MCPCLI_INSTALL_DIR:-/usr/local/bin}"
+REPO="evantahler/mcpx"
+INSTALL_DIR="${MCPX_INSTALL_DIR:-/usr/local/bin}"
 
 # Detect OS
 OS="$(uname -s)"
@@ -26,7 +26,7 @@ case "$ARCH" in
     ;;
 esac
 
-ARTIFACT="mcpcli-${os}-${arch}"
+ARTIFACT="mcpx-${os}-${arch}"
 
 # Get latest release tag
 echo "Fetching latest release..."
@@ -39,17 +39,17 @@ fi
 
 URL="https://github.com/${REPO}/releases/download/${TAG}/${ARTIFACT}"
 
-echo "Downloading mcpcli ${TAG} (${os}/${arch})..."
-curl -fsSL "$URL" -o /tmp/mcpcli
+echo "Downloading mcpx ${TAG} (${os}/${arch})..."
+curl -fsSL "$URL" -o /tmp/mcpx
 
-chmod +x /tmp/mcpcli
+chmod +x /tmp/mcpx
 
 # Install
 if [ -w "$INSTALL_DIR" ]; then
-  mv /tmp/mcpcli "${INSTALL_DIR}/mcpcli"
+  mv /tmp/mcpx "${INSTALL_DIR}/mcpx"
 else
   echo "Installing to ${INSTALL_DIR} (requires sudo)..."
-  sudo mv /tmp/mcpcli "${INSTALL_DIR}/mcpcli"
+  sudo mv /tmp/mcpx "${INSTALL_DIR}/mcpx"
 fi
 
-echo "mcpcli ${TAG} installed to ${INSTALL_DIR}/mcpcli"
+echo "mcpx ${TAG} installed to ${INSTALL_DIR}/mcpx"

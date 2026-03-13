@@ -19,7 +19,7 @@ import { registerTaskCommand } from "./commands/task.ts";
 import pkg from "../package.json";
 
 program
-  .name("mcpcli")
+  .name("mcpx")
   .description("A command-line interface for MCP servers. curl for MCP.")
   .version(pkg.version)
   .option("-c, --config <path>", "config directory path")
@@ -65,7 +65,7 @@ for (let i = 0; i < cliArgs.length; i++) {
   break;
 }
 if (firstCommand && !knownCommands.has(firstCommand)) {
-  console.error(`error: unknown command '${firstCommand}'. See 'mcpcli --help'.`);
+  console.error(`error: unknown command '${firstCommand}'. See 'mcpx --help'.`);
   process.exit(1);
 }
 

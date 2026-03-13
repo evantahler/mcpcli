@@ -5,7 +5,7 @@ const CLI = join(import.meta.dir, "../../src/cli.ts");
 const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
 
 /**
- * Integration tests proving that mcpcli can connect to a local stdio MCP server,
+ * Integration tests proving that mcpx can connect to a local stdio MCP server,
  * discover its tools, inspect schemas, and execute tools end-to-end.
  */
 
@@ -23,7 +23,7 @@ async function runAndParse<T = unknown>(...args: string[]): Promise<T> {
   const stdout = await new Response(proc.stdout).text();
   if (exitCode !== 0) {
     const stderr = await new Response(proc.stderr).text();
-    throw new Error(`mcpcli exited with ${exitCode}: ${stderr}\n${stdout}`);
+    throw new Error(`mcpx exited with ${exitCode}: ${stderr}\n${stdout}`);
   }
   return JSON.parse(stdout) as T;
 }

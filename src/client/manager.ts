@@ -128,9 +128,7 @@ export class ServerManager {
         if (hasAuthEntry) {
           const provider = this.getOrCreateOAuthProvider(serverName);
           if (!provider.isComplete()) {
-            throw new Error(
-              `Not authenticated with "${serverName}". Run: mcpcli auth ${serverName}`,
-            );
+            throw new Error(`Not authenticated with "${serverName}". Run: mcpx auth ${serverName}`);
           }
           try {
             await provider.refreshIfNeeded(config.url);
@@ -242,7 +240,7 @@ export class ServerManager {
       // Only pass the OAuth provider if the server already has tokens.
       // Without tokens, passing the provider causes the SDK transport to
       // auto-trigger the browser OAuth flow on 401, which fails because
-      // there's no callback server running. Users must run `mcpcli auth <server>` first.
+      // there's no callback server running. Users must run `mcpx auth <server>` first.
       const provider = this.getOrCreateOAuthProvider(serverName);
       const authProvider = provider.isComplete() ? provider : undefined;
 

@@ -11,7 +11,7 @@ import {
   validateSearchIndex,
 } from "./schemas.ts";
 
-const DEFAULT_CONFIG_DIR = join(homedir(), ".mcpcli");
+const DEFAULT_CONFIG_DIR = join(homedir(), ".mcpx");
 
 const EMPTY_SERVERS: ServersFile = { mcpServers: {} };
 const EMPTY_AUTH: AuthFile = {};
@@ -42,7 +42,7 @@ function resolveConfigDir(configFlag?: string): string {
   // 3. ./servers.json exists in cwd → use cwd
   // (checked at load time, not here — we return the candidate dir)
 
-  // 4. Default ~/.mcpcli/
+  // 4. Default ~/.mcpx/
   return DEFAULT_CONFIG_DIR;
 }
 

@@ -17,11 +17,11 @@ async function run(args: string[], cwd?: string) {
   return { exitCode, stdout, stderr };
 }
 
-describe("mcpcli add", () => {
+describe("mcpx add", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-add-"));
+    tmpDir = await mkdtemp(join(tmpdir(), "mcpx-add-"));
   });
 
   afterEach(async () => {
@@ -252,11 +252,11 @@ describe("mcpcli add", () => {
   });
 });
 
-describe("mcpcli remove", () => {
+describe("mcpx remove", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-rm-"));
+    tmpDir = await mkdtemp(join(tmpdir(), "mcpx-rm-"));
   });
 
   afterEach(async () => {

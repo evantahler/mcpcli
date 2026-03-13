@@ -37,7 +37,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
       redirect_uris: [`http://127.0.0.1:${this._callbackPort}/callback`],
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
-      client_name: "mcpcli",
+      client_name: "mcpx",
       token_endpoint_auth_method: "none",
     };
   }
@@ -164,14 +164,14 @@ export class McpOAuthProvider implements OAuthClientProvider {
 
     if (!this.hasRefreshToken()) {
       throw new Error(
-        `Token expired for "${this.serverName}" and no refresh token available. Run: mcpcli auth ${this.serverName}`,
+        `Token expired for "${this.serverName}" and no refresh token available. Run: mcpx auth ${this.serverName}`,
       );
     }
 
     const clientInfo = this.clientInformation();
     if (!clientInfo) {
       throw new Error(
-        `No client information for "${this.serverName}". Run: mcpcli auth ${this.serverName}`,
+        `No client information for "${this.serverName}". Run: mcpx auth ${this.serverName}`,
       );
     }
 

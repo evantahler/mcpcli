@@ -40,7 +40,7 @@ describe("loadConfig", () => {
   });
 
   test("returns empty defaults when no config files exist", async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
     try {
       const config = await loadConfig({ configFlag: tmpDir });
       expect(Object.keys(config.servers.mcpServers)).toHaveLength(0);
@@ -67,7 +67,7 @@ describe("loadConfig", () => {
 
 describe("validateServersFile", () => {
   test("rejects missing mcpServers key", async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
     try {
       await Bun.write(join(tmpDir, "servers.json"), JSON.stringify({ wrong: "shape" }));
       await expect(loadConfig({ configFlag: tmpDir })).rejects.toThrow("mcpServers");
@@ -77,7 +77,7 @@ describe("validateServersFile", () => {
   });
 
   test("accepts valid transport values", async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
     try {
       await Bun.write(
         join(tmpDir, "servers.json"),
@@ -97,7 +97,7 @@ describe("validateServersFile", () => {
   });
 
   test("rejects invalid transport value", async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
     try {
       await Bun.write(
         join(tmpDir, "servers.json"),
@@ -112,7 +112,7 @@ describe("validateServersFile", () => {
   });
 
   test("rejects server without command or url", async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    const tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
     try {
       await Bun.write(
         join(tmpDir, "servers.json"),
@@ -131,7 +131,7 @@ describe("saveAuth / saveSearchIndex", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-test-"));
+    tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
   });
 
   afterEach(async () => {

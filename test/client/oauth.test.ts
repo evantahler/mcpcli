@@ -24,7 +24,7 @@ import { McpOAuthProvider, startCallbackServer } from "../../src/client/oauth.ts
 import { logger } from "../../src/output/logger.ts";
 
 function makeProvider(auth: AuthFile = {}, serverName = "test-server") {
-  const configDir = "/tmp/mcpcli-test";
+  const configDir = "/tmp/mcpx-test";
   return new McpOAuthProvider({ serverName, configDir, auth });
 }
 
@@ -35,7 +35,7 @@ describe("McpOAuthProvider", () => {
   });
 
   test("saveTokens() + tokens() round-trip", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-"));
+    const dir = await mkdtemp(join(tmpdir(), "mcpx-oauth-"));
     const auth: AuthFile = {};
     const provider = new McpOAuthProvider({ serverName: "srv", configDir: dir, auth });
 
@@ -52,7 +52,7 @@ describe("McpOAuthProvider", () => {
   });
 
   test("saveTokens() computes expires_at from expires_in", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-"));
+    const dir = await mkdtemp(join(tmpdir(), "mcpx-oauth-"));
     const auth: AuthFile = {};
     const provider = new McpOAuthProvider({ serverName: "srv", configDir: dir, auth });
 
@@ -72,7 +72,7 @@ describe("McpOAuthProvider", () => {
   });
 
   test("clientInformation() / saveClientInformation() round-trip", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-"));
+    const dir = await mkdtemp(join(tmpdir(), "mcpx-oauth-"));
     const auth: AuthFile = {};
     const provider = new McpOAuthProvider({ serverName: "srv", configDir: dir, auth });
 
@@ -133,7 +133,7 @@ describe("McpOAuthProvider", () => {
   });
 
   test("invalidateCredentials clears tokens scope", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-"));
+    const dir = await mkdtemp(join(tmpdir(), "mcpx-oauth-"));
     const auth: AuthFile = {
       srv: {
         tokens: { access_token: "t", token_type: "Bearer" },
@@ -151,7 +151,7 @@ describe("McpOAuthProvider", () => {
   });
 
   test("invalidateCredentials clears all scope", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-"));
+    const dir = await mkdtemp(join(tmpdir(), "mcpx-oauth-"));
     const auth: AuthFile = {
       srv: {
         tokens: { access_token: "t", token_type: "Bearer" },
@@ -218,7 +218,7 @@ describe("refreshIfNeeded", () => {
   });
 
   test("refreshes token when expired with refresh token and client info", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mcpcli-oauth-refresh-"));
+    const dir = await mkdtemp(join(tmpdir(), "mcpx-oauth-refresh-"));
     const origIsTTY = process.stderr.isTTY;
     Object.defineProperty(process.stderr, "isTTY", { value: true, writable: true });
     const stderrSpy = spyOn(process.stderr, "write").mockReturnValue(true);

@@ -1,10 +1,10 @@
 {
-  "name": "@evantahler/mcpcli",
-  "version": "0.14.0",
+  "name": "@evantahler/mcpx",
+  "version": "0.15.0",
   "description": "A command-line interface for MCP servers. curl for MCP.",
   "type": "module",
   "bin": {
-    "mcpcli": "./src/cli.ts"
+    "mcpx": "./src/cli.ts"
   },
   "files": [
     "src",
@@ -19,14 +19,14 @@
     "test:e2e": "bun test test/integration/remote-server.test.ts",
     "lint": "prettier --check .",
     "format": "prettier --write .",
-    "build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpcli"
+    "build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpx"
   },
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/evantahler/mcpcli.git"
+    "url": "https://github.com/evantahler/mcpx.git"
   },
   "keywords": [
     "mcp",

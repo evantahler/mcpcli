@@ -4,7 +4,7 @@ import pkg from "../package.json";
 
 const CONFIG = join(import.meta.dir, "fixtures/mock-config");
 
-describe("mcpcli", () => {
+describe("mcpx", () => {
   test("--help exits 0 and shows usage", async () => {
     const proc = Bun.spawn(["bun", "run", "src/cli.ts", "--help"], {
       stdout: "pipe",
@@ -13,7 +13,7 @@ describe("mcpcli", () => {
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("mcpcli");
+    expect(stdout).toContain("mcpx");
     expect(stdout).toContain("curl for MCP");
   });
 

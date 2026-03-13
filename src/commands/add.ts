@@ -111,7 +111,7 @@ export function registerAddCommand(program: Command) {
           try {
             await tryOAuthIfSupported(name, effectiveUrl, configDir, auth, formatOptions);
           } catch {
-            console.error(`Warning: OAuth authentication failed. Run: mcpcli auth ${name}`);
+            console.error(`Warning: OAuth authentication failed. Run: mcpx auth ${name}`);
           }
         }
 

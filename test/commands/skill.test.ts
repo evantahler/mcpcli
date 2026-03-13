@@ -17,11 +17,11 @@ async function run(args: string[], cwd?: string) {
   return { exitCode, stdout, stderr };
 }
 
-describe("mcpcli skill install", () => {
+describe("mcpx skill install", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "mcpcli-skill-"));
+    tmpDir = await mkdtemp(join(tmpdir(), "mcpx-skill-"));
   });
 
   afterEach(async () => {
@@ -38,22 +38,22 @@ describe("mcpcli skill install", () => {
   test("installs to project directory by default with --claude", async () => {
     const { exitCode, stdout } = await run(["skill", "install", "--claude"], tmpDir);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("Installed mcpcli skill for Claude Code (project):");
+    expect(stdout).toContain("Installed mcpx skill for Claude Code (project):");
 
-    const dest = join(tmpDir, ".claude", "skills", "mcpcli.md");
+    const dest = join(tmpDir, ".claude", "skills", "mcpx.md");
     const content = await readFile(dest, "utf-8");
-    expect(content).toContain("mcpcli");
+    expect(content).toContain("mcpx");
     expect(content).toContain("search");
   });
 
   test("installs to project directory with --cursor", async () => {
     const { exitCode, stdout } = await run(["skill", "install", "--cursor"], tmpDir);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("Installed mcpcli skill for Cursor (project):");
+    expect(stdout).toContain("Installed mcpx skill for Cursor (project):");
 
-    const dest = join(tmpDir, ".cursor", "rules", "mcpcli.mdc");
+    const dest = join(tmpDir, ".cursor", "rules", "mcpx.mdc");
     const content = await readFile(dest, "utf-8");
-    expect(content).toContain("mcpcli");
+    expect(content).toContain("mcpx");
     expect(content).toContain("alwaysApply: true");
   });
 
@@ -63,8 +63,8 @@ describe("mcpcli skill install", () => {
     expect(stdout).toContain("Claude Code");
     expect(stdout).toContain("Cursor");
 
-    const claudeDest = join(tmpDir, ".claude", "skills", "mcpcli.md");
-    const cursorDest = join(tmpDir, ".cursor", "rules", "mcpcli.mdc");
+    const claudeDest = join(tmpDir, ".claude", "skills", "mcpx.md");
+    const cursorDest = join(tmpDir, ".cursor", "rules", "mcpx.mdc");
     const claudeContent = await readFile(claudeDest, "utf-8");
     const cursorContent = await readFile(cursorDest, "utf-8");
     expect(claudeContent).toContain("trigger:");
@@ -76,9 +76,9 @@ describe("mcpcli skill install", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("project");
 
-    const dest = join(tmpDir, ".claude", "skills", "mcpcli.md");
+    const dest = join(tmpDir, ".claude", "skills", "mcpx.md");
     const content = await readFile(dest, "utf-8");
-    expect(content).toContain("mcpcli");
+    expect(content).toContain("mcpx");
   });
 
   test("errors if file already exists without --force", async () => {
@@ -97,17 +97,17 @@ describe("mcpcli skill install", () => {
     await run(["skill", "install", "--claude"], tmpDir);
 
     // Overwrite the file with garbage to verify it gets replaced
-    const dest = join(tmpDir, ".claude", "skills", "mcpcli.md");
+    const dest = join(tmpDir, ".claude", "skills", "mcpx.md");
     await writeFile(dest, "old content", "utf-8");
 
     // Force install
     const { exitCode, stdout } = await run(["skill", "install", "--claude", "--force"], tmpDir);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("Installed mcpcli skill");
+    expect(stdout).toContain("Installed mcpx skill");
 
     const content = await readFile(dest, "utf-8");
     expect(content).not.toBe("old content");
-    expect(content).toContain("mcpcli");
+    expect(content).toContain("mcpx");
   });
 
   test("creates intermediate directories", async () => {
@@ -115,7 +115,7 @@ describe("mcpcli skill install", () => {
     const { exitCode } = await run(["skill", "install", "--claude"], tmpDir);
     expect(exitCode).toBe(0);
 
-    const dest = join(tmpDir, ".claude", "skills", "mcpcli.md");
+    const dest = join(tmpDir, ".claude", "skills", "mcpx.md");
     const content = await readFile(dest, "utf-8");
     expect(content.length).toBeGreaterThan(0);
   });

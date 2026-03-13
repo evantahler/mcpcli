@@ -33,7 +33,7 @@ async function runAndParse<T = unknown>(...args: string[]): Promise<T> {
   const stdout = await new Response(proc.stdout).text();
   if (exitCode !== 0) {
     const stderr = await new Response(proc.stderr).text();
-    throw new Error(`mcpcli exited with ${exitCode}: ${stderr}\n${stdout}`);
+    throw new Error(`mcpx exited with ${exitCode}: ${stderr}\n${stdout}`);
   }
   return JSON.parse(stdout) as T;
 }
@@ -52,7 +52,7 @@ beforeAll(async () => {
   const serverUrl = new TextDecoder().decode(value).trim();
 
   // Create a temp config directory pointing to the local HTTP server
-  configDir = mkdtempSync(join(tmpdir(), "mcpcli-e2e-"));
+  configDir = mkdtempSync(join(tmpdir(), "mcpx-e2e-"));
   writeFileSync(
     join(configDir, "servers.json"),
     JSON.stringify({
@@ -186,12 +186,12 @@ describe("HTTP MCP server end-to-end", () => {
         "exec",
         "remote",
         "echo",
-        '{"message":"hello from mcpcli"}',
+        '{"message":"hello from mcpx"}',
       );
       expect(result.content).toBeInstanceOf(Array);
       expect(result.content.length).toBeGreaterThanOrEqual(1);
       expect(result.content[0]!.type).toBe("text");
-      expect(result.content[0]!.text).toContain("hello from mcpcli");
+      expect(result.content[0]!.text).toContain("hello from mcpx");
     },
     { timeout: TIMEOUT },
   );

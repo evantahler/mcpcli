@@ -92,17 +92,17 @@ jobs:
       matrix:
         include:
           - target: bun-darwin-arm64
-            artifact: mcpcli-darwin-arm64
+            artifact: mcpx-darwin-arm64
           - target: bun-darwin-x64
-            artifact: mcpcli-darwin-x64
+            artifact: mcpx-darwin-x64
           - target: bun-linux-arm64
-            artifact: mcpcli-linux-arm64
+            artifact: mcpx-linux-arm64
           - target: bun-linux-x64
-            artifact: mcpcli-linux-x64
+            artifact: mcpx-linux-x64
           - target: bun-windows-x64
-            artifact: mcpcli-windows-x64.exe
+            artifact: mcpx-windows-x64.exe
           - target: bun-windows-arm64
-            artifact: mcpcli-windows-arm64.exe
+            artifact: mcpx-windows-arm64.exe
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

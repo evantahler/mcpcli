@@ -12,7 +12,7 @@ function run(...args: string[]) {
   });
 }
 
-describe("mcpcli task", () => {
+describe("mcpx task", () => {
   test("exec --no-wait returns task handle for task-supporting tool", async () => {
     const proc = run("exec", "mock", "slow_echo", '{"message": "async hello"}', "--no-wait");
     const exitCode = await proc.exited;
