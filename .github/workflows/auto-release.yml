@@ -99,6 +99,10 @@ jobs:
             artifact: mcpcli-linux-arm64
           - target: bun-linux-x64
             artifact: mcpcli-linux-x64
+          - target: bun-windows-x64
+            artifact: mcpcli-windows-x64.exe
+          - target: bun-windows-arm64
+            artifact: mcpcli-windows-arm64.exe
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
