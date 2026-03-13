@@ -30,6 +30,8 @@ export async function getContext(program: Command): Promise<AppContext> {
   const maxRetries = Number(process.env.MCP_MAX_RETRIES ?? 3);
   const logLevel = (opts.logLevel as string | undefined) ?? "warning";
 
+  const json = !!(opts.json as boolean | undefined);
+
   const manager = new ServerManager({
     servers: config.servers,
     configDir: config.configDir,
@@ -40,6 +42,7 @@ export async function getContext(program: Command): Promise<AppContext> {
     timeout,
     maxRetries,
     logLevel,
+    json,
   });
 
   const formatOptions: FormatOptions = {

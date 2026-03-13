@@ -19,6 +19,7 @@ import { createHttpTransport } from "./http.ts";
 import { createSseTransport } from "./sse.ts";
 import { McpOAuthProvider } from "./oauth.ts";
 import { logger } from "../output/logger.ts";
+import { wrapTransportWithTrace } from "./trace.ts";
 
 export interface ToolWithServer {
   server: string;
@@ -56,6 +57,7 @@ export interface ServerManagerOptions {
   timeout?: number; // ms, default 1_800_000 (30 min)
   maxRetries?: number; // default 3
   logLevel?: string; // MCP log level, default "warning"
+  json?: boolean; // JSON output mode (for trace formatting)
 }
 
 export class ServerManager {
@@ -72,6 +74,7 @@ export class ServerManager {
   private timeout: number;
   private maxRetries: number;
   private logLevel: string;
+  private json: boolean;
 
   constructor(opts: ServerManagerOptions) {
     this.servers = opts.servers;
@@ -83,6 +86,7 @@ export class ServerManager {
     this.timeout = opts.timeout ?? 1_800_000;
     this.maxRetries = opts.maxRetries ?? 3;
     this.logLevel = opts.logLevel ?? "warning";
+    this.json = opts.json ?? false;
   }
 
   /** Get or create a connected client for a server */
@@ -120,7 +124,10 @@ export class ServerManager {
         }
       }
 
-      const transport = this.createTransport(serverName, config);
+      const rawTransport = this.createTransport(serverName, config);
+      const transport = this.verbose
+        ? wrapTransportWithTrace(rawTransport, { json: this.json, serverName })
+        : rawTransport;
       this.transports.set(serverName, transport);
 
       let client = new Client({ name: pkg.name, version: pkg.version });
@@ -139,12 +146,15 @@ export class ServerManager {
             // ignore close errors
           }
           const provider = this.getOrCreateOAuthProvider(serverName);
-          const sseTransport = createSseTransport(
+          const rawSseTransport = createSseTransport(
             config,
             provider.isComplete() ? provider : undefined,
             this.verbose,
             this.showSecrets,
           );
+          const sseTransport = this.verbose
+            ? wrapTransportWithTrace(rawSseTransport, { json: this.json, serverName })
+            : rawSseTransport;
           this.transports.set(serverName, sseTransport);
           client = new Client({ name: pkg.name, version: pkg.version });
           await this.withTimeout(client.connect(sseTransport), `connect-sse(${serverName})`);

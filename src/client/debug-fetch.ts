@@ -11,6 +11,7 @@ export function createDebugFetch(showSecrets: boolean): FetchLike {
     const start = performance.now();
 
     // Request
+    log("");
     log(fmt(`> ${init?.method ?? "GET"} ${url}`));
     logHeaders(">", init?.headers, fmt, showSecrets);
     log(fmt(">"));
@@ -25,6 +26,7 @@ export function createDebugFetch(showSecrets: boolean): FetchLike {
     log(fmt(`< ${response.status} ${response.statusText} (${elapsed}ms)`));
     logHeaders("<", response.headers, fmt, showSecrets);
     log(fmt("<"));
+    log("");
 
     return response;
   };

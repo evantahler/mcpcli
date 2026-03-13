@@ -35,7 +35,7 @@ mcpcli exec <server> <tool> -f params.json
 - Always inspect the schema before executing — validate you have the right arguments
 - Use `mcpcli search -k` for exact name matching
 - Pipe results through `jq` when you need to extract specific fields
-- Use `-v` for verbose HTTP debugging if an exec fails unexpectedly
+- Use `-v` for verbose debugging (HTTP details + JSON-RPC protocol messages) if an exec fails unexpectedly
 - Use `-l debug` to see all server log messages, or `-l error` for errors only
 
 ## Examples
