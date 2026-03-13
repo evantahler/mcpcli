@@ -22,6 +22,9 @@ The curl installer downloads a pre-built binary (macOS/Linux) — no runtime nee
 ## Quick Start
 
 ```bash
+# Add the GitHub MCP server
+mcpcli add github --url https://mcp.github.com
+
 # List all servers and their tools
 mcpcli
 
