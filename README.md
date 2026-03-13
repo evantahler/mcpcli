@@ -85,15 +85,18 @@ mcpcli search -q "manage pull requests"
 
 ## Options
 
-| Flag                      | Purpose                                            |
-| ------------------------- | -------------------------------------------------- |
-| `-h, --help`              | Show help                                          |
-| `-V, --version`           | Show version                                       |
-| `-d, --with-descriptions` | Include tool descriptions in list output           |
-| `-c, --config <path>`     | Specify config file location                       |
-| `-v, --verbose`           | Show HTTP request/response headers and timing      |
-| `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked) |
-| `-j, --json`              | Force JSON output (default when piped)             |
+| Flag                      | Purpose                                                  |
+| ------------------------- | -------------------------------------------------------- |
+| `-h, --help`              | Show help                                                |
+| `-V, --version`           | Show version                                             |
+| `-d, --with-descriptions` | Include tool descriptions in list output                 |
+| `-c, --config <path>`     | Specify config file location                             |
+| `-v, --verbose`           | Show HTTP request/response headers and timing            |
+| `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
+| `-j, --json`              | Force JSON output (default when piped)                   |
+| `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
+
+Server log messages (`notifications/message`) are displayed on stderr with level-appropriate coloring. Valid levels (in ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. When a server declares logging capability, mcpcli sends `logging/setLevel` to request messages at the configured threshold and above.
 
 ## Managing Servers
 

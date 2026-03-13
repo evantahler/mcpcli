@@ -1,5 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { LoggingMessageNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import type { LoggingLevel } from "@modelcontextprotocol/sdk/types.js";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
 import type {
@@ -46,6 +48,7 @@ export interface ServerManagerOptions {
   showSecrets?: boolean;
   timeout?: number; // ms, default 1_800_000 (30 min)
   maxRetries?: number; // default 3
+  logLevel?: string; // MCP log level, default "warning"
 }
 
 export class ServerManager {
@@ -61,6 +64,7 @@ export class ServerManager {
   private showSecrets: boolean;
   private timeout: number;
   private maxRetries: number;
+  private logLevel: string;
 
   constructor(opts: ServerManagerOptions) {
     this.servers = opts.servers;
@@ -71,6 +75,7 @@ export class ServerManager {
     this.showSecrets = opts.showSecrets ?? false;
     this.timeout = opts.timeout ?? 1_800_000;
     this.maxRetries = opts.maxRetries ?? 3;
+    this.logLevel = opts.logLevel ?? "warning";
   }
 
   /** Get or create a connected client for a server */
@@ -140,6 +145,7 @@ export class ServerManager {
           throw err;
         }
       }
+      this.setupLogging(serverName, client);
       this.clients.set(serverName, client);
       this.connecting.delete(serverName);
 
@@ -164,6 +170,20 @@ export class ServerManager {
       this.oauthProviders.set(serverName, provider);
     }
     return provider;
+  }
+
+  /** Subscribe to server log notifications and set the desired log level */
+  private setupLogging(serverName: string, client: Client): void {
+    client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
+      logger.logServerMessage(serverName, notification.params);
+    });
+
+    const capabilities = client.getServerCapabilities();
+    if (capabilities?.logging) {
+      client.setLoggingLevel(this.logLevel as LoggingLevel).catch(() => {
+        // Server may not support setLevel despite declaring logging capability
+      });
+    }
   }
 
   private createTransport(serverName: string, config: ServerConfig): Transport {
