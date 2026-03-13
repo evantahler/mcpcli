@@ -65,6 +65,32 @@ cat params.json | mcpcli exec server tool
 mcpcli exec filesystem read_file -f params.json
 ```
 
+## 4. Long-running tools (Tasks)
+
+Some tools support async execution via MCP Tasks. mcpcli auto-detects this and uses task-augmented execution when available.
+
+```bash
+# Default: waits for the task to complete, showing progress
+mcpcli exec my-server long_running_tool '{"input": "data"}'
+
+# Return immediately with a task handle (for scripting/polling)
+mcpcli exec my-server long_running_tool '{"input": "data"}' --no-wait
+
+# Check task status
+mcpcli task get my-server <taskId>
+
+# Retrieve the result once complete
+mcpcli task result my-server <taskId>
+
+# List all tasks on a server
+mcpcli task list my-server
+
+# Cancel a running task
+mcpcli task cancel my-server <taskId>
+```
+
+For tools that don't support tasks, `exec` works exactly as before.
+
 ## Authentication
 
 Some HTTP servers require OAuth. If you see an "Not authenticated" error:
@@ -111,3 +137,9 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli prompt`                       | List all prompts across servers   |
 | `mcpcli prompt <server>`              | List prompts for a server         |
 | `mcpcli prompt <server> <name> '<json>'` | Get a specific prompt          |
+| `mcpcli exec <server> <tool> --no-wait` | Execute as async task, return handle |
+| `mcpcli exec <server> <tool> --ttl <ms>` | Set task TTL (default: 60000) |
+| `mcpcli task list <server>`            | List tasks on a server          |
+| `mcpcli task get <server> <taskId>`    | Get task status                 |
+| `mcpcli task result <server> <taskId>` | Retrieve completed task result  |
+| `mcpcli task cancel <server> <taskId>` | Cancel a running task           |
