@@ -64,6 +64,7 @@ mcpcli search -q "manage pull requests"
 | `mcpcli index`                         | Build/rebuild the search index               |
 | `mcpcli index -i`                      | Show index status                            |
 | `mcpcli exec <server> <tool> [json]`   | Validate inputs locally, then execute tool   |
+| `mcpcli exec <server> <tool> -f file`  | Read tool args from a JSON file              |
 | `mcpcli exec <server>`                 | List available tools for a server            |
 | `mcpcli auth <server>`                 | Authenticate with an HTTP MCP server (OAuth) |
 | `mcpcli auth <server> -s`              | Check auth status and token TTL              |
@@ -420,12 +421,20 @@ mcpcli exec filesystem list_directory '{"path":"."}' \
   && mcpcli exec filesystem read_file '{"path":"./package.json"}'
 ```
 
-Stdin works for tool arguments:
+Stdin and file input work for tool arguments:
 
 ```bash
+# Pipe JSON directly
 echo '{"path":"./README.md"}' | mcpcli exec filesystem read_file
 
+# Pipe from a file
 cat params.json | mcpcli exec server tool
+
+# Shell redirect from a file
+mcpcli exec server tool < params.json
+
+# Read args from a file with --file flag
+mcpcli exec filesystem read_file -f params.json
 ```
 
 ## Agent Integration
@@ -488,6 +497,7 @@ To discover tools:
 
 To execute tools:
   mcpcli exec <server> <tool> '<json args>'
+  mcpcli exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.
 ```
