@@ -7,6 +7,7 @@ import {
   formatError,
 } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
+import { parseJsonArgs, readStdin } from "../lib/input.ts";
 
 export function registerPromptCommand(program: Command) {
   program
@@ -24,11 +25,11 @@ export function registerPromptCommand(program: Command) {
             let args: Record<string, string> | undefined;
 
             if (argsStr) {
-              args = parseJsonArgs(argsStr);
+              args = parseJsonArgs(argsStr, { coerceToString: true }) as Record<string, string>;
             } else if (!process.stdin.isTTY) {
               const stdin = await readStdin();
               if (stdin.trim()) {
-                args = parseJsonArgs(stdin);
+                args = parseJsonArgs(stdin, { coerceToString: true }) as Record<string, string>;
               }
             }
 
@@ -56,30 +57,4 @@ export function registerPromptCommand(program: Command) {
         }
       },
     );
-}
-
-function parseJsonArgs(str: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(str);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      throw new Error("Prompt arguments must be a JSON object");
-    }
-    // Coerce all values to strings (MCP prompt args are Record<string, string>)
-    return Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, String(v)]));
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error(`Invalid JSON: ${err.message}`);
-    }
-    throw err;
-  }
-}
-
-async function readStdin(): Promise<string> {
-  const chunks: string[] = [];
-  const reader = process.stdin;
-  reader.setEncoding("utf-8");
-  for await (const chunk of reader) {
-    chunks.push(chunk as string);
-  }
-  return chunks.join("");
 }

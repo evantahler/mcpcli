@@ -2,29 +2,7 @@ import { describe, test, expect, afterAll } from "bun:test";
 import { join } from "path";
 import { mkdtempSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-
-const CLI = join(import.meta.dir, "../../src/cli.ts");
-const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
-
-function run(...args: string[]) {
-  return Bun.spawn(["bun", "run", CLI, "-c", CONFIG, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    cwd: join(import.meta.dir, "../.."),
-  });
-}
-
-function runWithStdin(stdin: string, ...args: string[]) {
-  const proc = Bun.spawn(["bun", "run", CLI, "-c", CONFIG, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "pipe",
-    cwd: join(import.meta.dir, "../.."),
-  });
-  proc.stdin.write(stdin);
-  proc.stdin.end();
-  return proc;
-}
+import { run, runWithStdin, CLI, CONFIG } from "../helpers/run.ts";
 
 const tempDir = mkdtempSync(join(tmpdir(), "mcpcli-test-"));
 afterAll(() => rmSync(tempDir, { recursive: true, force: true }));

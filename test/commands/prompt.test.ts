@@ -1,20 +1,9 @@
 import { describe, test, expect } from "bun:test";
-import { join } from "path";
-
-const CLI = join(import.meta.dir, "../../src/cli.ts");
-const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
-
-function run(...args: string[]) {
-  return Bun.spawn(["bun", "run", CLI, "-c", CONFIG, "--json", ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    cwd: join(import.meta.dir, "../.."),
-  });
-}
+import { runJson } from "../helpers/run.ts";
 
 describe("mcpcli prompts", () => {
   test("prompts <server> lists prompts for that server", async () => {
-    const proc = run("prompt", "mock");
+    const proc = runJson("prompt", "mock");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -27,7 +16,7 @@ describe("mcpcli prompts", () => {
   });
 
   test("prompts <server> <name> gets a specific prompt", async () => {
-    const proc = run("prompt", "mock", "greet", '{"name":"World"}');
+    const proc = runJson("prompt", "mock", "greet", '{"name":"World"}');
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -40,7 +29,7 @@ describe("mcpcli prompts", () => {
   });
 
   test("prompts <server> <name> works without arguments", async () => {
-    const proc = run("prompt", "mock", "summarize");
+    const proc = runJson("prompt", "mock", "summarize");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -52,7 +41,7 @@ describe("mcpcli prompts", () => {
   });
 
   test("prompts lists all prompts across servers", async () => {
-    const proc = run("prompt");
+    const proc = runJson("prompt");
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     expect(exitCode).toBe(0);
@@ -65,7 +54,7 @@ describe("mcpcli prompts", () => {
   });
 
   test("prompts <server> <name> errors on unknown prompt", async () => {
-    const proc = run("prompt", "mock", "nonexistent");
+    const proc = runJson("prompt", "mock", "nonexistent");
     const exitCode = await proc.exited;
     expect(exitCode).toBe(1);
   });
