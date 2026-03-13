@@ -38,6 +38,7 @@ function handleMessage(line: string) {
       protocolVersion: "2025-03-26",
       capabilities: { tools: {}, resources: {}, prompts: {} },
       serverInfo: { name: "mock-server", version: "1.0.0" },
+      instructions: "Mock server for testing",
     });
   } else if (msg.method === "notifications/initialized") {
     // No response needed for notifications
