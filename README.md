@@ -48,6 +48,9 @@ mcpcli search -k "*file*"
 
 # Search with only semantic matching
 mcpcli search -q "manage pull requests"
+
+# Limit the number of results (default: 10)
+mcpcli search -n 5 "manage pull requests"
 ```
 
 ## Commands
@@ -61,6 +64,7 @@ mcpcli search -q "manage pull requests"
 | `mcpcli search <query>`                  | Search tools (keyword + semantic)                      |
 | `mcpcli search -k <pattern>`             | Keyword/glob search only                               |
 | `mcpcli search -q <query>`               | Semantic search only                                   |
+| `mcpcli search -n <number> <query>`      | Limit number of results (default: 10)                  |
 | `mcpcli index`                           | Build/rebuild the search index                         |
 | `mcpcli index -i`                        | Show index status                                      |
 | `mcpcli exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
