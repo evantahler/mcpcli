@@ -98,7 +98,7 @@ mcpcli search -q "manage pull requests"
 | `-V, --version`           | Show version                                             |
 | `-d, --with-descriptions` | Include tool descriptions in list output                 |
 | `-c, --config <path>`     | Specify config file location                             |
-| `-v, --verbose`           | Show HTTP request/response headers and timing            |
+| `-v, --verbose`           | Show HTTP details and JSON-RPC protocol messages         |
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
 | `-j, --json`              | Force JSON output (default when piped)                   |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
@@ -368,10 +368,33 @@ For tools that don't support tasks, `exec` works exactly as before — no change
 
 ## Debugging with Verbose Mode
 
-`-v` shows HTTP request/response details, like `curl -v`. Debug output goes to stderr so piping to `jq` still works.
+`-v` shows both HTTP request/response details (like `curl -v`) and JSON-RPC protocol messages exchanged with the server. All debug output goes to stderr so piping to `jq` still works.
+
+### JSON-RPC Protocol Tracing
+
+Verbose mode traces every JSON-RPC message at the transport layer — requests, responses, and notifications — for both stdio and HTTP servers:
 
 ```bash
-# See full HTTP traffic
+mcpcli -v exec mock echo '{"message":"hello"}'
+
+# → initialize (id: 0)
+# ← initialize (id: 0) [45ms] — mock-server v1.0
+# → notifications/initialized
+# → tools/call (id: 1)
+# ← tools/call (id: 1) [12ms] — ok
+```
+
+With `--json`, trace output is NDJSON on stderr (one JSON object per message):
+
+```bash
+mcpcli -v -j exec mock echo '{"message":"hello"}' 2>trace.jsonl
+```
+
+### HTTP Traffic
+
+For HTTP/SSE servers, verbose mode also shows raw HTTP headers and timing:
+
+```bash
 mcpcli -v exec arcade Gmail_WhoAmI
 
 # > POST https://api.arcade.dev/mcp/evan-coding
@@ -399,7 +422,7 @@ mcpcli -v exec arcade Gmail_WhoAmI | jq .
 mcpcli -v -S exec arcade Gmail_WhoAmI
 ```
 
-The `>` / `<` convention matches curl — `>` for request, `<` for response. The JSON-RPC body is shown between the request headers and response, without a prefix. Timing is displayed on the response status line.
+The `>` / `<` convention matches curl — `>` for request, `<` for response. The `→` / `←` arrows show JSON-RPC protocol messages with method names, IDs, round-trip timing, and result summaries.
 
 ## Input Validation
 

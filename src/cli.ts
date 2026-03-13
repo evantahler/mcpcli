@@ -25,7 +25,7 @@ program
   .option("-c, --config <path>", "config directory path")
   .option("-d, --with-descriptions", "include tool descriptions in output")
   .option("-j, --json", "force JSON output")
-  .option("-v, --verbose", "show HTTP request/response details")
+  .option("-v, --verbose", "show HTTP details and JSON-RPC protocol messages")
   .option("-S, --show-secrets", "show full auth tokens in verbose output")
   .option(
     "-l, --log-level <level>",
