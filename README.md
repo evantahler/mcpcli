@@ -2,6 +2,8 @@
 
 A command-line interface for MCP servers. **curl for MCP.**
 
+The internet is debating CLI vs MCP like they're competitors. [They're not.](https://arcade.dev/blog/curl-for-mcp)
+
 Two audiences:
 
 1. **AI/LLM agents** that prefer shelling out over maintaining persistent MCP connections — better for token management, progressive tool discovery, and sharing a single pool of MCP servers across multiple agents on one machine
@@ -621,6 +623,10 @@ bun lint
 ## Inspiration
 
 Inspired by [mcp-cli](https://github.com/philschmid/mcp-cli) by Phil Schmid, which nails the core DX of a shell-friendly MCP client. mcpx extends that foundation with OAuth support for HTTP servers and semantic tool search.
+
+## Why mcpx?
+
+The full story: [curl for MCP: Why Coding Agents Are Happier Using the CLI](https://arcade.dev/blog/curl-for-mcp)
 
 ## License
 
