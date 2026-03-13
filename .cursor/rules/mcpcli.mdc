@@ -117,6 +117,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli search "<query>"`              | Search tools (keyword + semantic) |
 | `mcpcli search -k "<pattern>"`         | Keyword/glob search only          |
 | `mcpcli search -q "<query>"`           | Semantic search only              |
+| `mcpcli search -n <number> "<query>"`  | Limit number of results (default: 10) |
 | `mcpcli index`                         | Build/rebuild search index        |
 | `mcpcli index -i`                      | Show index status                 |
 | `mcpcli auth <server>`                 | Authenticate with OAuth           |
