@@ -1,4 +1,3 @@
-import { exec } from "child_process";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import {
   auth,
@@ -14,6 +13,7 @@ import type { AuthFile } from "../config/schemas.ts";
 import { saveAuth } from "../config/loader.ts";
 import type { FormatOptions } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
+import { openBrowser } from "./browser.ts";
 
 export class McpOAuthProvider implements OAuthClientProvider {
   private serverName: string;
@@ -82,19 +82,8 @@ export class McpOAuthProvider implements OAuthClientProvider {
 
   async redirectToAuthorization(url: URL): Promise<void> {
     const urlStr = url.toString();
-
     logger.info(urlStr);
-
-    const cmd =
-      process.platform === "darwin"
-        ? `open "${urlStr}"`
-        : process.platform === "win32"
-          ? `start "${urlStr}"`
-          : `xdg-open "${urlStr}"`;
-
-    return new Promise((resolve, reject) => {
-      exec(cmd, (err) => (err ? reject(err) : resolve()));
-    });
+    await openBrowser(urlStr);
   }
 
   async saveCodeVerifier(v: string): Promise<void> {

@@ -8,12 +8,16 @@
 import { readFileSync } from "fs";
 
 let buffer = "";
+let nextRequestId = 1000;
 
 // In-memory task store for testing
 const tasks = new Map<
   string,
   { taskId: string; status: string; message: string; pollCount: number; createdAt: string }
 >();
+
+// Pending server-to-client requests (elicitation)
+const pendingRequests = new Map<number, (result: unknown) => void>();
 
 process.stdin.setEncoding("utf-8");
 process.stdin.on("data", (chunk: string) => {
@@ -32,10 +36,20 @@ function processBuffer() {
 }
 
 function handleMessage(line: string) {
-  let msg: { jsonrpc: string; id?: number; method: string; params?: unknown };
+  let msg: { jsonrpc: string; id?: number; method?: string; params?: unknown; result?: unknown };
   try {
     msg = JSON.parse(line);
   } catch {
+    return;
+  }
+
+  // Handle client responses to our server-to-client requests (e.g. elicitation)
+  if (msg.id !== undefined && msg.result !== undefined && !msg.method) {
+    const resolver = pendingRequests.get(msg.id);
+    if (resolver) {
+      pendingRequests.delete(msg.id);
+      resolver(msg.result);
+    }
     return;
   }
 
@@ -166,6 +180,17 @@ function handleMessage(line: string) {
           },
           execution: { taskSupport: "optional" },
         },
+        {
+          name: "confirm_action",
+          description: "Asks for user confirmation via elicitation",
+          inputSchema: {
+            type: "object",
+            properties: {
+              action: { type: "string", description: "Action to confirm" },
+            },
+            required: ["action"],
+          },
+        },
       ],
     });
   } else if (msg.method === "logging/setLevel") {
@@ -223,6 +248,10 @@ function handleMessage(line: string) {
       respond(msg.id, {
         content: [{ type: "text", text: String(a + b) }],
       });
+    } else if (params.name === "confirm_action") {
+      // Send an elicitation request to the client, wait for response, then reply
+      handleConfirmAction(msg.id!, String(params.arguments?.action ?? "unknown"));
+      return; // async — respond later
     } else if (params.name === "noop") {
       respond(msg.id, {
         content: [{ type: "text", text: "ok" }],
@@ -328,4 +357,37 @@ function respondError(id: number | undefined, code: number, message: string) {
 function notify(method: string, params: unknown) {
   const message = JSON.stringify({ jsonrpc: "2.0", method, params });
   process.stdout.write(message + "\n");
+}
+
+/** Send a JSON-RPC request to the client and return the result */
+function request(method: string, params: unknown): Promise<unknown> {
+  const id = nextRequestId++;
+  return new Promise((resolve) => {
+    pendingRequests.set(id, resolve);
+    const msg = JSON.stringify({ jsonrpc: "2.0", id, method, params });
+    process.stdout.write(msg + "\n");
+  });
+}
+
+async function handleConfirmAction(toolCallId: number, action: string) {
+  const result = (await request("elicitation/create", {
+    message: `Confirm action: ${action}`,
+    requestedSchema: {
+      type: "object",
+      properties: {
+        confirm: { type: "boolean", title: "Confirm", description: `Proceed with "${action}"?` },
+      },
+      required: ["confirm"],
+    },
+  })) as { action: string; content?: Record<string, unknown> };
+
+  if (result.action === "accept" && result.content?.confirm === true) {
+    respond(toolCallId, {
+      content: [{ type: "text", text: `Action "${action}" confirmed and executed` }],
+    });
+  } else {
+    respond(toolCallId, {
+      content: [{ type: "text", text: `Action "${action}" was ${result.action}d by user` }],
+    });
+  }
 }

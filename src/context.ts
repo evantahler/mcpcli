@@ -31,6 +31,8 @@ export async function getContext(program: Command): Promise<AppContext> {
   const logLevel = (opts.logLevel as string | undefined) ?? "warning";
 
   const json = !!(opts.json as boolean | undefined);
+  // Commander's --no-interactive sets opts.interactive = false (default true)
+  const noInteractive = opts.interactive === false;
 
   const manager = new ServerManager({
     servers: config.servers,
@@ -43,6 +45,7 @@ export async function getContext(program: Command): Promise<AppContext> {
     maxRetries,
     logLevel,
     json,
+    noInteractive,
   });
 
   const formatOptions: FormatOptions = {

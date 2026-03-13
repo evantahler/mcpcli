@@ -105,6 +105,7 @@ mcpcli search -n 5 "manage pull requests"
 | `-v, --verbose`           | Show HTTP details and JSON-RPC protocol messages         |
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
 | `-j, --json`              | Force JSON output (default when piped)                   |
+| `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
 
 Server log messages (`notifications/message`) are displayed on stderr with level-appropriate coloring. Valid levels (in ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. When a server declares logging capability, mcpcli sends `logging/setLevel` to request messages at the configured threshold and above.
@@ -369,6 +370,28 @@ mcpcli task cancel my-server task-abc123
 ```
 
 For tools that don't support tasks, `exec` works exactly as before — no changes needed.
+
+## Elicitation (Server-Requested User Input)
+
+MCP servers can request user input mid-operation via [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation). mcpcli supports both modes:
+
+- **Form mode**: The server sends a JSON schema describing input fields (strings, numbers, booleans, enums, multi-select). mcpcli renders prompts in the terminal and validates input before returning it.
+- **URL mode**: The server sends a URL for the user to visit (e.g., for authentication or payment flows). mcpcli opens it in the default browser.
+
+```bash
+# Interactive — prompts appear in the terminal
+mcpcli exec my-server deploy_tool '{"target": "staging"}'
+# Server requests input: Confirm deployment
+#   *Confirm [y/n]: y
+
+# Non-interactive — decline all elicitation (for scripts/CI)
+mcpcli exec my-server deploy_tool '{"target": "staging"}' --no-interactive
+
+# JSON mode — elicitation requests are written to stdout as JSON,
+# and responses are read from stdin (for programmatic handling)
+echo '{"action":"accept","content":{"confirm":true}}' | \
+  mcpcli exec my-server deploy_tool '{"target": "staging"}' --json
+```
 
 ## Debugging with Verbose Mode
 

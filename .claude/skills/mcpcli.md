@@ -91,6 +91,24 @@ mcpcli task cancel my-server <taskId>
 
 For tools that don't support tasks, `exec` works exactly as before.
 
+## 5. Elicitation (Server-Requested Input)
+
+Some servers request user input mid-operation (e.g., confirmations, auth flows). mcpcli handles this automatically:
+
+```bash
+# Interactive — prompts appear in the terminal
+mcpcli exec my-server deploy_tool '{"target": "staging"}'
+# Server requests input: Confirm deployment
+#   *Confirm [y/n]: y
+
+# Non-interactive — decline all elicitation (for scripts/CI)
+mcpcli exec my-server deploy_tool '{"target": "staging"}' --no-interactive
+
+# JSON mode — read/write elicitation as JSON via stdin/stdout
+echo '{"action":"accept","content":{"confirm":true}}' | \
+  mcpcli exec my-server deploy_tool '{"target": "staging"}' --json
+```
+
 ## Authentication
 
 Some HTTP servers require OAuth. If you see an "Not authenticated" error:
@@ -140,6 +158,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli prompt <server> <name> '<json>'` | Get a specific prompt          |
 | `mcpcli exec <server> <tool> --no-wait` | Execute as async task, return handle |
 | `mcpcli exec <server> <tool> --ttl <ms>` | Set task TTL (default: 60000) |
+| `mcpcli -N exec <server> <tool> ...`  | Decline elicitation (non-interactive) |
 | `mcpcli task list <server>`            | List tasks on a server          |
 | `mcpcli task get <server> <taskId>`    | Get task status                 |
 | `mcpcli task result <server> <taskId>` | Retrieve completed task result  |
