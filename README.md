@@ -17,7 +17,7 @@ bun install -g @evantahler/mcpcli
 curl -fsSL https://raw.githubusercontent.com/evantahler/mcpcli/main/install.sh | bash
 ```
 
-The curl installer downloads a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh).
+The curl installer downloads a pre-built binary (macOS/Linux) — no runtime needed. The bun install method requires [Bun](https://bun.sh). Windows `.exe` binaries are available on the [GitHub Releases](https://github.com/evantahler/mcpcli/releases) page.
 
 ## Quick Start
 
