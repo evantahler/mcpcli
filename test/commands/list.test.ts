@@ -5,7 +5,7 @@ function runJson(...args: string[]) {
   return run("--json", ...args);
 }
 
-describe("mcpcli (list)", () => {
+describe("mcpx (list)", () => {
   test("lists tools, resources, and prompts from mock server as JSON when piped", async () => {
     const proc = runJson();
     const exitCode = await proc.exited;

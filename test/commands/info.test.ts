@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { runJson } from "../helpers/run.ts";
 
-describe("mcpcli info", () => {
+describe("mcpx info", () => {
   test("info <server> shows server overview with capabilities", async () => {
     const proc = runJson("info", "mock");
     const exitCode = await proc.exited;

@@ -42,7 +42,7 @@ export function registerIndexCommand(program: Command) {
         const { config, manager } = await getContext(program);
         const idx = config.searchIndex;
         if (idx.tools.length === 0) {
-          console.log("No search index. Run: mcpcli index");
+          console.log("No search index. Run: mcpx index");
         } else {
           console.log(`Tools:   ${idx.tools.length}`);
           console.log(`Model:   ${idx.embedding_model}`);
@@ -50,7 +50,7 @@ export function registerIndexCommand(program: Command) {
 
           const stale = getStaleServers(idx, config.servers);
           if (stale.length > 0) {
-            console.log(yellow(`Stale:   ${stale.join(", ")} (run mcpcli index to refresh)`));
+            console.log(yellow(`Stale:   ${stale.join(", ")} (run mcpx index to refresh)`));
           }
         }
         await manager.close();

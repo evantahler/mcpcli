@@ -357,7 +357,7 @@ export function formatToolHelp(serverName: string, tool: Tool, options: FormatOp
   const example = generateExample(tool.inputSchema);
   lines.push("");
   lines.push(bold("Example:"));
-  lines.push(dim(`  mcpcli call ${serverName} ${tool.name} '${JSON.stringify(example)}'`));
+  lines.push(dim(`  mcpx call ${serverName} ${tool.name} '${JSON.stringify(example)}'`));
 
   return lines.join("\n");
 }

@@ -18,14 +18,14 @@ export function registerSearchCommand(program: Command) {
         const { config, formatOptions } = await getContext(program);
 
         if (config.searchIndex.tools.length === 0) {
-          console.error(formatError("No search index found. Run: mcpcli index", formatOptions));
+          console.error(formatError("No search index found. Run: mcpx index", formatOptions));
           process.exit(1);
         }
 
         const stale = getStaleServers(config.searchIndex, config.servers);
         if (stale.length > 0) {
           logger.warn(
-            `Warning: index has tools for removed servers: ${stale.join(", ")}. Run: mcpcli index`,
+            `Warning: index has tools for removed servers: ${stale.join(", ")}. Run: mcpx index`,
           );
         }
 

@@ -1,4 +1,4 @@
-# mcpcli
+# mcpx
 
 A command-line interface for MCP servers. **curl for MCP.**
 
@@ -11,88 +11,88 @@ Two audiences:
 
 ```bash
 # Via bun
-bun install -g @evantahler/mcpcli
+bun install -g @evantahler/mcpx
 
 # Via curl
-curl -fsSL https://raw.githubusercontent.com/evantahler/mcpcli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/evantahler/mcpx/main/install.sh | bash
 ```
 
-The curl installer downloads a pre-built binary (macOS/Linux) — no runtime needed. The bun install method requires [Bun](https://bun.sh). Windows `.exe` binaries are available on the [GitHub Releases](https://github.com/evantahler/mcpcli/releases) page.
+The curl installer downloads a pre-built binary (macOS/Linux) — no runtime needed. The bun install method requires [Bun](https://bun.sh). Windows `.exe` binaries are available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
 
 ## Quick Start
 
 ```bash
 # Add the GitHub MCP server
-mcpcli add github --url https://mcp.github.com
+mcpx add github --url https://mcp.github.com
 
 # List all servers and their tools
-mcpcli
+mcpx
 
 # List with descriptions
-mcpcli -d
+mcpx -d
 
 # Inspect a server
-mcpcli info github
+mcpx info github
 
 # Inspect a specific tool
-mcpcli info github search_repositories
+mcpx info github search_repositories
 
 # Execute a tool
-mcpcli exec github search_repositories '{"query": "mcp server"}'
+mcpx exec github search_repositories '{"query": "mcp server"}'
 
 # Search tools — combines keyword and semantic matching
-mcpcli search "post a ticket to linear"
+mcpx search "post a ticket to linear"
 
 # Search with only keyword/glob matching (fast, no embeddings)
-mcpcli search -k "*file*"
+mcpx search -k "*file*"
 
 # Search with only semantic matching
-mcpcli search -q "manage pull requests"
+mcpx search -q "manage pull requests"
 
 # Limit the number of results (default: 10)
-mcpcli search -n 5 "manage pull requests"
+mcpx search -n 5 "manage pull requests"
 ```
 
 ## Commands
 
-| Command                                  | Description                                            |
-| ---------------------------------------- | ------------------------------------------------------ |
-| `mcpcli`                                 | List all configured servers and tools                  |
-| `mcpcli servers`                         | List configured servers (name, type, detail)           |
-| `mcpcli info <server>`                   | Server overview (version, capabilities, tools, counts) |
-| `mcpcli info <server> <tool>`            | Show tool schema                                       |
-| `mcpcli search <query>`                  | Search tools (keyword + semantic)                      |
-| `mcpcli search -k <pattern>`             | Keyword/glob search only                               |
-| `mcpcli search -q <query>`               | Semantic search only                                   |
-| `mcpcli search -n <number> <query>`      | Limit number of results (default: 10)                  |
-| `mcpcli index`                           | Build/rebuild the search index                         |
-| `mcpcli index -i`                        | Show index status                                      |
-| `mcpcli exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
-| `mcpcli exec <server> <tool> -f file`    | Read tool args from a JSON file                        |
-| `mcpcli exec <server>`                   | List available tools for a server                      |
-| `mcpcli auth <server>`                   | Authenticate with an HTTP MCP server (OAuth)           |
-| `mcpcli auth <server> -s`                | Check auth status and token TTL                        |
-| `mcpcli auth <server> -r`                | Force token refresh                                    |
-| `mcpcli deauth <server>`                 | Remove stored authentication for a server              |
-| `mcpcli add <name> --command <cmd>`      | Add a stdio MCP server to your config                  |
-| `mcpcli add <name> --url <url>`          | Add an HTTP MCP server to your config                  |
-| `mcpcli remove <name>`                   | Remove an MCP server from your config                  |
-| `mcpcli ping`                            | Check connectivity to all configured servers           |
-| `mcpcli ping <server> [server2...]`      | Check connectivity to specific server(s)               |
-| `mcpcli skill install --claude`          | Install the mcpcli skill for Claude Code               |
-| `mcpcli skill install --cursor`          | Install the mcpcli rule for Cursor                     |
-| `mcpcli resource`                        | List all resources across all servers                  |
-| `mcpcli resource <server>`               | List resources for a server                            |
-| `mcpcli resource <server> <uri>`         | Read a specific resource                               |
-| `mcpcli prompt`                          | List all prompts across all servers                    |
-| `mcpcli prompt <server>`                 | List prompts for a server                              |
-| `mcpcli prompt <server> <name> [json]`   | Get a specific prompt                                  |
-| `mcpcli exec <server> <tool> --no-wait`  | Execute as async task, return task handle immediately  |
-| `mcpcli exec <server> <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
-| `mcpcli task list <server>`              | List tasks on a server                                 |
-| `mcpcli task get <server> <taskId>`      | Get task status                                        |
-| `mcpcli task result <server> <taskId>`   | Retrieve completed task result                         |
-| `mcpcli task cancel <server> <taskId>`   | Cancel a running task                                  |
+| Command                                | Description                                            |
+| -------------------------------------- | ------------------------------------------------------ |
+| `mcpx`                                 | List all configured servers and tools                  |
+| `mcpx servers`                         | List configured servers (name, type, detail)           |
+| `mcpx info <server>`                   | Server overview (version, capabilities, tools, counts) |
+| `mcpx info <server> <tool>`            | Show tool schema                                       |
+| `mcpx search <query>`                  | Search tools (keyword + semantic)                      |
+| `mcpx search -k <pattern>`             | Keyword/glob search only                               |
+| `mcpx search -q <query>`               | Semantic search only                                   |
+| `mcpx search -n <number> <query>`      | Limit number of results (default: 10)                  |
+| `mcpx index`                           | Build/rebuild the search index                         |
+| `mcpx index -i`                        | Show index status                                      |
+| `mcpx exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
+| `mcpx exec <server> <tool> -f file`    | Read tool args from a JSON file                        |
+| `mcpx exec <server>`                   | List available tools for a server                      |
+| `mcpx auth <server>`                   | Authenticate with an HTTP MCP server (OAuth)           |
+| `mcpx auth <server> -s`                | Check auth status and token TTL                        |
+| `mcpx auth <server> -r`                | Force token refresh                                    |
+| `mcpx deauth <server>`                 | Remove stored authentication for a server              |
+| `mcpx add <name> --command <cmd>`      | Add a stdio MCP server to your config                  |
+| `mcpx add <name> --url <url>`          | Add an HTTP MCP server to your config                  |
+| `mcpx remove <name>`                   | Remove an MCP server from your config                  |
+| `mcpx ping`                            | Check connectivity to all configured servers           |
+| `mcpx ping <server> [server2...]`      | Check connectivity to specific server(s)               |
+| `mcpx skill install --claude`          | Install the mcpx skill for Claude Code                 |
+| `mcpx skill install --cursor`          | Install the mcpx rule for Cursor                       |
+| `mcpx resource`                        | List all resources across all servers                  |
+| `mcpx resource <server>`               | List resources for a server                            |
+| `mcpx resource <server> <uri>`         | Read a specific resource                               |
+| `mcpx prompt`                          | List all prompts across all servers                    |
+| `mcpx prompt <server>`                 | List prompts for a server                              |
+| `mcpx prompt <server> <name> [json]`   | Get a specific prompt                                  |
+| `mcpx exec <server> <tool> --no-wait`  | Execute as async task, return task handle immediately  |
+| `mcpx exec <server> <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
+| `mcpx task list <server>`              | List tasks on a server                                 |
+| `mcpx task get <server> <taskId>`      | Get task status                                        |
+| `mcpx task result <server> <taskId>`   | Retrieve completed task result                         |
+| `mcpx task cancel <server> <taskId>`   | Cancel a running task                                  |
 
 ## Options
 
@@ -108,7 +108,7 @@ mcpcli search -n 5 "manage pull requests"
 | `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
 
-Server log messages (`notifications/message`) are displayed on stderr with level-appropriate coloring. Valid levels (in ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. When a server declares logging capability, mcpcli sends `logging/setLevel` to request messages at the configured threshold and above.
+Server log messages (`notifications/message`) are displayed on stderr with level-appropriate coloring. Valid levels (in ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. When a server declares logging capability, mcpx sends `logging/setLevel` to request messages at the configured threshold and above.
 
 ## Managing Servers
 
@@ -116,31 +116,31 @@ Add and remove servers from the CLI — no manual JSON editing required.
 
 ```bash
 # Add a stdio server
-mcpcli add filesystem --command npx --args "-y,@modelcontextprotocol/server-filesystem,/tmp"
+mcpx add filesystem --command npx --args "-y,@modelcontextprotocol/server-filesystem,/tmp"
 
 # Add an HTTP server with headers
-mcpcli add my-api --url https://api.example.com/mcp --header "Authorization:Bearer tok123"
+mcpx add my-api --url https://api.example.com/mcp --header "Authorization:Bearer tok123"
 
 # Add with tool filtering
-mcpcli add github --url https://mcp.github.com --allowed-tools "search_*,get_*"
+mcpx add github --url https://mcp.github.com --allowed-tools "search_*,get_*"
 
 # Add a legacy SSE server (explicit transport)
-mcpcli add legacy-api --url https://api.example.com/sse --transport sse
+mcpx add legacy-api --url https://api.example.com/sse --transport sse
 
 # Add with environment variables
-mcpcli add my-server --command node --args "server.js" --env "API_KEY=sk-123,DEBUG=true"
+mcpx add my-server --command node --args "server.js" --env "API_KEY=sk-123,DEBUG=true"
 
 # Overwrite an existing server
-mcpcli add filesystem --command echo --force
+mcpx add filesystem --command echo --force
 
 # Remove a server (also cleans up auth.json)
-mcpcli remove filesystem
+mcpx remove filesystem
 
 # Remove but keep stored auth credentials
-mcpcli remove my-api --keep-auth
+mcpx remove my-api --keep-auth
 
 # Preview what would be removed
-mcpcli remove my-api --dry-run
+mcpx remove my-api --dry-run
 ```
 
 **`add` options:**
@@ -169,7 +169,7 @@ mcpcli remove my-api --dry-run
 
 ## Configuration
 
-Config lives in `~/.mcpcli/` (or the current directory). Three files:
+Config lives in `~/.mcpx/` (or the current directory). Three files:
 
 ### `servers.json` — MCP Server Definitions
 
@@ -201,7 +201,7 @@ Standard MCP server config format. Supports both stdio and HTTP servers.
 ```
 
 **Stdio servers** — `command` + `args`, spawned as child processes
-**HTTP servers** — `url`, with optional static `headers` for pre-shared tokens. OAuth is auto-discovered at connection time via `.well-known/oauth-authorization-server` — no config needed. By default, mcpcli tries Streamable HTTP first and automatically falls back to legacy SSE if the server doesn't support it. Set `"transport": "sse"` or `"transport": "streamable-http"` to skip auto-detection.
+**HTTP servers** — `url`, with optional static `headers` for pre-shared tokens. OAuth is auto-discovered at connection time via `.well-known/oauth-authorization-server` — no config needed. By default, mcpx tries Streamable HTTP first and automatically falls back to legacy SSE if the server doesn't support it. Set `"transport": "sse"` or `"transport": "streamable-http"` to skip auto-detection.
 
 Environment variables are interpolated via `${VAR_NAME}` syntax. Set `MCP_STRICT_ENV=false` to warn instead of error on missing variables.
 
@@ -232,7 +232,7 @@ Stores OAuth tokens for HTTP MCP servers. You don't edit this directly — manag
 }
 ```
 
-Tokens are automatically refreshed when expired (if a refresh token is available). Any command that connects to a server (`exec`, `info`, `search`, listing) will refresh tokens transparently. `mcpcli auth <server> --status` shows current token state and TTL.
+Tokens are automatically refreshed when expired (if a refresh token is available). Any command that connects to a server (`exec`, `info`, `search`, listing) will refresh tokens transparently. `mcpx auth <server> --status` shows current token state and TTL.
 
 ### `search.json` — Semantic Search Index (managed automatically)
 
@@ -270,18 +270,18 @@ Scenarios and keywords are extracted heuristically from tool names and descripti
 1. `MCP_CONFIG_PATH` environment variable
 2. `-c / --config` flag
 3. `./servers.json` (current directory)
-4. `~/.mcpcli/servers.json`
+4. `~/.mcpx/servers.json`
 
 ## Environment Variables
 
-| Variable          | Purpose                     | Default      |
-| ----------------- | --------------------------- | ------------ |
-| `MCP_CONFIG_PATH` | Config directory path       | `~/.mcpcli/` |
-| `MCP_DEBUG`       | Enable debug output         | `false`      |
-| `MCP_TIMEOUT`     | Request timeout (seconds)   | `1800`       |
-| `MCP_CONCURRENCY` | Parallel server connections | `5`          |
-| `MCP_MAX_RETRIES` | Retry attempts              | `3`          |
-| `MCP_STRICT_ENV`  | Error on missing `${VAR}`   | `true`       |
+| Variable          | Purpose                     | Default    |
+| ----------------- | --------------------------- | ---------- |
+| `MCP_CONFIG_PATH` | Config directory path       | `~/.mcpx/` |
+| `MCP_DEBUG`       | Enable debug output         | `false`    |
+| `MCP_TIMEOUT`     | Request timeout (seconds)   | `1800`     |
+| `MCP_CONCURRENCY` | Parallel server connections | `5`        |
+| `MCP_MAX_RETRIES` | Retry attempts              | `3`        |
+| `MCP_STRICT_ENV`  | Error on missing `${VAR}`   | `true`     |
 
 ## OAuth Flow
 
@@ -289,17 +289,17 @@ For HTTP MCP servers that require OAuth:
 
 ```bash
 # Start the OAuth flow — opens browser for authorization
-mcpcli auth github
+mcpx auth github
 
 # Check token status
-mcpcli auth github -s
+mcpx auth github -s
 # => github: authenticated (expires in 47m)
 
 # Force re-authentication
-mcpcli auth github -r
+mcpx auth github -r
 
 # Authenticate without rebuilding the search index
-mcpcli auth github --no-index
+mcpx auth github --no-index
 ```
 
 The OAuth flow:
@@ -313,23 +313,23 @@ The OAuth flow:
 
 ## Search
 
-`mcpcli search` is a single command that combines keyword matching and semantic vector search. By default, both strategies run and results are merged.
+`mcpx search` is a single command that combines keyword matching and semantic vector search. By default, both strategies run and results are merged.
 
 ```bash
 # Combined search (default) — keyword hits + semantic matches, merged and ranked
-mcpcli search "send a message to slack"
+mcpx search "send a message to slack"
 # => slack/postMessage          (0.94) Post a message to a channel
 # => slack/sendDirectMessage    (0.87) Send a DM to a user
 # => teams/sendMessage          (0.72) Send a Teams message
 
 # Keyword only — fast glob match against tool names, descriptions, and keywords
-mcpcli search -k "*pull*request*"
+mcpx search -k "*pull*request*"
 # => github/createPullRequest
 # => github/getPullRequest
 # => github/mergePullRequest
 
 # Semantic only — vector similarity against intent
-mcpcli search -q "review someone's code changes"
+mcpx search -q "review someone's code changes"
 # => github/submitPullRequestReview  (0.91) Submit a PR review
 # => github/getPullRequest           (0.85) Get PR details
 # => github/listPullRequestCommits   (0.78) List commits in a PR
@@ -346,51 +346,51 @@ The index updates incrementally — only new or changed tools are re-indexed. Th
 
 ## Tasks (Async Tool Execution)
 
-MCP servers can declare support for [tasks](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/tasks) — long-running operations that return a task handle instead of blocking until completion. When a tool supports tasks (`execution.taskSupport: "optional"` or `"required"`), mcpcli automatically uses task-augmented execution.
+MCP servers can declare support for [tasks](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/tasks) — long-running operations that return a task handle instead of blocking until completion. When a tool supports tasks (`execution.taskSupport: "optional"` or `"required"`), mcpx automatically uses task-augmented execution.
 
 ```bash
 # Default: wait for the task to complete, showing progress updates
-mcpcli exec my-server long_running_tool '{"input": "data"}'
+mcpx exec my-server long_running_tool '{"input": "data"}'
 
 # Return immediately with a task handle (useful for scripting)
-mcpcli exec my-server long_running_tool '{"input": "data"}' --no-wait
+mcpx exec my-server long_running_tool '{"input": "data"}' --no-wait
 # => Task created: task-abc123 (status: working)
 
 # Check task status
-mcpcli task get my-server task-abc123
+mcpx task get my-server task-abc123
 
 # Retrieve the result once complete
-mcpcli task result my-server task-abc123
+mcpx task result my-server task-abc123
 
 # List all tasks on a server
-mcpcli task list my-server
+mcpx task list my-server
 
 # Cancel a running task
-mcpcli task cancel my-server task-abc123
+mcpx task cancel my-server task-abc123
 ```
 
 For tools that don't support tasks, `exec` works exactly as before — no changes needed.
 
 ## Elicitation (Server-Requested User Input)
 
-MCP servers can request user input mid-operation via [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation). mcpcli supports both modes:
+MCP servers can request user input mid-operation via [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation). mcpx supports both modes:
 
-- **Form mode**: The server sends a JSON schema describing input fields (strings, numbers, booleans, enums, multi-select). mcpcli renders prompts in the terminal and validates input before returning it.
-- **URL mode**: The server sends a URL for the user to visit (e.g., for authentication or payment flows). mcpcli opens it in the default browser.
+- **Form mode**: The server sends a JSON schema describing input fields (strings, numbers, booleans, enums, multi-select). mcpx renders prompts in the terminal and validates input before returning it.
+- **URL mode**: The server sends a URL for the user to visit (e.g., for authentication or payment flows). mcpx opens it in the default browser.
 
 ```bash
 # Interactive — prompts appear in the terminal
-mcpcli exec my-server deploy_tool '{"target": "staging"}'
+mcpx exec my-server deploy_tool '{"target": "staging"}'
 # Server requests input: Confirm deployment
 #   *Confirm [y/n]: y
 
 # Non-interactive — decline all elicitation (for scripts/CI)
-mcpcli exec my-server deploy_tool '{"target": "staging"}' --no-interactive
+mcpx exec my-server deploy_tool '{"target": "staging"}' --no-interactive
 
 # JSON mode — elicitation requests are written to stdout as JSON,
 # and responses are read from stdin (for programmatic handling)
 echo '{"action":"accept","content":{"confirm":true}}' | \
-  mcpcli exec my-server deploy_tool '{"target": "staging"}' --json
+  mcpx exec my-server deploy_tool '{"target": "staging"}' --json
 ```
 
 ## Debugging with Verbose Mode
@@ -402,7 +402,7 @@ echo '{"action":"accept","content":{"confirm":true}}' | \
 Verbose mode traces every JSON-RPC message at the transport layer — requests, responses, and notifications — for both stdio and HTTP servers:
 
 ```bash
-mcpcli -v exec mock echo '{"message":"hello"}'
+mcpx -v exec mock echo '{"message":"hello"}'
 
 # → initialize (id: 0)
 # ← initialize (id: 0) [45ms] — mock-server v1.0
@@ -414,7 +414,7 @@ mcpcli -v exec mock echo '{"message":"hello"}'
 With `--json`, trace output is NDJSON on stderr (one JSON object per message):
 
 ```bash
-mcpcli -v -j exec mock echo '{"message":"hello"}' 2>trace.jsonl
+mcpx -v -j exec mock echo '{"message":"hello"}' 2>trace.jsonl
 ```
 
 ### HTTP Traffic
@@ -422,7 +422,7 @@ mcpcli -v -j exec mock echo '{"message":"hello"}' 2>trace.jsonl
 For HTTP/SSE servers, verbose mode also shows raw HTTP headers and timing:
 
 ```bash
-mcpcli -v exec arcade Gmail_WhoAmI
+mcpx -v exec arcade Gmail_WhoAmI
 
 # > POST https://api.arcade.dev/mcp/evan-coding
 # > authorization: Bearer eyJhbGci...
@@ -443,29 +443,29 @@ mcpcli -v exec arcade Gmail_WhoAmI
 # { "content": [ ... ] }
 
 # Debug on stderr, clean JSON on stdout
-mcpcli -v exec arcade Gmail_WhoAmI | jq .
+mcpx -v exec arcade Gmail_WhoAmI | jq .
 
 # Show full auth tokens (unmasked)
-mcpcli -v -S exec arcade Gmail_WhoAmI
+mcpx -v -S exec arcade Gmail_WhoAmI
 ```
 
 The `>` / `<` convention matches curl — `>` for request, `<` for response. The `→` / `←` arrows show JSON-RPC protocol messages with method names, IDs, round-trip timing, and result summaries.
 
 ## Input Validation
 
-`mcpcli exec` validates tool arguments locally before sending them to the server. MCP tools advertise a JSON Schema for their inputs — mcpcli uses this to catch errors fast, without a round-trip.
+`mcpx exec` validates tool arguments locally before sending them to the server. MCP tools advertise a JSON Schema for their inputs — mcpx uses this to catch errors fast, without a round-trip.
 
 ```bash
 # Missing required field — caught locally
-mcpcli exec github create_issue '{"title": "bug"}'
+mcpx exec github create_issue '{"title": "bug"}'
 # => error: missing required field "repo" (github/create_issue)
 
 # Wrong type — caught locally
-mcpcli exec github create_issue '{"repo": "foo", "title": 123}'
+mcpx exec github create_issue '{"repo": "foo", "title": 123}'
 # => error: "title" must be a string, got number (github/create_issue)
 
 # Valid — sent to server
-mcpcli exec github create_issue '{"repo": "foo", "title": "bug"}'
+mcpx exec github create_issue '{"repo": "foo", "title": "bug"}'
 # => { ... }
 ```
 
@@ -484,89 +484,89 @@ Output is human-friendly by default, JSON when piped:
 
 ```bash
 # Human-readable
-mcpcli info github
+mcpx info github
 
 # JSON (piped)
-mcpcli info github | jq '.tools[].name'
+mcpx info github | jq '.tools[].name'
 
 # Force JSON
-mcpcli info github --json
+mcpx info github --json
 ```
 
 Tool results are always JSON, designed for chaining:
 
 ```bash
 # Search repos and read the first result
-mcpcli exec github search_repositories '{"query":"mcp"}' \
+mcpx exec github search_repositories '{"query":"mcp"}' \
   | jq -r '.content[0].text | fromjson | .items[0].full_name' \
-  | xargs -I {} mcpcli exec github get_file_contents '{"owner":"{}","path":"README.md"}'
+  | xargs -I {} mcpx exec github get_file_contents '{"owner":"{}","path":"README.md"}'
 
 # Conditional execution
-mcpcli exec filesystem list_directory '{"path":"."}' \
+mcpx exec filesystem list_directory '{"path":"."}' \
   | jq -e '.content[0].text | contains("package.json")' \
-  && mcpcli exec filesystem read_file '{"path":"./package.json"}'
+  && mcpx exec filesystem read_file '{"path":"./package.json"}'
 ```
 
 Stdin and file input work for tool arguments:
 
 ```bash
 # Pipe JSON directly
-echo '{"path":"./README.md"}' | mcpcli exec filesystem read_file
+echo '{"path":"./README.md"}' | mcpx exec filesystem read_file
 
 # Pipe from a file
-cat params.json | mcpcli exec server tool
+cat params.json | mcpx exec server tool
 
 # Shell redirect from a file
-mcpcli exec server tool < params.json
+mcpx exec server tool < params.json
 
 # Read args from a file with --file flag
-mcpcli exec filesystem read_file -f params.json
+mcpx exec filesystem read_file -f params.json
 ```
 
 ## Agent Integration
 
 ### Claude Code Skill
 
-mcpcli ships a Claude Code skill at `.claude/skills/mcpcli.md` that teaches Claude Code how to discover and use MCP tools. Install it:
+mcpx ships a Claude Code skill at `.claude/skills/mcpx.md` that teaches Claude Code how to discover and use MCP tools. Install it:
 
 ```bash
-# Install to the current project (.claude/skills/mcpcli.md)
-mcpcli skill install --claude
+# Install to the current project (.claude/skills/mcpx.md)
+mcpx skill install --claude
 
-# Install globally (~/.claude/skills/mcpcli.md)
-mcpcli skill install --claude --global
+# Install globally (~/.claude/skills/mcpx.md)
+mcpx skill install --claude --global
 
 # Install to both locations
-mcpcli skill install --claude --global --project
+mcpx skill install --claude --global --project
 
 # Overwrite an existing skill file
-mcpcli skill install --claude --force
+mcpx skill install --claude --force
 ```
 
-Then in any Claude Code session, the agent can use `/mcpcli` or the skill triggers automatically when the agent needs to interact with external services. The skill instructs the agent to:
+Then in any Claude Code session, the agent can use `/mcpx` or the skill triggers automatically when the agent needs to interact with external services. The skill instructs the agent to:
 
-1. **Search first** — `mcpcli search "<intent>"` to find relevant tools
-2. **Inspect** — `mcpcli info <server> <tool>` to get the schema before calling
-3. **Execute** — `mcpcli exec <server> <tool> '<json>'` to execute
+1. **Search first** — `mcpx search "<intent>"` to find relevant tools
+2. **Inspect** — `mcpx info <server> <tool>` to get the schema before calling
+3. **Execute** — `mcpx exec <server> <tool> '<json>'` to execute
 
 This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
 
 ### Cursor Rule
 
-mcpcli ships a Cursor rule at `.cursor/rules/mcpcli.mdc` that teaches Cursor how to discover and use MCP tools. Install it:
+mcpx ships a Cursor rule at `.cursor/rules/mcpx.mdc` that teaches Cursor how to discover and use MCP tools. Install it:
 
 ```bash
-# Install to the current project (.cursor/rules/mcpcli.mdc)
-mcpcli skill install --cursor
+# Install to the current project (.cursor/rules/mcpx.mdc)
+mcpx skill install --cursor
 
-# Install globally (~/.cursor/rules/mcpcli.mdc)
-mcpcli skill install --cursor --global
+# Install globally (~/.cursor/rules/mcpx.mdc)
+mcpx skill install --cursor --global
 
 # Install both Claude and Cursor at once
-mcpcli skill install --claude --cursor
+mcpx skill install --claude --cursor
 
 # Overwrite an existing rule file
-mcpcli skill install --cursor --force
+mcpx skill install --cursor --force
 ```
 
 ### Raw System Prompt (other agents)
@@ -574,16 +574,16 @@ mcpcli skill install --cursor --force
 For non-Claude-Code agents, add this to the system prompt:
 
 ```
-You have access to MCP tools via the `mcpcli` CLI.
+You have access to MCP tools via the `mcpx` CLI.
 
 To discover tools:
-  mcpcli search "<what you want to do>"    # combined keyword + semantic
-  mcpcli search -k "<pattern>"             # keyword/glob only
-  mcpcli info <server> <tool>              # tool schema
+  mcpx search "<what you want to do>"    # combined keyword + semantic
+  mcpx search -k "<pattern>"             # keyword/glob only
+  mcpx info <server> <tool>              # tool schema
 
 To execute tools:
-  mcpcli exec <server> <tool> '<json args>'
-  mcpcli exec <server> <tool> -f params.json
+  mcpx exec <server> <tool> '<json args>'
+  mcpx exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.
 ```
@@ -620,7 +620,7 @@ bun lint
 
 ## Inspiration
 
-Inspired by [mcp-cli](https://github.com/philschmid/mcp-cli) by Phil Schmid, which nails the core DX of a shell-friendly MCP client. mcpcli extends that foundation with OAuth support for HTTP servers and semantic tool search.
+Inspired by [mcp-cli](https://github.com/philschmid/mcp-cli) by Phil Schmid, which nails the core DX of a shell-friendly MCP client. mcpx extends that foundation with OAuth support for HTTP servers and semantic tool search.
 
 ## License
 

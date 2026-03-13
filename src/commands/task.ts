@@ -27,7 +27,7 @@ export function registerTaskCommand(program: Command) {
           case "get": {
             if (!taskId) {
               spinner.error("Missing task ID");
-              console.error(formatError("Usage: mcpcli task get <server> <taskId>", formatOptions));
+              console.error(formatError("Usage: mcpx task get <server> <taskId>", formatOptions));
               process.exit(1);
             }
             const task = await manager.getTask(server, taskId);
@@ -39,7 +39,7 @@ export function registerTaskCommand(program: Command) {
             if (!taskId) {
               spinner.error("Missing task ID");
               console.error(
-                formatError("Usage: mcpcli task result <server> <taskId>", formatOptions),
+                formatError("Usage: mcpx task result <server> <taskId>", formatOptions),
               );
               process.exit(1);
             }
@@ -52,7 +52,7 @@ export function registerTaskCommand(program: Command) {
             if (!taskId) {
               spinner.error("Missing task ID");
               console.error(
-                formatError("Usage: mcpcli task cancel <server> <taskId>", formatOptions),
+                formatError("Usage: mcpx task cancel <server> <taskId>", formatOptions),
               );
               process.exit(1);
             }

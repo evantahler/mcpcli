@@ -4,10 +4,10 @@ import { mkdtempSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { run, runWithStdin, CLI, CONFIG } from "../helpers/run.ts";
 
-const tempDir = mkdtempSync(join(tmpdir(), "mcpcli-test-"));
+const tempDir = mkdtempSync(join(tmpdir(), "mcpx-test-"));
 afterAll(() => rmSync(tempDir, { recursive: true, force: true }));
 
-describe("mcpcli exec", () => {
+describe("mcpx exec", () => {
   test("calls a tool with inline JSON args", async () => {
     const proc = run("exec", "mock", "echo", '{"message": "hello world"}');
     const exitCode = await proc.exited;
@@ -128,7 +128,7 @@ describe("mcpcli exec", () => {
   });
 
   test("errors when --file path does not exist", async () => {
-    const proc = run("exec", "mock", "echo", "-f", "/tmp/nonexistent-mcpcli-test.json");
+    const proc = run("exec", "mock", "echo", "-f", "/tmp/nonexistent-mcpx-test.json");
     const exitCode = await proc.exited;
     const stderr = await new Response(proc.stderr).text();
     expect(exitCode).toBe(1);

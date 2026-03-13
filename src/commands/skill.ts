@@ -10,11 +10,11 @@ interface SkillTarget {
 }
 
 export function registerSkillCommand(program: Command) {
-  const skill = program.command("skill").description("manage mcpcli skills");
+  const skill = program.command("skill").description("manage mcpx skills");
 
   skill
     .command("install")
-    .description("install the mcpcli skill for an AI agent")
+    .description("install the mcpx skill for an AI agent")
     .option("--claude", "install for Claude Code")
     .option("--cursor", "install for Cursor")
     .option("--global", "install to global location (e.g. ~/.claude/skills/)")
@@ -44,20 +44,20 @@ export function registerSkillCommand(program: Command) {
         if (options.claude) {
           agents.push({
             name: "Claude Code",
-            sourcePath: resolve(dirname(Bun.main), "..", ".claude", "skills", "mcpcli.md"),
+            sourcePath: resolve(dirname(Bun.main), "..", ".claude", "skills", "mcpx.md"),
             globalDir: join(homedir(), ".claude", "skills"),
             projectDir: resolve(".claude", "skills"),
-            filename: "mcpcli.md",
+            filename: "mcpx.md",
           });
         }
 
         if (options.cursor) {
           agents.push({
             name: "Cursor",
-            sourcePath: resolve(dirname(Bun.main), "..", ".cursor", "rules", "mcpcli.mdc"),
+            sourcePath: resolve(dirname(Bun.main), "..", ".cursor", "rules", "mcpx.mdc"),
             globalDir: join(homedir(), ".cursor", "rules"),
             projectDir: resolve(".cursor", "rules"),
-            filename: "mcpcli.mdc",
+            filename: "mcpx.mdc",
           });
         }
 
@@ -104,7 +104,7 @@ export function registerSkillCommand(program: Command) {
 
             await mkdir(target.dir, { recursive: true });
             await writeFile(dest, content, "utf-8");
-            console.log(`Installed mcpcli skill for ${agent.name} (${target.label}): ${dest}`);
+            console.log(`Installed mcpx skill for ${agent.name} (${target.label}): ${dest}`);
           }
         }
       },
