@@ -138,6 +138,8 @@ mcpcli remove my-api --dry-run
 | `--allowed-tools <t1,t2>`  | Comma-separated allowed tool patterns  |
 | `--disabled-tools <t1,t2>` | Comma-separated disabled tool patterns |
 | `-f, --force`              | Overwrite if server already exists     |
+| `--no-auth`                | Skip automatic OAuth after adding      |
+| `--no-index`               | Skip rebuilding the search index       |
 
 **`remove` options:**
 
@@ -276,6 +278,9 @@ mcpcli auth github -s
 
 # Force re-authentication
 mcpcli auth github -r
+
+# Authenticate without rebuilding the search index
+mcpcli auth github --no-index
 ```
 
 The OAuth flow:
@@ -350,7 +355,7 @@ mcpcli -v exec arcade Gmail_WhoAmI
 mcpcli -v exec arcade Gmail_WhoAmI | jq .
 
 # Show full auth tokens (unmasked)
-mcpcli -v -S call arcade Gmail_WhoAmI
+mcpcli -v -S exec arcade Gmail_WhoAmI
 ```
 
 The `>` / `<` convention matches curl — `>` for request, `<` for response. The JSON-RPC body is shown between the request headers and response, without a prefix. Timing is displayed on the response status line.
