@@ -9,6 +9,7 @@ export interface FormatOptions {
   withDescriptions?: boolean;
   verbose?: boolean;
   showSecrets?: boolean;
+  logLevel?: string;
 }
 
 export interface UnifiedItem {

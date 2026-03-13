@@ -28,6 +28,7 @@ export async function getContext(program: Command): Promise<AppContext> {
   const concurrency = Number(process.env.MCP_CONCURRENCY ?? 5);
   const timeout = Number(process.env.MCP_TIMEOUT ?? 1800) * 1000;
   const maxRetries = Number(process.env.MCP_MAX_RETRIES ?? 3);
+  const logLevel = (opts.logLevel as string | undefined) ?? "warning";
 
   const manager = new ServerManager({
     servers: config.servers,
@@ -38,6 +39,7 @@ export async function getContext(program: Command): Promise<AppContext> {
     showSecrets,
     timeout,
     maxRetries,
+    logLevel,
   });
 
   const formatOptions: FormatOptions = {
@@ -45,6 +47,7 @@ export async function getContext(program: Command): Promise<AppContext> {
     withDescriptions: opts.withDescriptions as boolean | undefined,
     verbose,
     showSecrets,
+    logLevel,
   };
 
   logger.configure(formatOptions);
