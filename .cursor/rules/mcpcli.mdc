@@ -26,6 +26,7 @@ This shows parameters, types, required fields, and the full JSON Schema.
 
 ```bash
 mcpcli exec <server> <tool> '<json args>'
+mcpcli exec <server> <tool> -f params.json
 ```
 
 ## Rules
@@ -56,6 +57,12 @@ mcpcli exec github search_repositories '{"query":"mcp"}' \
 
 # Read args from stdin
 echo '{"path":"./README.md"}' | mcpcli exec filesystem read_file
+
+# Pipe from a file
+cat params.json | mcpcli exec server tool
+
+# Read args from a file with --file flag
+mcpcli exec filesystem read_file -f params.json
 ```
 
 ## Authentication
@@ -80,6 +87,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli info <server> <tool>`          | Show tool schema                  |
 | `mcpcli exec <server>`                 | List tools for a server           |
 | `mcpcli exec <server> <tool> '<json>'` | Execute a tool                    |
+| `mcpcli exec <server> <tool> -f file`  | Execute with args from file       |
 | `mcpcli search "<query>"`              | Search tools (keyword + semantic) |
 | `mcpcli search -k "<pattern>"`         | Keyword/glob search only          |
 | `mcpcli search -q "<query>"`           | Semantic search only              |
