@@ -27,6 +27,7 @@ program
   .option("-j, --json", "force JSON output")
   .option("-v, --verbose", "show HTTP details and JSON-RPC protocol messages")
   .option("-S, --show-secrets", "show full auth tokens in verbose output")
+  .option("-N, --no-interactive", "decline server elicitation requests")
   .option(
     "-l, --log-level <level>",
     "minimum server log level (debug|info|notice|warning|error|critical|alert|emergency)",

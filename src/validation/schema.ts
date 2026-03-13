@@ -49,6 +49,32 @@ export function validateToolInput(
   return { valid: false, errors };
 }
 
+/** Validate user-collected form data against an elicitation requestedSchema */
+export function validateElicitationResponse(
+  schema: Record<string, unknown>,
+  input: Record<string, unknown>,
+): ValidationResult {
+  const cacheKey = `__elicitation__${JSON.stringify(schema)}`;
+  let validate = validatorCache.get(cacheKey);
+
+  if (!validate) {
+    try {
+      validate = ajv.compile(schema);
+      validatorCache.set(cacheKey, validate);
+    } catch {
+      return { valid: true, errors: [] };
+    }
+  }
+
+  const valid = validate(input);
+  if (valid) {
+    return { valid: true, errors: [] };
+  }
+
+  const errors = (validate.errors ?? []).map(formatAjvError);
+  return { valid: false, errors };
+}
+
 function formatAjvError(err: ErrorObject): ValidationError {
   const path = err.instancePath
     ? err.instancePath.replace(/^\//, "").replace(/\//g, ".")

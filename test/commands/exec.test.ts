@@ -156,4 +156,14 @@ describe("mcpcli exec", () => {
     expect(exitCode).toBe(1);
     expect(stderr).toContain("File not found");
   });
+
+  test("--no-interactive declines elicitation requests", async () => {
+    const proc = run("--no-interactive", "exec", "mock", "confirm_action", '{"action": "deploy"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toContain("declined");
+  });
 });

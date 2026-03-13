@@ -4,6 +4,7 @@ import type { ResponseMessage } from "@modelcontextprotocol/sdk/shared/responseM
 import {
   LoggingMessageNotificationSchema,
   CallToolResultSchema,
+  ElicitRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type {
   LoggingLevel,
@@ -14,6 +15,7 @@ import type {
   ListTasksResult,
   CancelTaskResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { handleElicitation } from "./elicitation.ts";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
 import type {
@@ -69,6 +71,7 @@ export interface ServerManagerOptions {
   maxRetries?: number; // default 3
   logLevel?: string; // MCP log level, default "warning"
   json?: boolean; // JSON output mode (for trace formatting)
+  noInteractive?: boolean; // decline elicitation requests
 }
 
 export class ServerManager {
@@ -86,6 +89,7 @@ export class ServerManager {
   private maxRetries: number;
   private logLevel: string;
   private json: boolean;
+  private noInteractive: boolean;
 
   constructor(opts: ServerManagerOptions) {
     this.servers = opts.servers;
@@ -98,6 +102,7 @@ export class ServerManager {
     this.maxRetries = opts.maxRetries ?? 3;
     this.logLevel = opts.logLevel ?? "warning";
     this.json = opts.json ?? false;
+    this.noInteractive = opts.noInteractive ?? false;
   }
 
   /** Get or create a connected client for a server */
@@ -141,7 +146,7 @@ export class ServerManager {
         : rawTransport;
       this.transports.set(serverName, transport);
 
-      let client = new Client({ name: pkg.name, version: pkg.version });
+      let client = this.createClient();
       try {
         await this.withTimeout(client.connect(transport), `connect(${serverName})`);
       } catch (err) {
@@ -167,7 +172,7 @@ export class ServerManager {
             ? wrapTransportWithTrace(rawSseTransport, { json: this.json, serverName })
             : rawSseTransport;
           this.transports.set(serverName, sseTransport);
-          client = new Client({ name: pkg.name, version: pkg.version });
+          client = this.createClient();
           await this.withTimeout(client.connect(sseTransport), `connect-sse(${serverName})`);
         } else {
           throw err;
@@ -198,6 +203,21 @@ export class ServerManager {
       this.oauthProviders.set(serverName, provider);
     }
     return provider;
+  }
+
+  /** Create a Client with elicitation capabilities and handler registered */
+  private createClient(): Client {
+    const client = new Client(
+      { name: pkg.name, version: pkg.version },
+      { capabilities: { elicitation: { form: {}, url: {} } } },
+    );
+    client.setRequestHandler(ElicitRequestSchema, (request) =>
+      handleElicitation(request, {
+        noInteractive: this.noInteractive,
+        json: this.json,
+      }),
+    );
+    return client;
   }
 
   /** Subscribe to server log notifications and set the desired log level */
