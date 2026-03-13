@@ -1,4 +1,4 @@
-import { bold, cyan, dim, green, red, yellow } from "ansis";
+import ansis, { bold, cyan, dim, green, red, yellow } from "ansis";
 import type { Tool, Resource, Prompt } from "../config/schemas.ts";
 import type { ToolWithServer, ResourceWithServer, PromptWithServer } from "../client/manager.ts";
 import type { ValidationError } from "../validation/schema.ts";
@@ -23,6 +23,76 @@ export interface UnifiedItem {
 export function isInteractive(options: FormatOptions): boolean {
   if (options.json) return false;
   return process.stdout.isTTY ?? false;
+}
+
+/** Get terminal width, or undefined if not a TTY. Subtracts 1 for safety margin. */
+function getTerminalWidth(): number | undefined {
+  if (process.stdout.isTTY) return Math.max(process.stdout.columns - 1, 40);
+  return undefined;
+}
+
+/** Measure visible length of a string (excluding ANSI escape codes) */
+function visibleLength(s: string): number {
+  return ansis.strip(s).length;
+}
+
+/** Word-wrap text to a max width, hard-breaking words that exceed it */
+function wrapLines(text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  if (words.length === 0) return [""];
+
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    if (word.length > maxWidth) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      for (let j = 0; j < word.length; j += maxWidth) {
+        lines.push(word.slice(j, j + maxWidth));
+      }
+      continue;
+    }
+    if (current.length === 0) {
+      current = word;
+    } else if (current.length + 1 + word.length <= maxWidth) {
+      current += " " + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+/**
+ * Word-wrap a description string to fit within the available terminal width.
+ * Returns dim()-wrapped text with continuation lines indented to prefixWidth.
+ * @param text - raw description text (before dim())
+ * @param prefixWidth - visible character width of everything before the description
+ * @param termWidth - terminal width in columns
+ */
+export function wrapDescription(text: string, prefixWidth: number, termWidth: number): string {
+  const available = termWidth - prefixWidth;
+
+  // If prefix is so wide there's barely room, wrap onto the next line with a small indent
+  if (available < 20) {
+    const fallbackIndent = Math.min(prefixWidth, 4);
+    const fallbackAvail = termWidth - fallbackIndent;
+    if (fallbackAvail < 20) {
+      return dim(text.length > termWidth ? text.slice(0, termWidth - 3) + "..." : text);
+    }
+    const wrapped = wrapLines(text, fallbackAvail);
+    const indent = " ".repeat(fallbackIndent);
+    return wrapped.map((l) => `\n${indent}${dim(l)}`).join("");
+  }
+
+  const wrapped = wrapLines(text, available);
+  const indent = " ".repeat(prefixWidth);
+  return wrapped.map((l, i) => (i === 0 ? dim(l) : `\n${indent}${dim(l)}`)).join("");
 }
 
 export interface ServerOverview {
@@ -94,10 +164,16 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
   } else {
     lines.push(bold(`Tools (${overview.tools.length}):`));
     const maxName = Math.max(...overview.tools.map((t) => t.name.length));
-    for (const t of overview.tools) {
+    const termWidth = getTerminalWidth();
+    for (let i = 0; i < overview.tools.length; i++) {
+      const t = overview.tools[i];
+      if (i > 0) lines.push("");
       const name = `  ${bold(t.name.padEnd(maxName))}`;
       if (t.description) {
-        lines.push(`${name}  ${dim(t.description)}`);
+        const pw = visibleLength(name) + 2;
+        const desc =
+          termWidth != null ? wrapDescription(t.description, pw, termWidth) : dim(t.description);
+        lines.push(`${name}  ${desc}`);
       } else {
         lines.push(name);
       }
@@ -142,13 +218,20 @@ export function formatToolList(tools: ToolWithServer[], options: FormatOptions):
   // Calculate column widths
   const maxServer = Math.max(...tools.map((t) => t.server.length));
   const maxTool = Math.max(...tools.map((t) => t.tool.name.length));
+  const termWidth = getTerminalWidth();
 
   return tools
     .map((t) => {
       const server = cyan(t.server.padEnd(maxServer));
       const tool = bold(t.tool.name.padEnd(maxTool));
       if (options.withDescriptions && t.tool.description) {
-        return `${server}  ${tool}  ${dim(t.tool.description)}`;
+        const prefix = `${server}  ${tool}`;
+        const pw = visibleLength(prefix) + 2;
+        const desc =
+          termWidth != null
+            ? wrapDescription(t.tool.description, pw, termWidth)
+            : dim(t.tool.description);
+        return `${prefix}  ${desc}`;
       }
       return `${server}  ${tool}`;
     })
@@ -178,11 +261,15 @@ export function formatServerTools(
 
   const header = cyan.bold(serverName);
   const maxName = Math.max(...tools.map((t) => t.name.length));
+  const termWidth = getTerminalWidth();
 
   const lines = tools.map((t) => {
     const name = `  ${bold(t.name.padEnd(maxName))}`;
     if (t.description) {
-      return `${name}  ${dim(t.description)}`;
+      const pw = visibleLength(name) + 2;
+      const desc =
+        termWidth != null ? wrapDescription(t.description, pw, termWidth) : dim(t.description);
+      return `${name}  ${desc}`;
     }
     return name;
   });
@@ -375,33 +462,27 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
     return dim("No matching tools found");
   }
 
-  const maxServer = Math.max(...results.map((r) => r.server.length));
-  const maxTool = Math.max(...results.map((r) => r.tool.length));
-
-  // First line of description only for the main row
-  const firstLine = (s: string) => s.split("\n")[0] ?? "";
+  const termWidth = getTerminalWidth();
+  const descIndent = 2;
 
   return results
     .map((r) => {
-      const server = cyan(r.server.padEnd(maxServer));
-      const tool = bold(r.tool.padEnd(maxTool));
-      const score = yellow(r.score.toFixed(2).padStart(5));
-      const summary = firstLine(r.description);
-      const line = `${server}  ${tool}  ${score}  ${dim(summary)}`;
+      const header = `${cyan(r.server)}  ${bold(r.tool)}  ${yellow(r.score.toFixed(2))}`;
 
-      // Show remaining description lines indented below
-      const descLines = r.description.split("\n").slice(1);
-      const extra = descLines.filter((l) => l.trim()).length > 0;
-      if (!extra) return line;
+      // Join all description lines into a single string for wrapping
+      const fullDesc = r.description
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+        .join(" ");
 
-      const indent = " ".repeat(maxServer + maxTool + 12);
-      const rest = descLines
-        .filter((l) => l.trim())
-        .map((l) => `${indent}${dim(l.trim())}`)
-        .join("\n");
-      return `${line}\n${rest}`;
+      const indent = " ".repeat(descIndent);
+      const desc =
+        termWidth != null ? wrapDescription(fullDesc, descIndent, termWidth) : dim(fullDesc);
+
+      return `${header}\n${indent}${desc}`;
     })
-    .join("\n");
+    .join("\n\n");
 }
 
 /** Format a list of resources with server names */
@@ -428,13 +509,20 @@ export function formatResourceList(
 
   const maxServer = Math.max(...resources.map((r) => r.server.length));
   const maxUri = Math.max(...resources.map((r) => r.resource.uri.length));
+  const termWidth = getTerminalWidth();
 
   return resources
     .map((r) => {
       const server = cyan(r.server.padEnd(maxServer));
       const uri = bold(r.resource.uri.padEnd(maxUri));
       if (options.withDescriptions && r.resource.description) {
-        return `${server}  ${uri}  ${dim(r.resource.description)}`;
+        const prefix = `${server}  ${uri}`;
+        const pw = visibleLength(prefix) + 2;
+        const desc =
+          termWidth != null
+            ? wrapDescription(r.resource.description, pw, termWidth)
+            : dim(r.resource.description);
+        return `${prefix}  ${desc}`;
       }
       return `${server}  ${uri}`;
     })
@@ -469,11 +557,15 @@ export function formatServerResources(
 
   const header = cyan.bold(serverName);
   const maxUri = Math.max(...resources.map((r) => r.uri.length));
+  const termWidth = getTerminalWidth();
 
   const lines = resources.map((r) => {
     const uri = `  ${bold(r.uri.padEnd(maxUri))}`;
     if (r.description) {
-      return `${uri}  ${dim(r.description)}`;
+      const pw = visibleLength(uri) + 2;
+      const desc =
+        termWidth != null ? wrapDescription(r.description, pw, termWidth) : dim(r.description);
+      return `${uri}  ${desc}`;
     }
     return uri;
   });
@@ -538,13 +630,20 @@ export function formatPromptList(prompts: PromptWithServer[], options: FormatOpt
 
   const maxServer = Math.max(...prompts.map((p) => p.server.length));
   const maxName = Math.max(...prompts.map((p) => p.prompt.name.length));
+  const termWidth = getTerminalWidth();
 
   return prompts
     .map((p) => {
       const server = cyan(p.server.padEnd(maxServer));
       const name = bold(p.prompt.name.padEnd(maxName));
       if (options.withDescriptions && p.prompt.description) {
-        return `${server}  ${name}  ${dim(p.prompt.description)}`;
+        const prefix = `${server}  ${name}`;
+        const pw = visibleLength(prefix) + 2;
+        const desc =
+          termWidth != null
+            ? wrapDescription(p.prompt.description, pw, termWidth)
+            : dim(p.prompt.description);
+        return `${prefix}  ${desc}`;
       }
       return `${server}  ${name}`;
     })
@@ -579,6 +678,8 @@ export function formatServerPrompts(
   const header = cyan.bold(serverName);
   const maxName = Math.max(...prompts.map((p) => p.name.length));
 
+  const termWidth = getTerminalWidth();
+
   const lines = prompts.map((p) => {
     const name = `  ${bold(p.name.padEnd(maxName))}`;
     const args =
@@ -586,7 +687,11 @@ export function formatServerPrompts(
         ? `  ${dim(`(${p.arguments.map((a) => (a.required ? a.name : `[${a.name}]`)).join(", ")})`)}`
         : "";
     if (p.description) {
-      return `${name}${args}  ${dim(p.description)}`;
+      const prefix = `${name}${args}`;
+      const pw = visibleLength(prefix) + 2;
+      const desc =
+        termWidth != null ? wrapDescription(p.description, pw, termWidth) : dim(p.description);
+      return `${prefix}  ${desc}`;
     }
     return `${name}${args}`;
   });
@@ -658,13 +763,19 @@ export function formatUnifiedList(items: UnifiedItem[], options: FormatOptions):
     return yellow(padded);
   };
 
+  const termWidth = getTerminalWidth();
+
   return items
     .map((i) => {
       const server = cyan(i.server.padEnd(maxServer));
       const type = typeLabel(i.type);
       const name = bold(i.name.padEnd(maxName));
       if (options.withDescriptions && i.description) {
-        return `${server}  ${type}  ${name}  ${dim(i.description)}`;
+        const prefix = `${server}  ${type}  ${name}`;
+        const pw = visibleLength(prefix) + 2;
+        const desc =
+          termWidth != null ? wrapDescription(i.description, pw, termWidth) : dim(i.description);
+        return `${prefix}  ${desc}`;
       }
       return `${server}  ${type}  ${name}`;
     })
