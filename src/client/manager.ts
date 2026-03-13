@@ -4,6 +4,7 @@ import { LoggingMessageNotificationSchema } from "@modelcontextprotocol/sdk/type
 import type { LoggingLevel } from "@modelcontextprotocol/sdk/types.js";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
+import type { ServerCapabilities } from "@modelcontextprotocol/sdk/types.js";
 import type {
   Tool,
   Resource,
@@ -32,6 +33,12 @@ export interface ResourceWithServer {
 export interface PromptWithServer {
   server: string;
   prompt: Prompt;
+}
+
+export interface ServerInfo {
+  version?: { name: string; version: string };
+  capabilities?: ServerCapabilities;
+  instructions?: string;
 }
 
 export interface ServerError {
@@ -319,6 +326,16 @@ export class ServerManager {
     return tools.find((t) => t.name === toolName);
   }
 
+  /** Get server info (version, capabilities, instructions) */
+  async getServerInfo(serverName: string): Promise<ServerInfo> {
+    const client = await this.getClient(serverName);
+    return {
+      version: client.getServerVersion() as ServerInfo["version"],
+      capabilities: client.getServerCapabilities(),
+      instructions: client.getInstructions(),
+    };
+  }
+
   /** List resources for a single server */
   async listResources(serverName: string): Promise<Resource[]> {
     return this.withRetry(
@@ -335,7 +352,7 @@ export class ServerManager {
     );
   }
 
-  /** List resources across all configured servers */
+  /** List resources across all configured servers (skips servers without resources capability) */
   async getAllResources(): Promise<{ resources: ResourceWithServer[]; errors: ServerError[] }> {
     const serverNames = Object.keys(this.servers.mcpServers);
     const resources: ResourceWithServer[] = [];
@@ -345,6 +362,8 @@ export class ServerManager {
       const batch = serverNames.slice(i, i + this.concurrency);
       const batchResults = await Promise.allSettled(
         batch.map(async (name) => {
+          const client = await this.getClient(name);
+          if (!client.getServerCapabilities()?.resources) return [];
           const serverResources = await this.listResources(name);
           return serverResources.map((resource) => ({ server: name, resource }));
         }),
@@ -391,7 +410,7 @@ export class ServerManager {
     );
   }
 
-  /** List prompts across all configured servers */
+  /** List prompts across all configured servers (skips servers without prompts capability) */
   async getAllPrompts(): Promise<{ prompts: PromptWithServer[]; errors: ServerError[] }> {
     const serverNames = Object.keys(this.servers.mcpServers);
     const prompts: PromptWithServer[] = [];
@@ -401,6 +420,8 @@ export class ServerManager {
       const batch = serverNames.slice(i, i + this.concurrency);
       const batchResults = await Promise.allSettled(
         batch.map(async (name) => {
+          const client = await this.getClient(name);
+          if (!client.getServerCapabilities()?.prompts) return [];
           const serverPrompts = await this.listPrompts(name);
           return serverPrompts.map((prompt) => ({ server: name, prompt }));
         }),

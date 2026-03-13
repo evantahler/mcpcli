@@ -25,6 +25,95 @@ export function isInteractive(options: FormatOptions): boolean {
   return process.stdout.isTTY ?? false;
 }
 
+export interface ServerOverview {
+  serverName: string;
+  version?: { name: string; version: string };
+  capabilities?: Record<string, unknown>;
+  instructions?: string;
+  tools: Tool[];
+  resourceCount: number;
+  promptCount: number;
+}
+
+const KNOWN_CAPABILITIES = ["tools", "resources", "prompts", "logging", "completions", "tasks"];
+
+/** Format a full server overview (version, capabilities, tools, counts) */
+export function formatServerOverview(overview: ServerOverview, options: FormatOptions): string {
+  if (!isInteractive(options)) {
+    return JSON.stringify(
+      {
+        server: overview.serverName,
+        version: overview.version ?? null,
+        capabilities: overview.capabilities ?? null,
+        instructions: overview.instructions ?? null,
+        tools: overview.tools.map((t) => ({ name: t.name, description: t.description ?? "" })),
+        resourceCount: overview.resourceCount,
+        promptCount: overview.promptCount,
+      },
+      null,
+      2,
+    );
+  }
+
+  const lines: string[] = [];
+
+  // Header: server name + version
+  const header = cyan.bold(overview.serverName);
+  if (overview.version) {
+    lines.push(
+      `${header}  ${dim(`v${overview.version.version}`)}  ${dim(`(${overview.version.name})`)}`,
+    );
+  } else {
+    lines.push(header);
+  }
+
+  // Capabilities
+  if (overview.capabilities) {
+    lines.push("");
+    lines.push(bold("Capabilities:"));
+    const caps = overview.capabilities;
+    const present = KNOWN_CAPABILITIES.filter((k) => k in caps);
+    const absent = KNOWN_CAPABILITIES.filter((k) => !(k in caps));
+    const capLines: string[] = [];
+    for (const k of present) capLines.push(`  ${green("✓")} ${k}`);
+    for (const k of absent) capLines.push(`  ${dim("✗")} ${dim(k)}`);
+    lines.push(...capLines);
+  }
+
+  // Instructions
+  if (overview.instructions) {
+    lines.push("");
+    lines.push(bold("Instructions:"));
+    lines.push(`  ${dim(overview.instructions)}`);
+  }
+
+  // Tools
+  lines.push("");
+  if (overview.tools.length === 0) {
+    lines.push(bold("Tools:") + " " + dim("none"));
+  } else {
+    lines.push(bold(`Tools (${overview.tools.length}):`));
+    const maxName = Math.max(...overview.tools.map((t) => t.name.length));
+    for (const t of overview.tools) {
+      const name = `  ${bold(t.name.padEnd(maxName))}`;
+      if (t.description) {
+        lines.push(`${name}  ${dim(t.description)}`);
+      } else {
+        lines.push(name);
+      }
+    }
+  }
+
+  // Resource/prompt counts
+  const counts: string[] = [];
+  counts.push(`Resources: ${overview.resourceCount}`);
+  counts.push(`Prompts: ${overview.promptCount}`);
+  lines.push("");
+  lines.push(dim(counts.join(" | ")));
+
+  return lines.join("\n");
+}
+
 /** Format a list of tools with server names */
 export function formatToolList(tools: ToolWithServer[], options: FormatOptions): string {
   if (!isInteractive(options)) {

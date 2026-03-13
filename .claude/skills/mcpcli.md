@@ -83,7 +83,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli`                               | List all servers and tools        |
 | `mcpcli servers`                       | List servers (name, type, detail) |
 | `mcpcli -d`                            | List with descriptions            |
-| `mcpcli info <server>`                 | Show tools for a server           |
+| `mcpcli info <server>`                 | Server overview (version, capabilities, tools) |
 | `mcpcli info <server> <tool>`          | Show tool schema                  |
 | `mcpcli exec <server>`                 | List tools for a server           |
 | `mcpcli exec <server> <tool> '<json>'` | Execute a tool                    |
