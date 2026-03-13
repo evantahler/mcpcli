@@ -158,6 +158,7 @@ mcpcli deauth <server>      # remove stored auth
 | `mcpcli prompt <server> <name> '<json>'` | Get a specific prompt          |
 | `mcpcli exec <server> <tool> --no-wait` | Execute as async task, return handle |
 | `mcpcli exec <server> <tool> --ttl <ms>` | Set task TTL (default: 60000) |
+| `mcpcli -N exec <server> <tool> ...`  | Decline elicitation (non-interactive) |
 | `mcpcli task list <server>`            | List tasks on a server          |
 | `mcpcli task get <server> <taskId>`    | Get task status                 |
 | `mcpcli task result <server> <taskId>` | Retrieve completed task result  |
