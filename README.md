@@ -22,6 +22,12 @@ The curl installer downloads a pre-built binary (macOS/Linux) — no runtime nee
 ## Quick Start
 
 ```bash
+# Add a server (stdio — runs as a child process)
+mcpcli add filesystem --command npx --args "-y,@modelcontextprotocol/server-filesystem,/tmp"
+
+# Add an HTTP server
+mcpcli add github --url https://mcp.github.com
+
 # List all servers and their tools
 mcpcli
 
