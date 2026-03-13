@@ -3,6 +3,11 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { wrapTransportWithTrace } from "../../src/client/trace.ts";
 
+/** Strip ANSI escape codes so assertions work on both TTY and non-TTY (CI) */
+function stripAnsi(s: string): string {
+  return s.replace(/\u001b\[\d+m/g, "");
+}
+
 /** Capture stderr writes during a test */
 function captureStderr() {
   const chunks: string[] = [];
@@ -13,7 +18,7 @@ function captureStderr() {
   }) as typeof process.stderr.write;
   return {
     get output() {
-      return chunks.join("");
+      return stripAnsi(chunks.join(""));
     },
     restore() {
       process.stderr.write = original;
