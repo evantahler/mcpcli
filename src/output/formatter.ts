@@ -607,12 +607,10 @@ export function formatPromptMessages(
 
 /** Format a unified list of tools, resources, and prompts across servers */
 export function formatUnifiedList(items: UnifiedItem[], options: FormatOptions): string {
-  const typeLabel = (t: UnifiedItem["type"]) => {
-    const maxType = 8; // "resource" is the longest at 8 chars
-    const padded = t.padEnd(maxType);
-    if (t === "tool") return green(padded);
-    if (t === "resource") return cyan(padded);
-    return yellow(padded);
+  const typeLabel = (t: string) => {
+    if (t === "tool") return green(t);
+    if (t === "resource") return cyan(t);
+    return yellow(t);
   };
 
   return formatOutput(

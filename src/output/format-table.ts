@@ -43,9 +43,11 @@ export function formatTable<T>(items: T[], options: TableOptions<T>): string {
 
   return items
     .map((item) => {
-      const parts = options.columns.map((col, i) =>
-        col.style(col.value(item).padEnd(maxWidths[i]!)),
-      );
+      const parts = options.columns.map((col, i) => {
+        const raw = col.value(item);
+        const pad = maxWidths[i]! - raw.length;
+        return col.style(raw) + " ".repeat(Math.max(0, pad));
+      });
       const prefix = parts.join(sep);
 
       const desc = options.description?.(item);
