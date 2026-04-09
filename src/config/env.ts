@@ -1,8 +1,10 @@
+import { ENV } from "../constants.ts";
+
 const ENV_VAR_PATTERN = /\$\{([^}]+)\}/g;
 
 /** Whether to throw on missing env vars (default: true) */
 function isStrictEnv(): boolean {
-  return process.env.MCP_STRICT_ENV !== "false";
+  return process.env[ENV.STRICT_ENV] !== "false";
 }
 
 /** Replace ${VAR_NAME} in a string with the corresponding env var value */
@@ -12,7 +14,7 @@ export function interpolateEnvString(value: string): string {
     if (envValue === undefined) {
       if (isStrictEnv()) {
         throw new Error(
-          `Environment variable "${varName}" is not set (set MCP_STRICT_ENV=false to warn instead)`,
+          `Environment variable "${varName}" is not set (set ${ENV.STRICT_ENV}=false to warn instead)`,
         );
       }
       console.warn(`Warning: environment variable "${varName}" is not set`);

@@ -1,11 +1,8 @@
 import type { IndexedTool } from "../config/schemas.ts";
+import { DEFAULTS } from "../constants.ts";
+import type { BaseMatch } from "./types.ts";
 
-export interface SemanticMatch {
-  server: string;
-  tool: string;
-  description: string;
-  score: number;
-}
+export type SemanticMatch = BaseMatch;
 
 // Lazy-loaded pipeline singleton
 let pipelineInstance: ((text: string) => Promise<Float32Array>) | null = null;
@@ -56,7 +53,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export async function semanticSearch(
   query: string,
   tools: IndexedTool[],
-  topK = 10,
+  topK = DEFAULTS.SEARCH_TOP_K,
 ): Promise<SemanticMatch[]> {
   // Only search tools that have embeddings
   const withEmbeddings = tools.filter((t) => t.embedding.length > 0);

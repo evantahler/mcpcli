@@ -1,26 +1,31 @@
 import type { Command } from "commander";
-import { getContext } from "../context.ts";
 import {
   formatPromptList,
   formatServerPrompts,
   formatPromptMessages,
   formatError,
 } from "../output/formatter.ts";
-import { logger } from "../output/logger.ts";
 import { parseJsonArgs, readStdin } from "../lib/input.ts";
+import { withCommand } from "./with-command.ts";
 
 export function registerPromptCommand(program: Command) {
   program
     .command("prompt [server] [name] [args]")
     .description("list prompts for a server, or get a specific prompt")
     .action(
-      async (server: string | undefined, name: string | undefined, argsStr: string | undefined) => {
-        const { manager, formatOptions } = await getContext(program);
-        const spinner = logger.startSpinner(
-          server ? `Connecting to ${server}...` : "Connecting to servers...",
-          formatOptions,
-        );
-        try {
+      withCommand(
+        program,
+        { spinnerText: "Connecting to servers..." },
+        async (
+          { manager, formatOptions, spinner },
+          server?: string,
+          name?: string,
+          argsStr?: string,
+        ) => {
+          if (server) {
+            spinner.update(`Connecting to ${server}...`);
+          }
+
           if (server && name) {
             let args: Record<string, string> | undefined;
 
@@ -48,13 +53,7 @@ export function registerPromptCommand(program: Command) {
               console.error(formatError(`${err.server}: ${err.message}`, formatOptions));
             }
           }
-        } catch (err) {
-          spinner.error("Failed");
-          console.error(formatError(String(err), formatOptions));
-          process.exit(1);
-        } finally {
-          await manager.close();
-        }
-      },
+        },
+      ),
     );
 }

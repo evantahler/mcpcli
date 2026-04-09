@@ -1,6 +1,7 @@
 import type { SearchIndex } from "../config/schemas.ts";
 import { keywordSearch } from "./keyword.ts";
 import { semanticSearch } from "./semantic.ts";
+import { DEFAULTS } from "../constants.ts";
 
 export interface SearchResult {
   server: string;
@@ -22,7 +23,7 @@ export async function search(
   index: SearchIndex,
   options: SearchOptions = {},
 ): Promise<SearchResult[]> {
-  const topK = options.topK ?? 10;
+  const topK = options.topK ?? DEFAULTS.SEARCH_TOP_K;
   const results = new Map<string, SearchResult>();
 
   const runKeyword = !options.semanticOnly;

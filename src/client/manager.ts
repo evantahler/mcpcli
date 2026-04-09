@@ -34,18 +34,19 @@ import { McpOAuthProvider } from "./oauth.ts";
 import { logger } from "../output/logger.ts";
 import { wrapTransportWithTrace } from "./trace.ts";
 
-export interface ToolWithServer {
+interface WithServer {
   server: string;
+}
+
+export interface ToolWithServer extends WithServer {
   tool: Tool;
 }
 
-export interface ResourceWithServer {
-  server: string;
+export interface ResourceWithServer extends WithServer {
   resource: Resource;
 }
 
-export interface PromptWithServer {
-  server: string;
+export interface PromptWithServer extends WithServer {
   prompt: Prompt;
 }
 
@@ -160,12 +161,12 @@ export class ServerManager {
             // ignore close errors
           }
           const provider = this.getOrCreateOAuthProvider(serverName);
-          const rawSseTransport = createSseTransport(
+          const rawSseTransport = createSseTransport({
             config,
-            provider.isComplete() ? provider : undefined,
-            this.verbose,
-            this.showSecrets,
-          );
+            authProvider: provider.isComplete() ? provider : undefined,
+            verbose: this.verbose,
+            showSecrets: this.showSecrets,
+          });
           const sseTransport = this.verbose
             ? wrapTransportWithTrace(rawSseTransport, { json: this.json, serverName })
             : rawSseTransport;
@@ -245,11 +246,21 @@ export class ServerManager {
       const authProvider = provider.isComplete() ? provider : undefined;
 
       if (config.transport === "sse") {
-        return createSseTransport(config, authProvider, this.verbose, this.showSecrets);
+        return createSseTransport({
+          config,
+          authProvider,
+          verbose: this.verbose,
+          showSecrets: this.showSecrets,
+        });
       }
       // Default (including explicit "streamable-http") uses Streamable HTTP.
       // When no transport is set, getClient() will auto-fallback to SSE on failure.
-      return createHttpTransport(config, authProvider, this.verbose, this.showSecrets);
+      return createHttpTransport({
+        config,
+        authProvider,
+        verbose: this.verbose,
+        showSecrets: this.showSecrets,
+      });
     }
     throw new Error("Invalid server config");
   }
@@ -322,18 +333,29 @@ export class ServerManager {
     throw lastError;
   }
 
-  /** List tools for a single server, applying allowedTools/disabledTools filters */
-  async listTools(serverName: string): Promise<Tool[]> {
+  /** Get client, call method with timeout, wrapped in retry logic */
+  private async callWithResilience<T>(
+    serverName: string,
+    label: string,
+    fn: (client: Client) => Promise<T>,
+  ): Promise<T> {
     return this.withRetry(
       async () => {
         const client = await this.getClient(serverName);
-        const result = await this.withTimeout(client.listTools(), `listTools(${serverName})`);
-        const config = this.servers.mcpServers[serverName]!;
-        return filterTools(result.tools, config.allowedTools, config.disabledTools);
+        return this.withTimeout(fn(client), label);
       },
-      `listTools(${serverName})`,
+      label,
       serverName,
     );
+  }
+
+  /** List tools for a single server, applying allowedTools/disabledTools filters */
+  async listTools(serverName: string): Promise<Tool[]> {
+    return this.callWithResilience(serverName, `listTools(${serverName})`, async (client) => {
+      const result = await client.listTools();
+      const config = this.servers.mcpServers[serverName]!;
+      return filterTools(result.tools, config.allowedTools, config.disabledTools);
+    });
   }
 
   /** List tools across all configured servers */
@@ -351,16 +373,8 @@ export class ServerManager {
     toolName: string,
     args: Record<string, unknown> = {},
   ): Promise<unknown> {
-    return this.withRetry(
-      async () => {
-        const client = await this.getClient(serverName);
-        return this.withTimeout(
-          client.callTool({ name: toolName, arguments: args }),
-          `callTool(${serverName}/${toolName})`,
-        );
-      },
-      `callTool(${serverName}/${toolName})`,
-      serverName,
+    return this.callWithResilience(serverName, `callTool(${serverName}/${toolName})`, (client) =>
+      client.callTool({ name: toolName, arguments: args }),
     );
   }
 
@@ -382,18 +396,10 @@ export class ServerManager {
 
   /** List resources for a single server */
   async listResources(serverName: string): Promise<Resource[]> {
-    return this.withRetry(
-      async () => {
-        const client = await this.getClient(serverName);
-        const result = await this.withTimeout(
-          client.listResources(),
-          `listResources(${serverName})`,
-        );
-        return result.resources;
-      },
-      `listResources(${serverName})`,
-      serverName,
-    );
+    return this.callWithResilience(serverName, `listResources(${serverName})`, async (client) => {
+      const result = await client.listResources();
+      return result.resources;
+    });
   }
 
   /** List resources across all configured servers (skips servers without resources capability) */
@@ -409,27 +415,17 @@ export class ServerManager {
 
   /** Read a specific resource by URI */
   async readResource(serverName: string, uri: string): Promise<unknown> {
-    return this.withRetry(
-      async () => {
-        const client = await this.getClient(serverName);
-        return this.withTimeout(client.readResource({ uri }), `readResource(${serverName}/${uri})`);
-      },
-      `readResource(${serverName}/${uri})`,
-      serverName,
+    return this.callWithResilience(serverName, `readResource(${serverName}/${uri})`, (client) =>
+      client.readResource({ uri }),
     );
   }
 
   /** List prompts for a single server */
   async listPrompts(serverName: string): Promise<Prompt[]> {
-    return this.withRetry(
-      async () => {
-        const client = await this.getClient(serverName);
-        const result = await this.withTimeout(client.listPrompts(), `listPrompts(${serverName})`);
-        return result.prompts;
-      },
-      `listPrompts(${serverName})`,
-      serverName,
-    );
+    return this.callWithResilience(serverName, `listPrompts(${serverName})`, async (client) => {
+      const result = await client.listPrompts();
+      return result.prompts;
+    });
   }
 
   /** List prompts across all configured servers (skips servers without prompts capability) */
@@ -449,16 +445,8 @@ export class ServerManager {
     name: string,
     args?: Record<string, string>,
   ): Promise<unknown> {
-    return this.withRetry(
-      async () => {
-        const client = await this.getClient(serverName);
-        return this.withTimeout(
-          client.getPrompt({ name, arguments: args }),
-          `getPrompt(${serverName}/${name})`,
-        );
-      },
-      `getPrompt(${serverName}/${name})`,
-      serverName,
+    return this.callWithResilience(serverName, `getPrompt(${serverName}/${name})`, (client) =>
+      client.getPrompt({ name, arguments: args }),
     );
   }
 

@@ -1,11 +1,8 @@
 import picomatch from "picomatch";
 import type { IndexedTool } from "../config/schemas.ts";
+import type { BaseMatch } from "./types.ts";
 
-export interface KeywordMatch {
-  server: string;
-  tool: string;
-  description: string;
-  score: number;
+export interface KeywordMatch extends BaseMatch {
   matchedField: string;
 }
 

@@ -4,6 +4,7 @@ import { ServerManager } from "./client/manager.ts";
 import type { Config } from "./config/schemas.ts";
 import type { FormatOptions } from "./output/formatter.ts";
 import { logger } from "./output/logger.ts";
+import { ENV, DEFAULTS } from "./constants.ts";
 
 export interface AppContext {
   config: Config;
@@ -21,14 +22,14 @@ export async function getContext(program: Command): Promise<AppContext> {
 
   const verbose = !!(
     (opts.verbose as boolean | undefined) ||
-    process.env.MCP_DEBUG === "1" ||
-    process.env.MCP_DEBUG === "true"
+    process.env[ENV.DEBUG] === "1" ||
+    process.env[ENV.DEBUG] === "true"
   );
   const showSecrets = !!(opts.showSecrets as boolean | undefined);
-  const concurrency = Number(process.env.MCP_CONCURRENCY ?? 5);
-  const timeout = Number(process.env.MCP_TIMEOUT ?? 1800) * 1000;
-  const maxRetries = Number(process.env.MCP_MAX_RETRIES ?? 3);
-  const logLevel = (opts.logLevel as string | undefined) ?? "warning";
+  const concurrency = Number(process.env[ENV.CONCURRENCY] ?? DEFAULTS.CONCURRENCY);
+  const timeout = Number(process.env[ENV.TIMEOUT] ?? DEFAULTS.TIMEOUT_SECONDS) * 1000;
+  const maxRetries = Number(process.env[ENV.MAX_RETRIES] ?? DEFAULTS.MAX_RETRIES);
+  const logLevel = (opts.logLevel as string | undefined) ?? DEFAULTS.LOG_LEVEL;
 
   const json = !!(opts.json as boolean | undefined);
   // Commander's --no-interactive sets opts.interactive = false (default true)

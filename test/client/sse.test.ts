@@ -6,7 +6,7 @@ import type { HttpServerConfig } from "../../src/config/schemas.ts";
 describe("createSseTransport", () => {
   test("returns an SSEClientTransport instance", () => {
     const config: HttpServerConfig = { url: "https://example.com/sse" };
-    const transport = createSseTransport(config);
+    const transport = createSseTransport({ config });
     expect(transport).toBeInstanceOf(SSEClientTransport);
   });
 
@@ -15,7 +15,7 @@ describe("createSseTransport", () => {
       url: "https://example.com/sse",
       headers: { Authorization: "Bearer tok123" },
     };
-    const transport = createSseTransport(config);
+    const transport = createSseTransport({ config });
     expect(transport).toBeInstanceOf(SSEClientTransport);
   });
 
@@ -33,13 +33,13 @@ describe("createSseTransport", () => {
       saveTokens: () => Promise.resolve(),
       saveClientInformation: () => Promise.resolve(),
     };
-    const transport = createSseTransport(config, fakeProvider as any);
+    const transport = createSseTransport({ config, authProvider: fakeProvider as any });
     expect(transport).toBeInstanceOf(SSEClientTransport);
   });
 
   test("accepts verbose mode without errors", () => {
     const config: HttpServerConfig = { url: "https://example.com/sse" };
-    const transport = createSseTransport(config, undefined, true, false);
+    const transport = createSseTransport({ config, verbose: true, showSecrets: false });
     expect(transport).toBeInstanceOf(SSEClientTransport);
   });
 });
