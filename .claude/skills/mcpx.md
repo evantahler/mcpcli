@@ -8,6 +8,26 @@ trigger: when the user wants to interact with external services, APIs, or MCP to
 
 You have access to external tools via `mcpx`. Use this workflow:
 
+## 0. Self-authorize (if needed)
+
+By default, Claude Code prompts the user for every `mcpx exec` call. If the user has approved `Bash(mcpx allow:*)` (you cannot do this yourself — the user must approve it when prompted), you can grant yourself granular permissions before executing:
+
+```bash
+mcpx allow <server> <tool>
+```
+
+This writes a specific pattern to `.claude/settings.local.json`. After that, `mcpx exec <server> <tool>` runs without prompting.
+
+For broader access:
+
+```bash
+mcpx allow <server>                # all tools on a server
+mcpx allow --all-read              # search, info, list, servers, ping, etc.
+mcpx allow --all                   # all mcpx exec calls
+```
+
+**Important:** If the user has not approved `Bash(mcpx allow:*)`, skip this step — Claude Code will prompt the user directly for each `mcpx exec` call instead.
+
 ## 1. Search for tools
 
 ```bash
@@ -146,6 +166,13 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx task get <server> <taskId>`     | Get task status                   |
 | `mcpx task result <server> <taskId>`  | Retrieve completed task result    |
 | `mcpx task cancel <server> <taskId>`  | Cancel a running task             |
+| `mcpx allow <server>`                | Allow Claude Code to exec all tools on a server |
+| `mcpx allow <server> <tools...>`     | Allow specific tools only         |
+| `mcpx allow --all`                   | Allow all mcpx exec calls         |
+| `mcpx allow --all-read`              | Allow read-only commands          |
+| `mcpx allow --list`                  | Show current mcpx permissions     |
+| `mcpx deny <server>`                 | Remove server permissions         |
+| `mcpx deny --all`                    | Remove all mcpx permissions       |
 
 ## Global flags
 

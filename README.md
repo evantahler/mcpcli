@@ -95,6 +95,13 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx task get <server> <taskId>`      | Get task status                                        |
 | `mcpx task result <server> <taskId>`   | Retrieve completed task result                         |
 | `mcpx task cancel <server> <taskId>`   | Cancel a running task                                  |
+| `mcpx allow <server>`                  | Allow Claude Code to exec all tools on a server        |
+| `mcpx allow <server> <tools...>`       | Allow specific tools only                              |
+| `mcpx allow --all`                     | Allow all mcpx exec calls                              |
+| `mcpx allow --all-read`                | Allow read-only commands (search, info, list, etc.)    |
+| `mcpx allow --list`                    | Show current mcpx-related permissions                  |
+| `mcpx deny <server>`                   | Remove permissions for a server                        |
+| `mcpx deny --all`                      | Remove all mcpx-related permissions                    |
 
 ## Options
 
@@ -589,6 +596,69 @@ To execute tools:
 
 Always search before executing — don't assume tool names.
 ```
+
+## Permissions (Claude Code)
+
+Claude Code prompts users to approve each `mcpx exec` call. `mcpx allow` and `mcpx deny` manage fine-grained permission rules so Claude Code can self-authorize specific tools without broad access.
+
+**Key insight:** If the user allows `Bash(mcpx allow:*)` once (safe — it only writes to local settings files), Claude Code can then grant itself access to specific tools as needed. This is an opt-in workflow — by default, Claude Code cannot self-authorize and will prompt the user for each `mcpx exec` call.
+
+```bash
+# Allow all tools on a server
+mcpx allow github
+
+# Allow specific tools only
+mcpx allow github search_repositories get_file
+
+# Allow read-only commands (search, info, list, servers, ping, etc.)
+mcpx allow --all-read
+
+# Allow all mcpx exec calls
+mcpx allow --all
+
+# Show current permissions across all scopes
+mcpx allow --list
+
+# Preview what would be written
+mcpx allow github --dry-run
+
+# Revoke a server's permissions
+mcpx deny github
+
+# Revoke all mcpx permissions
+mcpx deny --all
+```
+
+**Scope flags** control where the permission is written:
+
+| Flag        | File                          | Default |
+| ----------- | ----------------------------- | ------- |
+| `--local`   | `.claude/settings.local.json` | ✓       |
+| `--project` | `.claude/settings.json`       |         |
+| `--global`  | `~/.claude/settings.json`     |         |
+
+**`allow` options:**
+
+| Flag         | Purpose                                             |
+| ------------ | --------------------------------------------------- |
+| `--all`      | Allow all mcpx exec calls                           |
+| `--all-read` | Allow read-only commands (search, info, list, etc.) |
+| `--list`     | Show current mcpx-related permissions               |
+| `--local`    | Write to `.claude/settings.local.json` (default)    |
+| `--project`  | Write to `.claude/settings.json` (shared)           |
+| `--global`   | Write to `~/.claude/settings.json`                  |
+| `--dry-run`  | Show patterns without writing                       |
+
+**`deny` options:**
+
+| Flag         | Purpose                                          |
+| ------------ | ------------------------------------------------ |
+| `--all`      | Remove all mcpx-related permissions              |
+| `--all-read` | Remove read-only command permissions             |
+| `--local`    | Write to `.claude/settings.local.json` (default) |
+| `--project`  | Write to `.claude/settings.json` (shared)        |
+| `--global`   | Write to `~/.claude/settings.json`               |
+| `--dry-run`  | Show what would be removed                       |
 
 ## Development
 
