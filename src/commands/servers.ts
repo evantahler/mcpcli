@@ -1,16 +1,15 @@
 import { cyan, dim, green, yellow } from "ansis";
 import type { Command } from "commander";
-import { getContext } from "../context.ts";
 import { isStdioServer, isHttpServer } from "../config/schemas.ts";
-import { formatError, isInteractive } from "../output/formatter.ts";
+import { isInteractive } from "../output/formatter.ts";
+import { withCommand } from "./with-command.ts";
 
 export function registerServersCommand(program: Command) {
   program
     .command("servers")
     .description("List configured MCP servers")
-    .action(async () => {
-      const { manager, config, formatOptions } = await getContext(program);
-      try {
+    .action(
+      withCommand(program, {}, async ({ config, formatOptions }) => {
         const servers = Object.entries(config.servers.mcpServers);
 
         if (!isInteractive(formatOptions)) {
@@ -56,11 +55,6 @@ export function registerServersCommand(program: Command) {
             : dim(cfg.url);
           console.log(`${n}  ${type}  ${detail}`);
         }
-      } catch (err) {
-        console.error(formatError(String(err), formatOptions));
-        process.exit(1);
-      } finally {
-        await manager.close();
-      }
-    });
+      }),
+    );
 }

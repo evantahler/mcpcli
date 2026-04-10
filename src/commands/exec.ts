@@ -10,6 +10,7 @@ import {
 import { logger } from "../output/logger.ts";
 import { validateToolInput } from "../validation/schema.ts";
 import { parseJsonArgs, readStdin } from "../lib/input.ts";
+import { DEFAULTS } from "../constants.ts";
 
 export function registerExecCommand(program: Command) {
   program
@@ -17,7 +18,7 @@ export function registerExecCommand(program: Command) {
     .description("execute a tool (omit tool name to list available tools)")
     .option("-f, --file <path>", "read JSON args from a file")
     .option("--no-wait", "return task handle immediately without waiting for completion")
-    .option("--ttl <ms>", "task TTL in milliseconds", "60000")
+    .option("--ttl <ms>", "task TTL in milliseconds", String(DEFAULTS.TASK_TTL_MS))
     .action(
       async (
         server: string,

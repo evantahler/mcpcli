@@ -4,32 +4,27 @@ import { getContext } from "../context.ts";
 import { buildSearchIndex } from "../search/indexer.ts";
 import { getStaleServers } from "../search/staleness.ts";
 import { saveSearchIndex } from "../config/loader.ts";
-import { formatError } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
+import { withCommand } from "./with-command.ts";
 
 /** Run the search index build. Reusable from other commands (e.g. add). */
 export async function runIndex(program: Command): Promise<void> {
-  const { config, manager, formatOptions } = await getContext(program);
-  const spinner = logger.startSpinner("Connecting to servers...", formatOptions);
+  await withCommand(
+    program,
+    { spinnerText: "Connecting to servers...", errorLabel: "Indexing failed" },
+    async ({ config, manager, spinner }) => {
+      const start = performance.now();
+      const index = await buildSearchIndex(manager, (progress) => {
+        spinner.update(`Indexing ${progress.current}/${progress.total}: ${progress.tool}`);
+      });
+      const elapsed = ((performance.now() - start) / 1000).toFixed(1);
 
-  try {
-    const start = performance.now();
-    const index = await buildSearchIndex(manager, (progress) => {
-      spinner.update(`Indexing ${progress.current}/${progress.total}: ${progress.tool}`);
-    });
-    const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+      await saveSearchIndex(config.configDir, index);
+      spinner.success(`Indexed ${index.tools.length} tools in ${elapsed}s`);
 
-    await saveSearchIndex(config.configDir, index);
-    spinner.success(`Indexed ${index.tools.length} tools in ${elapsed}s`);
-
-    logger.info(`Saved to ${config.configDir}/search.json`);
-  } catch (err) {
-    spinner.error("Indexing failed");
-    console.error(formatError(String(err), formatOptions));
-    process.exit(1);
-  } finally {
-    await manager.close();
-  }
+      logger.info(`Saved to ${config.configDir}/search.json`);
+    },
+  )();
 }
 
 export function registerIndexCommand(program: Command) {

@@ -1,17 +1,6 @@
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import type { HttpServerConfig } from "../config/schemas.ts";
-import { createDebugFetch } from "./debug-fetch.ts";
+import { buildTransportInit, type TransportDeps } from "./transport-options.ts";
 
-export function createSseTransport(
-  config: HttpServerConfig,
-  authProvider?: OAuthClientProvider,
-  verbose = false,
-  showSecrets = false,
-): SSEClientTransport {
-  return new SSEClientTransport(new URL(config.url), {
-    authProvider,
-    requestInit: config.headers ? { headers: config.headers } : undefined,
-    fetch: verbose ? createDebugFetch(showSecrets) : undefined,
-  });
+export function createSseTransport(deps: TransportDeps): SSEClientTransport {
+  return new SSEClientTransport(new URL(deps.config.url), buildTransportInit(deps));
 }

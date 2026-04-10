@@ -16,18 +16,12 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
-/** Validate tool arguments against the tool's inputSchema */
-export function validateToolInput(
-  serverName: string,
-  tool: Tool,
+/** Compile (or retrieve from cache), validate, and return result */
+function validateWithSchema(
+  cacheKey: string,
+  schema: Record<string, unknown>,
   input: Record<string, unknown>,
 ): ValidationResult {
-  const schema = tool.inputSchema;
-  if (!schema || Object.keys(schema).length === 0) {
-    return { valid: true, errors: [] };
-  }
-
-  const cacheKey = `${serverName}/${tool.name}`;
   let validate = validatorCache.get(cacheKey);
 
   if (!validate) {
@@ -35,7 +29,6 @@ export function validateToolInput(
       validate = ajv.compile(schema);
       validatorCache.set(cacheKey, validate);
     } catch {
-      // If schema can't be compiled, skip validation
       return { valid: true, errors: [] };
     }
   }
@@ -49,30 +42,25 @@ export function validateToolInput(
   return { valid: false, errors };
 }
 
+/** Validate tool arguments against the tool's inputSchema */
+export function validateToolInput(
+  serverName: string,
+  tool: Tool,
+  input: Record<string, unknown>,
+): ValidationResult {
+  const schema = tool.inputSchema;
+  if (!schema || Object.keys(schema).length === 0) {
+    return { valid: true, errors: [] };
+  }
+  return validateWithSchema(`${serverName}/${tool.name}`, schema, input);
+}
+
 /** Validate user-collected form data against an elicitation requestedSchema */
 export function validateElicitationResponse(
   schema: Record<string, unknown>,
   input: Record<string, unknown>,
 ): ValidationResult {
-  const cacheKey = `__elicitation__${JSON.stringify(schema)}`;
-  let validate = validatorCache.get(cacheKey);
-
-  if (!validate) {
-    try {
-      validate = ajv.compile(schema);
-      validatorCache.set(cacheKey, validate);
-    } catch {
-      return { valid: true, errors: [] };
-    }
-  }
-
-  const valid = validate(input);
-  if (valid) {
-    return { valid: true, errors: [] };
-  }
-
-  const errors = (validate.errors ?? []).map(formatAjvError);
-  return { valid: false, errors };
+  return validateWithSchema(`__elicitation__${JSON.stringify(schema)}`, schema, input);
 }
 
 function formatAjvError(err: ErrorObject): ValidationError {

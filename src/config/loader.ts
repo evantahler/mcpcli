@@ -1,6 +1,7 @@
 import { join, resolve } from "path";
 import { homedir } from "os";
 import { interpolateEnv } from "./env.ts";
+import { ENV } from "../constants.ts";
 import {
   type Config,
   type ServersFile,
@@ -36,7 +37,7 @@ function resolveConfigDir(configFlag?: string): string {
   if (configFlag) return resolve(configFlag);
 
   // 2. MCP_CONFIG_PATH env var
-  const envPath = process.env.MCP_CONFIG_PATH;
+  const envPath = process.env[ENV.CONFIG_PATH];
   if (envPath) return resolve(envPath);
 
   // 3. ./servers.json exists in cwd → use cwd
@@ -107,9 +108,14 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<Confi
   return { configDir, servers, auth, searchIndex };
 }
 
+/** Write a JSON file to the config directory */
+async function saveJsonFile(configDir: string, filename: string, data: unknown): Promise<void> {
+  await Bun.write(join(configDir, filename), JSON.stringify(data, null, 2) + "\n");
+}
+
 /** Save auth.json to the config directory */
 export async function saveAuth(configDir: string, auth: AuthFile): Promise<void> {
-  await Bun.write(join(configDir, "auth.json"), JSON.stringify(auth, null, 2) + "\n");
+  return saveJsonFile(configDir, "auth.json", auth);
 }
 
 /** Load search.json from the config directory */
@@ -120,12 +126,12 @@ export async function loadSearchIndex(configDir: string): Promise<SearchIndex> {
 
 /** Save search.json to the config directory */
 export async function saveSearchIndex(configDir: string, index: SearchIndex): Promise<void> {
-  await Bun.write(join(configDir, "search.json"), JSON.stringify(index, null, 2) + "\n");
+  return saveJsonFile(configDir, "search.json", index);
 }
 
 /** Save servers.json to the config directory */
 export async function saveServers(configDir: string, servers: ServersFile): Promise<void> {
-  await Bun.write(join(configDir, "servers.json"), JSON.stringify(servers, null, 2) + "\n");
+  return saveJsonFile(configDir, "servers.json", servers);
 }
 
 /** Load servers.json without env interpolation (preserves ${VAR} placeholders) */

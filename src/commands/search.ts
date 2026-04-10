@@ -4,6 +4,7 @@ import { search } from "../search/index.ts";
 import { getStaleServers } from "../search/staleness.ts";
 import { formatError, formatSearchResults } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
+import { DEFAULTS } from "../constants.ts";
 
 export function registerSearchCommand(program: Command) {
   program
@@ -11,7 +12,7 @@ export function registerSearchCommand(program: Command) {
     .description("search tools by keyword and/or semantic similarity")
     .option("-k, --keyword", "keyword/glob search only")
     .option("-q, --query", "semantic search only")
-    .option("-n, --limit <number>", "max results to return", "10")
+    .option("-n, --limit <number>", "max results to return", String(DEFAULTS.SEARCH_TOP_K))
     .action(
       async (terms: string[], options: { keyword?: boolean; query?: boolean; limit: string }) => {
         const query = terms.join(" ");
