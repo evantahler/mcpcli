@@ -6,9 +6,9 @@ import type { SearchResult } from "../search/index.ts";
 import { formatOutput } from "./format-output.ts";
 import { formatTable } from "./format-table.ts";
 
-export type OutputFormat = "json" | "text" | "markdown";
+export const VALID_FORMATS = ["json", "text", "markdown"] as const;
 
-export const VALID_FORMATS: OutputFormat[] = ["json", "text", "markdown"];
+export type OutputFormat = (typeof VALID_FORMATS)[number];
 
 export interface FormatOptions {
   json?: boolean;
