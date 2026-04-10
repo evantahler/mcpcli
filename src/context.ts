@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { loadConfig, type LoadConfigOptions } from "./config/loader.ts";
 import { ServerManager } from "./client/manager.ts";
 import type { Config } from "./config/schemas.ts";
-import type { FormatOptions } from "./output/formatter.ts";
+import { type FormatOptions, type OutputFormat, VALID_FORMATS } from "./output/formatter.ts";
 import { logger } from "./output/logger.ts";
 import { ENV, DEFAULTS } from "./constants.ts";
 
@@ -35,6 +35,13 @@ export async function getContext(program: Command): Promise<AppContext> {
   // Commander's --no-interactive sets opts.interactive = false (default true)
   const noInteractive = opts.interactive === false;
 
+  const formatFlag = opts.format as string | undefined;
+  if (formatFlag && !VALID_FORMATS.includes(formatFlag as OutputFormat)) {
+    console.error(`error: Invalid format "${formatFlag}". Use: ${VALID_FORMATS.join(", ")}`);
+    process.exit(1);
+  }
+  const format = formatFlag as OutputFormat | undefined;
+
   const manager = new ServerManager({
     servers: config.servers,
     configDir: config.configDir,
@@ -55,6 +62,7 @@ export async function getContext(program: Command): Promise<AppContext> {
     verbose,
     showSecrets,
     logLevel,
+    format,
   };
 
   logger.configure(formatOptions);

@@ -107,6 +107,7 @@ mcpx search -n 5 "manage pull requests"
 | `-v, --verbose`           | Show HTTP details and JSON-RPC protocol messages         |
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
 | `-j, --json`              | Force JSON output (default when piped)                   |
+| `-F, --format <format>`   | Output format: `json`, `text`, or `markdown`             |
 | `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
 
@@ -495,7 +496,36 @@ mcpx info github | jq '.tools[].name'
 mcpx info github --json
 ```
 
-Tool results are always JSON, designed for chaining:
+### Output Formats (`--format`)
+
+Tool results (`exec`, `task result`) support three output formats via the global `--format` / `-F` flag:
+
+| Format     | Description                                                             |
+| ---------- | ----------------------------------------------------------------------- |
+| `json`     | Full MCP protocol response as JSON (default)                            |
+| `text`     | Extract text from content blocks, strip protocol wrapper                |
+| `markdown` | Extract text and render with rich terminal formatting (colors, borders) |
+
+```bash
+# Default JSON output — full MCP response with content array
+mcpx exec github search_repositories '{"query":"mcp"}'
+
+# Text — just the content, no protocol wrapper
+mcpx exec github search_repositories '{"query":"mcp"}' --format text
+
+# Markdown — rich terminal rendering with colors and formatting
+mcpx exec github search_repositories '{"query":"mcp"}' -F markdown
+```
+
+The `text` format extracts text from MCP content blocks and strips the protocol wrapper. If the text contains JSON, it's pretty-printed. Non-text content (images, resources) gets descriptive placeholders.
+
+The `markdown` format extracts text the same way, then renders it through Bun's built-in markdown parser with ANSI styling — headings, bold/italic, code blocks with borders, colored links, and bullet lists.
+
+For other commands (`list`, `info`, `search`), `--format json` forces JSON output and `--format text`/`--format markdown` use the existing human-friendly formatting.
+
+### Chaining tool results
+
+Tool results are JSON by default, designed for chaining:
 
 ```bash
 # Search repos and read the first result

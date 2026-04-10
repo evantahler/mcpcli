@@ -6,12 +6,17 @@ import type { SearchResult } from "../search/index.ts";
 import { formatOutput } from "./format-output.ts";
 import { formatTable } from "./format-table.ts";
 
+export type OutputFormat = "json" | "text" | "markdown";
+
+export const VALID_FORMATS: OutputFormat[] = ["json", "text", "markdown"];
+
 export interface FormatOptions {
   json?: boolean;
   withDescriptions?: boolean;
   verbose?: boolean;
   showSecrets?: boolean;
   logLevel?: string;
+  format?: OutputFormat;
 }
 
 export interface UnifiedItem {
@@ -345,9 +350,131 @@ function exampleValue(name: string, prop: Record<string, unknown>): unknown {
   }
 }
 
-/** Format a tool call result */
-export function formatCallResult(result: unknown, _options: FormatOptions): string {
-  return JSON.stringify(parseNestedJson(result), null, 2);
+/** Format a tool call result, dispatching on the --format option */
+export function formatCallResult(result: unknown, options: FormatOptions): string {
+  const format = options.format ?? "json";
+
+  switch (format) {
+    case "text":
+      return formatCallResultAsText(result);
+    case "markdown":
+      return formatCallResultAsMarkdown(result);
+    case "json":
+    default:
+      return JSON.stringify(parseNestedJson(result), null, 2);
+  }
+}
+
+/** Extract human-readable text from an MCP tool call result */
+function formatCallResultAsText(result: unknown): string {
+  const r = result as {
+    content?: Array<{
+      type: string;
+      text?: string;
+      data?: string;
+      mimeType?: string;
+      uri?: string;
+    }>;
+    isError?: boolean;
+  };
+
+  if (!r.content || !Array.isArray(r.content) || r.content.length === 0) {
+    return JSON.stringify(result, null, 2);
+  }
+
+  const parts: string[] = [];
+
+  for (const block of r.content) {
+    switch (block.type) {
+      case "text":
+        if (block.text !== undefined) {
+          try {
+            const parsed = JSON.parse(block.text);
+            parts.push(JSON.stringify(parsed, null, 2));
+          } catch {
+            parts.push(block.text);
+          }
+        }
+        break;
+      case "image":
+        parts.push(
+          `[image: ${block.mimeType ?? "unknown type"}, ${block.data ? Math.ceil((block.data.length * 3) / 4) : 0} bytes]`,
+        );
+        break;
+      case "resource":
+        parts.push(`[resource: ${block.uri ?? "unknown"}]`);
+        break;
+      default:
+        parts.push(`[${block.type}]`);
+        break;
+    }
+  }
+
+  let output = parts.join("\n");
+  if (r.isError) {
+    output = `error: ${output}`;
+  }
+  return output;
+}
+
+/** Render an MCP tool call result as styled markdown for terminal output */
+function formatCallResultAsMarkdown(result: unknown): string {
+  const text = formatCallResultAsText(result);
+  return renderMarkdownToAnsi(text);
+}
+
+/** Render a markdown string to ANSI-styled terminal output using Bun's built-in parser */
+export function renderMarkdownToAnsi(input: string): string {
+  const cols = process.stdout.columns ?? 80;
+  const rule = dim("─".repeat(Math.min(cols, 80)));
+
+  return Bun.markdown.render(input, {
+    heading: (children: string, opts: { level: number }) => {
+      if (opts.level === 1) {
+        return `\n${rule}\n${bold(children)}\n${rule}\n\n`;
+      }
+      if (opts.level === 2) {
+        return `\n${bold(children)}\n${dim("─".repeat(children.length))}\n\n`;
+      }
+      return `\n${bold(children)}\n\n`;
+    },
+    strong: (children: string) => bold(children),
+    emphasis: (children: string) => ansis.italic(children),
+    paragraph: (children: string) => children + "\n\n",
+    codespan: (code: string) => cyan(code),
+    code: (code: string, opts: { language?: string }) => {
+      const lang = opts.language ? dim(` ${opts.language}`) : "";
+      const border = dim("│ ");
+      const lines = code.replace(/\n$/, "").split("\n");
+      const formatted = lines.map((l: string) => border + l).join("\n");
+      return `${dim("┌──")}${lang}\n${formatted}\n${dim("└──")}\n\n`;
+    },
+    blockquote: (children: string) => {
+      const lines = children.replace(/\n$/, "").split("\n");
+      return lines.map((l: string) => `${dim("│")} ${l}`).join("\n") + "\n\n";
+    },
+    list: (children: string) => children + "\n",
+    listItem: (children: string, opts: { ordered: boolean; index: number; depth: number }) => {
+      const indent = "  ".repeat(opts.depth);
+      const bullet = opts.ordered ? `${opts.index + 1}.` : dim("•");
+      return `${indent}${bullet} ${children.trim()}\n`;
+    },
+    hr: () => rule + "\n\n",
+    link: (children: string, opts: { href: string }) => {
+      if (children === opts.href) return cyan(opts.href);
+      return `${children} ${dim("(")}${cyan(opts.href)}${dim(")")}`;
+    },
+    image: (alt: string, opts: { src: string }) =>
+      `${dim("[image:")} ${alt || opts.src}${dim("]")}\n`,
+    table: (children: string) => children + "\n",
+    thead: (children: string) => children,
+    tbody: (children: string) => children,
+    tr: (children: string) => children + "\n",
+    th: (children: string) => bold(children) + "\t",
+    td: (children: string) => children + "\t",
+    strikethrough: (children: string) => ansis.strikethrough(children),
+    text: (text: string) => text,
+  });
 }
 
 /** Recursively parse JSON strings inside MCP content blocks */
