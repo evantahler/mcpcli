@@ -419,8 +419,127 @@ function formatCallResultAsText(result: unknown): string {
 
 /** Render an MCP tool call result as styled markdown for terminal output */
 function formatCallResultAsMarkdown(result: unknown): string {
-  const text = formatCallResultAsText(result);
-  return renderMarkdownToAnsi(text);
+  const r = result as {
+    content?: Array<{
+      type: string;
+      text?: string;
+      data?: string;
+      mimeType?: string;
+      uri?: string;
+    }>;
+    isError?: boolean;
+  };
+
+  if (!r.content || !Array.isArray(r.content) || r.content.length === 0) {
+    return renderMarkdownToAnsi(jsonToMarkdown(result));
+  }
+
+  const parts: string[] = [];
+
+  for (const block of r.content) {
+    switch (block.type) {
+      case "text":
+        if (block.text !== undefined) {
+          try {
+            const parsed = JSON.parse(block.text);
+            parts.push(jsonToMarkdown(parsed));
+          } catch {
+            // Plain text / already markdown — pass through as-is
+            parts.push(block.text);
+          }
+        }
+        break;
+      case "image":
+        parts.push(
+          `[image: ${block.mimeType ?? "unknown type"}, ${block.data ? Math.ceil((block.data.length * 3) / 4) : 0} bytes]`,
+        );
+        break;
+      case "resource":
+        parts.push(`[resource: ${block.uri ?? "unknown"}]`);
+        break;
+      default:
+        parts.push(`[${block.type}]`);
+        break;
+    }
+  }
+
+  let output = parts.join("\n\n");
+  if (r.isError) {
+    output = `**error:** ${output}`;
+  }
+  return renderMarkdownToAnsi(output);
+}
+
+/** Convert a key name like "display_name" to "Display Name" */
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Check if a value is a plain primitive (string, number, boolean, null) */
+function isPrimitive(value: unknown): value is string | number | boolean | null {
+  return value === null || typeof value !== "object";
+}
+
+/**
+ * Convert a JSON value into a readable markdown document.
+ * Object keys become headings at their nesting depth (depth 1 = #, depth 2 = ##, etc.).
+ * Arrays of primitives become bullet lists. Arrays of objects get numbered sub-sections.
+ * Headings are capped at depth 6 (######); deeper nesting uses **bold** labels instead.
+ */
+export function jsonToMarkdown(value: unknown, depth: number = 1): string {
+  if (isPrimitive(value)) {
+    return String(value ?? "null");
+  }
+
+  if (Array.isArray(value)) {
+    // Array of all primitives → bullet list
+    if (value.every(isPrimitive)) {
+      return value.map((v) => `- ${String(v ?? "null")}`).join("\n");
+    }
+    // Array of objects → numbered sub-sections
+    return value
+      .map((item, i) => {
+        if (isPrimitive(item)) {
+          return `- ${String(item ?? "null")}`;
+        }
+        const label = depth <= 6 ? `${"#".repeat(depth)} ${i + 1}` : `**${i + 1}**`;
+        return `${label}\n\n${jsonToMarkdown(item, depth + 1)}`;
+      })
+      .join("\n\n");
+  }
+
+  // Object → each key becomes a heading
+  const entries = Object.entries(value as Record<string, unknown>);
+  const lines: string[] = [];
+
+  for (const [key, val] of entries) {
+    const heading = humanizeKey(key);
+
+    if (isPrimitive(val)) {
+      if (depth <= 6) {
+        lines.push(`${"#".repeat(depth)} ${heading}\n\n${String(val ?? "null")}`);
+      } else {
+        lines.push(`**${heading}:** ${String(val ?? "null")}`);
+      }
+    } else if (Array.isArray(val) && val.every(isPrimitive)) {
+      // Array of primitives: heading then bullet list
+      const list = val.map((v) => `- ${String(v ?? "null")}`).join("\n");
+      if (depth <= 6) {
+        lines.push(`${"#".repeat(depth)} ${heading}\n\n${list}`);
+      } else {
+        lines.push(`**${heading}:**\n${list}`);
+      }
+    } else {
+      // Nested object or array of objects
+      const label = depth <= 6 ? `${"#".repeat(depth)} ${heading}` : `**${heading}**`;
+      lines.push(`${label}\n\n${jsonToMarkdown(val, depth + 1)}`);
+    }
+  }
+
+  return lines.join("\n\n");
 }
 
 /** Render a markdown string to ANSI-styled terminal output using Bun's built-in renderer */

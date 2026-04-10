@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import ansis from "ansis";
 import {
   formatCallResult,
+  jsonToMarkdown,
   renderMarkdownToAnsi,
   wrapDescription,
 } from "../../src/output/formatter.ts";
@@ -170,6 +171,76 @@ describe("formatCallResult with format: markdown", () => {
     const stripped = ansis.strip(output);
     expect(stripped).toContain("console.log(42)");
     expect(stripped).toContain("│");
+  });
+
+  test("renders JSON content as a structured markdown document", () => {
+    const result = {
+      content: [{ type: "text", text: '{"name":"Evan","active":true}' }],
+    };
+    const output = formatCallResult(result, opts);
+    const stripped = ansis.strip(output);
+    // Keys become headings, values become text
+    expect(stripped).toContain("Name");
+    expect(stripped).toContain("Evan");
+    expect(stripped).toContain("Active");
+    expect(stripped).toContain("true");
+  });
+});
+
+describe("jsonToMarkdown", () => {
+  test("renders primitive values as plain text", () => {
+    expect(jsonToMarkdown("hello")).toBe("hello");
+    expect(jsonToMarkdown(42)).toBe("42");
+    expect(jsonToMarkdown(true)).toBe("true");
+    expect(jsonToMarkdown(null)).toBe("null");
+  });
+
+  test("renders flat object with keys as h1 headings", () => {
+    const md = jsonToMarkdown({ display_name: "Evan", active: true });
+    expect(md).toContain("# Display Name\n\nEvan");
+    expect(md).toContain("# Active\n\ntrue");
+  });
+
+  test("humanizes key names", () => {
+    const md = jsonToMarkdown({ my_email_address: "a@b.com", firstName: "Evan" });
+    expect(md).toContain("# My Email Address");
+    expect(md).toContain("# First Name");
+  });
+
+  test("renders nested objects with increasing heading depth", () => {
+    const md = jsonToMarkdown({ user: { name: "Evan", role: "admin" } });
+    expect(md).toContain("# User");
+    expect(md).toContain("## Name\n\nEvan");
+    expect(md).toContain("## Role\n\nadmin");
+  });
+
+  test("renders arrays of primitives as bullet lists", () => {
+    const md = jsonToMarkdown({ tags: ["a", "b", "c"] });
+    expect(md).toContain("# Tags");
+    expect(md).toContain("- a\n- b\n- c");
+  });
+
+  test("renders arrays of objects with numbered sub-sections", () => {
+    const md = jsonToMarkdown({
+      teams: [
+        { name: "Engineering", key: "ENG" },
+        { name: "Product", key: "PRO" },
+      ],
+    });
+    expect(md).toContain("# Teams");
+    expect(md).toContain("## 1");
+    expect(md).toContain("### Name\n\nEngineering");
+    expect(md).toContain("### Key\n\nENG");
+    expect(md).toContain("## 2");
+    expect(md).toContain("### Name\n\nProduct");
+  });
+
+  test("caps heading depth at 6 and uses bold labels beyond", () => {
+    // depth 7+ should use **bold** instead of headings
+    const deep = { a: { b: { c: { d: { e: { f: { g: "deep" } } } } } } };
+    const md = jsonToMarkdown(deep);
+    expect(md).toContain("###### F");
+    expect(md).toContain("**G:** deep");
   });
 });
 
