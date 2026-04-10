@@ -423,58 +423,9 @@ function formatCallResultAsMarkdown(result: unknown): string {
   return renderMarkdownToAnsi(text);
 }
 
-/** Render a markdown string to ANSI-styled terminal output using Bun's built-in parser */
+/** Render a markdown string to ANSI-styled terminal output using Bun's built-in renderer */
 export function renderMarkdownToAnsi(input: string): string {
-  const cols = process.stdout.columns ?? 80;
-  const rule = dim("─".repeat(Math.min(cols, 80)));
-
-  return Bun.markdown.render(input, {
-    heading: (children: string, opts: { level: number }) => {
-      if (opts.level === 1) {
-        return `\n${rule}\n${bold(children)}\n${rule}\n\n`;
-      }
-      if (opts.level === 2) {
-        return `\n${bold(children)}\n${dim("─".repeat(children.length))}\n\n`;
-      }
-      return `\n${bold(children)}\n\n`;
-    },
-    strong: (children: string) => bold(children),
-    emphasis: (children: string) => ansis.italic(children),
-    paragraph: (children: string) => children + "\n\n",
-    codespan: (code: string) => cyan(code),
-    code: (code: string, opts: { language?: string }) => {
-      const lang = opts.language ? dim(` ${opts.language}`) : "";
-      const border = dim("│ ");
-      const lines = code.replace(/\n$/, "").split("\n");
-      const formatted = lines.map((l: string) => border + l).join("\n");
-      return `${dim("┌──")}${lang}\n${formatted}\n${dim("└──")}\n\n`;
-    },
-    blockquote: (children: string) => {
-      const lines = children.replace(/\n$/, "").split("\n");
-      return lines.map((l: string) => `${dim("│")} ${l}`).join("\n") + "\n\n";
-    },
-    list: (children: string) => children + "\n",
-    listItem: (children: string, opts: { ordered: boolean; index: number; depth: number }) => {
-      const indent = "  ".repeat(opts.depth);
-      const bullet = opts.ordered ? `${opts.index + 1}.` : dim("•");
-      return `${indent}${bullet} ${children.trim()}\n`;
-    },
-    hr: () => rule + "\n\n",
-    link: (children: string, opts: { href: string }) => {
-      if (children === opts.href) return cyan(opts.href);
-      return `${children} ${dim("(")}${cyan(opts.href)}${dim(")")}`;
-    },
-    image: (alt: string, opts: { src: string }) =>
-      `${dim("[image:")} ${alt || opts.src}${dim("]")}\n`,
-    table: (children: string) => children + "\n",
-    thead: (children: string) => children,
-    tbody: (children: string) => children,
-    tr: (children: string) => children + "\n",
-    th: (children: string) => bold(children) + "\t",
-    td: (children: string) => children + "\t",
-    strikethrough: (children: string) => ansis.strikethrough(children),
-    text: (text: string) => text,
-  });
+  return Bun.markdown.ansi(input);
 }
 
 /** Recursively parse JSON strings inside MCP content blocks */

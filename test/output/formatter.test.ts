@@ -225,8 +225,8 @@ describe("renderMarkdownToAnsi", () => {
     const stripped = ansis.strip(output);
     expect(stripped).toContain("Title");
     expect(stripped).toContain("Body");
-    // H1 should have rule lines
-    expect(stripped).toContain("─");
+    // H1 should have rule underline
+    expect(stripped).toContain("═");
   });
 
   test("renders links with href", () => {
