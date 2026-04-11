@@ -12,14 +12,19 @@ Two audiences:
 ## Install
 
 ```bash
-# Via bun
+# Via bun (all platforms)
 bun install -g @evantahler/mcpx
 
-# Via curl
+# Via curl (macOS/Linux)
 curl -fsSL https://raw.githubusercontent.com/evantahler/mcpx/main/install.sh | bash
 ```
 
-The curl installer downloads a pre-built binary (macOS/Linux) — no runtime needed. The bun install method requires [Bun](https://bun.sh). Windows `.exe` binaries are available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
+```powershell
+# Via PowerShell (Windows)
+irm https://raw.githubusercontent.com/evantahler/mcpx/main/install.ps1 | iex
+```
+
+The curl/PowerShell installers download a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh). Binaries for all platforms are also available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
 
 ## Quick Start
 
@@ -113,7 +118,7 @@ mcpx search -n 5 "manage pull requests"
 | `-v, --verbose`           | Show HTTP details and JSON-RPC protocol messages         |
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
 | `-j, --json`              | Force JSON output (default when piped)                   |
-| `-F, --format <format>`   | Output format: `json`, `text`, or `markdown`             |
+| `-F, --format <format>`   | Output format: `json` or `markdown`                      |
 | `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
 
@@ -516,18 +521,13 @@ Tool results (`exec`, `task result`) support three output formats via the global
 # Default JSON output — full MCP response with content array
 mcpx exec github search_repositories '{"query":"mcp"}'
 
-# Text — just the content, no protocol wrapper
-mcpx exec github search_repositories '{"query":"mcp"}' --format text
-
 # Markdown — rich terminal rendering with colors and formatting
 mcpx exec github search_repositories '{"query":"mcp"}' -F markdown
 ```
 
-The `text` format extracts text from MCP content blocks and strips the protocol wrapper. If the text contains JSON, it's pretty-printed. Non-text content (images, resources) gets descriptive placeholders.
+The `markdown` format extracts text from MCP content blocks and renders it through Bun's built-in markdown parser with ANSI styling — headings, bold/italic, code blocks with borders, colored links, and bullet lists. JSON content is converted to a structured document with headings and bullet lists.
 
-The `markdown` format extracts text the same way, then renders it through Bun's built-in markdown parser with ANSI styling — headings, bold/italic, code blocks with borders, colored links, and bullet lists.
-
-For other commands (`list`, `info`, `search`), `--format json` forces JSON output and `--format text`/`--format markdown` use the existing human-friendly formatting.
+For other commands (`list`, `info`, `search`), `--format json` forces JSON output and `--format markdown` uses the existing human-friendly formatting.
 
 ### Chaining tool results
 

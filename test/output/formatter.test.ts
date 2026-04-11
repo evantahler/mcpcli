@@ -59,78 +59,6 @@ describe("formatCallResult nested JSON parsing", () => {
   });
 });
 
-describe("formatCallResult with format: text", () => {
-  const opts = { format: "text" as const };
-
-  test("extracts plain text from content blocks", () => {
-    const result = {
-      content: [{ type: "text", text: "hello world" }],
-    };
-    expect(formatCallResult(result, opts)).toBe("hello world");
-  });
-
-  test("pretty-prints JSON text content", () => {
-    const result = {
-      content: [{ type: "text", text: '{"name":"Evan","count":42}' }],
-    };
-    const output = formatCallResult(result, opts);
-    expect(JSON.parse(output)).toEqual({ name: "Evan", count: 42 });
-    // Should be pretty-printed with indentation
-    expect(output).toContain("\n");
-  });
-
-  test("joins multiple text blocks with newlines", () => {
-    const result = {
-      content: [
-        { type: "text", text: "line one" },
-        { type: "text", text: "line two" },
-      ],
-    };
-    expect(formatCallResult(result, opts)).toBe("line one\nline two");
-  });
-
-  test("shows placeholder for image content", () => {
-    const result = {
-      content: [{ type: "image", mimeType: "image/png", data: "AAAA" }],
-    };
-    expect(formatCallResult(result, opts)).toContain("[image: image/png,");
-  });
-
-  test("shows placeholder for resource content", () => {
-    const result = {
-      content: [{ type: "resource", uri: "file:///hello.txt" }],
-    };
-    expect(formatCallResult(result, opts)).toBe("[resource: file:///hello.txt]");
-  });
-
-  test("prefixes error results with error:", () => {
-    const result = {
-      content: [{ type: "text", text: "something went wrong" }],
-      isError: true,
-    };
-    expect(formatCallResult(result, opts)).toBe("error: something went wrong");
-  });
-
-  test("falls back to JSON for non-standard result shapes", () => {
-    const result = { unexpected: "data" };
-    const output = formatCallResult(result, opts);
-    expect(JSON.parse(output)).toEqual({ unexpected: "data" });
-  });
-
-  test("handles empty content array", () => {
-    const result = { content: [] };
-    const output = formatCallResult(result, opts);
-    expect(JSON.parse(output)).toEqual({ content: [] });
-  });
-
-  test("handles unknown content types", () => {
-    const result = {
-      content: [{ type: "custom_widget" }],
-    };
-    expect(formatCallResult(result, opts)).toBe("[custom_widget]");
-  });
-});
-
 describe("formatCallResult with format: markdown", () => {
   const opts = { format: "markdown" as const };
 
@@ -220,7 +148,7 @@ describe("jsonToMarkdown", () => {
     expect(md).toContain("- a\n- b\n- c");
   });
 
-  test("renders arrays of objects with numbered sub-sections", () => {
+  test("renders arrays of objects with numbered sub-sections and labels", () => {
     const md = jsonToMarkdown({
       teams: [
         { name: "Engineering", key: "ENG" },
@@ -228,19 +156,65 @@ describe("jsonToMarkdown", () => {
       ],
     });
     expect(md).toContain("# Teams");
-    expect(md).toContain("## 1");
-    expect(md).toContain("### Name\n\nEngineering");
-    expect(md).toContain("### Key\n\nENG");
-    expect(md).toContain("## 2");
-    expect(md).toContain("### Name\n\nProduct");
+    expect(md).toContain("## 1. Engineering");
+    expect(md).toContain("- **Key:** ENG");
+    expect(md).toContain("## 2. Product");
+    expect(md).toContain("- **Key:** PRO");
+    // Name is used as the label, so it should not appear as a separate bullet
+    expect(md).not.toContain("- **Name:**");
   });
 
-  test("caps heading depth at 6 and uses bold labels beyond", () => {
-    // depth 7+ should use **bold** instead of headings
+  test("falls back to numeric labels when no label key exists", () => {
+    const md = jsonToMarkdown({
+      items: [
+        { count: 10, active: true },
+        { count: 20, active: false },
+      ],
+    });
+    expect(md).toContain("## 1");
+    expect(md).toContain("## 2");
+    expect(md).not.toContain("## 1.");
+  });
+
+  test("uses bullet lists at depth 3+", () => {
     const deep = { a: { b: { c: { d: { e: { f: { g: "deep" } } } } } } };
     const md = jsonToMarkdown(deep);
-    expect(md).toContain("###### F");
-    expect(md).toContain("**G:** deep");
+    expect(md).toContain("# A");
+    expect(md).toContain("## B");
+    // depth 3+ uses bullets instead of headings
+    expect(md).toContain("- **C:**");
+    expect(md).toContain("- **G:** deep");
+    expect(md).not.toContain("###");
+  });
+
+  test("renders nested arrays within bullets compactly", () => {
+    const md = jsonToMarkdown({
+      team: {
+        name: "Engineering",
+        members: [
+          { name: "Alice", email: "alice@co.com" },
+          { name: "Bob", email: "bob@co.com" },
+        ],
+      },
+    });
+    expect(md).toContain("# Team");
+    expect(md).toContain("## Name");
+    expect(md).toContain("## Members");
+    // Members rendered as bullets with labels
+    expect(md).toContain("- Alice");
+    expect(md).toContain("- Bob");
+    expect(md).toContain("- **Email:** alice@co.com");
+  });
+
+  test("finds labels with different key casings", () => {
+    const md = jsonToMarkdown({
+      users: [
+        { display_name: "Evan", id: "1" },
+        { displayName: "Nate", id: "2" },
+      ],
+    });
+    expect(md).toContain("## 1. Evan");
+    expect(md).toContain("## 2. Nate");
   });
 });
 
