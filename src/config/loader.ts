@@ -1,7 +1,6 @@
 import { join, resolve } from "path";
-import { homedir } from "os";
 import { interpolateEnv } from "./env.ts";
-import { ENV } from "../constants.ts";
+import { DEFAULT_CONFIG_DIR, ENV } from "../constants.ts";
 import {
   type Config,
   type ServersFile,
@@ -11,8 +10,6 @@ import {
   validateAuthFile,
   validateSearchIndex,
 } from "./schemas.ts";
-
-const DEFAULT_CONFIG_DIR = join(homedir(), ".mcpx");
 
 const EMPTY_SERVERS: ServersFile = { mcpServers: {} };
 const EMPTY_AUTH: AuthFile = {};

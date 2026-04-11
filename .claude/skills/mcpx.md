@@ -153,6 +153,8 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx task get <server> <taskId>`     | Get task status                   |
 | `mcpx task result <server> <taskId>`  | Retrieve completed task result    |
 | `mcpx task cancel <server> <taskId>`  | Cancel a running task             |
+| `mcpx check-update`                  | Check for a newer version of mcpx |
+| `mcpx upgrade`                       | Upgrade mcpx to the latest version|
 
 ## Global flags
 
