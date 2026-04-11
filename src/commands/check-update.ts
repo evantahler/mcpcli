@@ -42,7 +42,7 @@ export function registerCheckUpdateCommand(program: Command) {
         if (!info.hasUpdate) {
           if (info.aheadOfLatest) {
             console.log(
-              green(
+              yellow(
                 `mcpx v${info.currentVersion} is ahead of latest published release (v${info.latestVersion})`,
               ),
             );
