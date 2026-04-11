@@ -95,11 +95,12 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx task get <server> <taskId>`      | Get task status                                        |
 | `mcpx task result <server> <taskId>`   | Retrieve completed task result                         |
 | `mcpx task cancel <server> <taskId>`   | Cancel a running task                                  |
-| `mcpx allow <server>`                  | Allow Claude Code to exec all tools on a server        |
+| `mcpx allow <server>`                  | Allow an agent to exec all tools on a server           |
 | `mcpx allow <server> <tools...>`       | Allow specific tools only                              |
 | `mcpx allow --all`                     | Allow all mcpx exec calls                              |
 | `mcpx allow --all-read`                | Allow read-only commands (search, info, list, etc.)    |
 | `mcpx allow --list`                    | Show current mcpx-related permissions                  |
+| `mcpx allow --cursor <server>`         | Allow for Cursor instead of Claude Code                |
 | `mcpx deny <server>`                   | Remove permissions for a server                        |
 | `mcpx deny --all`                      | Remove all mcpx-related permissions                    |
 
@@ -597,15 +598,18 @@ To execute tools:
 Always search before executing — don't assume tool names.
 ```
 
-## Permissions (Claude Code)
+## Permissions (Claude Code & Cursor)
 
-Claude Code prompts users to approve each `mcpx exec` call. `mcpx allow` and `mcpx deny` manage fine-grained permission rules so Claude Code can self-authorize specific tools without broad access.
+AI agents like Claude Code and Cursor prompt users to approve each `mcpx exec` call. `mcpx allow` and `mcpx deny` manage fine-grained permission rules so agents can self-authorize specific tools without broad access.
 
-**Key insight:** If the user allows `Bash(mcpx allow:*)` once (safe — it only writes to local settings files), Claude Code can then grant itself access to specific tools as needed. This is an opt-in workflow — by default, Claude Code cannot self-authorize and will prompt the user for each `mcpx exec` call.
+**Key insight:** If the user allows the initial permission pattern once (safe — it only writes to local settings files), the agent can then grant itself access to specific tools as needed. This is an opt-in workflow — by default, agents cannot self-authorize and will prompt the user for each `mcpx exec` call.
 
 ```bash
-# Allow all tools on a server
+# Allow all tools on a server (Claude Code, default)
 mcpx allow github
+
+# Allow for Cursor instead
+mcpx allow github --cursor
 
 # Allow specific tools only
 mcpx allow github search_repositories get_file
@@ -618,6 +622,7 @@ mcpx allow --all
 
 # Show current permissions across all scopes
 mcpx allow --list
+mcpx allow --list --cursor
 
 # Preview what would be written
 mcpx allow github --dry-run
@@ -629,13 +634,20 @@ mcpx deny github
 mcpx deny --all
 ```
 
+**Target flag** — by default, permissions target Claude Code. Use `--cursor` to target Cursor instead:
+
+| Flag        | Pattern prefix | Settings files                                  |
+| ----------- | -------------- | ----------------------------------------------- |
+| _(default)_ | `Bash(…)`      | `.claude/settings.local.json`, etc.             |
+| `--cursor`  | `Shell(…)`     | `.cursor/cli.json`, `~/.cursor/cli-config.json` |
+
 **Scope flags** control where the permission is written:
 
-| Flag        | File                          | Default |
-| ----------- | ----------------------------- | ------- |
-| `--local`   | `.claude/settings.local.json` | ✓       |
-| `--project` | `.claude/settings.json`       |         |
-| `--global`  | `~/.claude/settings.json`     |         |
+| Flag        | Claude Code file              | Cursor file                 | Default |
+| ----------- | ----------------------------- | --------------------------- | ------- |
+| `--local`   | `.claude/settings.local.json` | `.cursor/cli.json`          | ✓       |
+| `--project` | `.claude/settings.json`       | `.cursor/cli.json`          |         |
+| `--global`  | `~/.claude/settings.json`     | `~/.cursor/cli-config.json` |         |
 
 **`allow` options:**
 
@@ -644,21 +656,23 @@ mcpx deny --all
 | `--all`      | Allow all mcpx exec calls                           |
 | `--all-read` | Allow read-only commands (search, info, list, etc.) |
 | `--list`     | Show current mcpx-related permissions               |
-| `--local`    | Write to `.claude/settings.local.json` (default)    |
-| `--project`  | Write to `.claude/settings.json` (shared)           |
-| `--global`   | Write to `~/.claude/settings.json`                  |
+| `--cursor`   | Target Cursor settings instead of Claude Code       |
+| `--local`    | Write to local settings (default)                   |
+| `--project`  | Write to project settings (shared)                  |
+| `--global`   | Write to global settings                            |
 | `--dry-run`  | Show patterns without writing                       |
 
 **`deny` options:**
 
-| Flag         | Purpose                                          |
-| ------------ | ------------------------------------------------ |
-| `--all`      | Remove all mcpx-related permissions              |
-| `--all-read` | Remove read-only command permissions             |
-| `--local`    | Write to `.claude/settings.local.json` (default) |
-| `--project`  | Write to `.claude/settings.json` (shared)        |
-| `--global`   | Write to `~/.claude/settings.json`               |
-| `--dry-run`  | Show what would be removed                       |
+| Flag         | Purpose                                       |
+| ------------ | --------------------------------------------- |
+| `--all`      | Remove all mcpx-related permissions           |
+| `--all-read` | Remove read-only command permissions          |
+| `--cursor`   | Target Cursor settings instead of Claude Code |
+| `--local`    | Write to local settings (default)             |
+| `--project`  | Write to project settings (shared)            |
+| `--global`   | Write to global settings                      |
+| `--dry-run`  | Show what would be removed                    |
 
 ## Development
 

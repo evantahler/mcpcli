@@ -166,13 +166,15 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx task get <server> <taskId>`     | Get task status                   |
 | `mcpx task result <server> <taskId>`  | Retrieve completed task result    |
 | `mcpx task cancel <server> <taskId>`  | Cancel a running task             |
-| `mcpx allow <server>`                | Allow Claude Code to exec all tools on a server |
+| `mcpx allow <server>`                | Allow agent to exec all tools on a server |
 | `mcpx allow <server> <tools...>`     | Allow specific tools only         |
 | `mcpx allow --all`                   | Allow all mcpx exec calls         |
 | `mcpx allow --all-read`              | Allow read-only commands          |
 | `mcpx allow --list`                  | Show current mcpx permissions     |
+| `mcpx allow --cursor <server>`       | Target Cursor instead of Claude   |
 | `mcpx deny <server>`                 | Remove server permissions         |
 | `mcpx deny --all`                    | Remove all mcpx permissions       |
+| `mcpx deny --cursor <server>`        | Target Cursor instead of Claude   |
 
 ## Global flags
 

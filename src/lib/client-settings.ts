@@ -2,9 +2,10 @@ import { join } from "path";
 import { homedir } from "os";
 import { readFile, mkdir, writeFile } from "fs/promises";
 
+export type Client = "claude" | "cursor";
 export type Scope = "local" | "project" | "global";
 
-interface ClaudeSettings {
+export interface ClientSettings {
   permissions?: {
     allow?: string[];
     deny?: string[];
@@ -12,8 +13,22 @@ interface ClaudeSettings {
   [key: string]: unknown;
 }
 
-/** Resolve the settings file path for a given scope */
-export function resolveSettingsPath(scope: Scope): string {
+function prefix(client: Client): string {
+  return client === "claude" ? "Bash" : "Shell";
+}
+
+/** Resolve the settings file path for a given scope and client */
+export function resolveSettingsPath(scope: Scope, client: Client = "claude"): string {
+  if (client === "cursor") {
+    switch (scope) {
+      case "local":
+      case "project":
+        return join(process.cwd(), ".cursor", "cli.json");
+      case "global":
+        return join(homedir(), ".cursor", "cli-config.json");
+    }
+  }
+
   switch (scope) {
     case "local":
       return join(process.cwd(), ".claude", "settings.local.json");
@@ -24,29 +39,30 @@ export function resolveSettingsPath(scope: Scope): string {
   }
 }
 
-/** Read Claude settings from a file, returning empty settings if the file doesn't exist */
-export async function readClaudeSettings(path: string): Promise<ClaudeSettings> {
+/** Read client settings from a file, returning empty settings if the file doesn't exist */
+export async function readClientSettings(path: string): Promise<ClientSettings> {
   try {
     const content = await readFile(path, "utf-8");
-    return JSON.parse(content) as ClaudeSettings;
+    return JSON.parse(content) as ClientSettings;
   } catch {
     return {};
   }
 }
 
-/** Write Claude settings to a file, creating parent directories as needed */
-export async function writeClaudeSettings(path: string, settings: ClaudeSettings): Promise<void> {
+/** Write client settings to a file, creating parent directories as needed */
+export async function writeClientSettings(path: string, settings: ClientSettings): Promise<void> {
   const dir = join(path, "..");
   await mkdir(dir, { recursive: true });
   await writeFile(path, JSON.stringify(settings, null, 2) + "\n", "utf-8");
 }
 
-/** Generate a Bash permission pattern for mcpx exec with a specific server and optional tool */
-export function execPattern(server: string, tool?: string): string {
+/** Generate a permission pattern for mcpx exec with a specific server and optional tool */
+export function execPattern(server: string, tool?: string, client: Client = "claude"): string {
+  const p = prefix(client);
   if (tool) {
-    return `Bash(mcpx exec:${server}:${tool}:*)`;
+    return `${p}(mcpx exec:${server}:${tool}:*)`;
   }
-  return `Bash(mcpx exec:${server}:*)`;
+  return `${p}(mcpx exec:${server}:*)`;
 }
 
 /** Read-only mcpx commands that are safe to allow broadly */
@@ -62,35 +78,36 @@ const READ_ONLY_COMMANDS = [
 ];
 
 /** Generate patterns for all read-only mcpx commands */
-export function readOnlyPatterns(): string[] {
-  return READ_ONLY_COMMANDS.map((cmd) => `Bash(mcpx ${cmd}:*)`);
+export function readOnlyPatterns(client: Client = "claude"): string[] {
+  const p = prefix(client);
+  return READ_ONLY_COMMANDS.map((cmd) => `${p}(mcpx ${cmd}:*)`);
 }
 
 /** Generate the broad allow-all pattern for mcpx exec */
-export function allExecPattern(): string {
-  return "Bash(mcpx exec:*)";
+export function allExecPattern(client: Client = "claude"): string {
+  return `${prefix(client)}(mcpx exec:*)`;
 }
 
 /** Generate the allow pattern for mcpx allow itself */
-export function allowCommandPattern(): string {
-  return "Bash(mcpx allow:*)";
+export function allowCommandPattern(client: Client = "claude"): string {
+  return `${prefix(client)}(mcpx allow:*)`;
 }
 
 /** Generate the allow pattern for mcpx deny itself */
-export function denyCommandPattern(): string {
-  return "Bash(mcpx deny:*)";
+export function denyCommandPattern(client: Client = "claude"): string {
+  return `${prefix(client)}(mcpx deny:*)`;
 }
 
 /** Check if a permission pattern is mcpx-related */
-export function isMcpxPattern(pattern: string): boolean {
-  return pattern.startsWith("Bash(mcpx ");
+export function isMcpxPattern(pattern: string, client: Client = "claude"): boolean {
+  return pattern.startsWith(`${prefix(client)}(mcpx `);
 }
 
 /** Add patterns to settings, deduplicating. Returns the updated settings and list of newly added patterns. */
 export function addPatterns(
-  settings: ClaudeSettings,
+  settings: ClientSettings,
   patterns: string[],
-): { settings: ClaudeSettings; added: string[] } {
+): { settings: ClientSettings; added: string[] } {
   const existing = new Set(settings.permissions?.allow ?? []);
   const added: string[] = [];
 
@@ -115,9 +132,9 @@ export function addPatterns(
 
 /** Remove specific patterns from settings. Returns the updated settings and list of removed patterns. */
 export function removePatterns(
-  settings: ClaudeSettings,
+  settings: ClientSettings,
   patterns: string[],
-): { settings: ClaudeSettings; removed: string[] } {
+): { settings: ClientSettings; removed: string[] } {
   const existing = settings.permissions?.allow ?? [];
   const toRemove = new Set(patterns);
   const removed: string[] = [];
@@ -144,8 +161,11 @@ export function removePatterns(
 }
 
 /** Remove all mcpx-related patterns from settings. Returns the updated settings and list of removed patterns. */
-export function removeAllMcpxPatterns(settings: ClaudeSettings): {
-  settings: ClaudeSettings;
+export function removeAllMcpxPatterns(
+  settings: ClientSettings,
+  client: Client = "claude",
+): {
+  settings: ClientSettings;
   removed: string[];
 } {
   const existing = settings.permissions?.allow ?? [];
@@ -153,7 +173,7 @@ export function removeAllMcpxPatterns(settings: ClaudeSettings): {
   const remaining: string[] = [];
 
   for (const p of existing) {
-    if (isMcpxPattern(p)) {
+    if (isMcpxPattern(p, client)) {
       removed.push(p);
     } else {
       remaining.push(p);
@@ -173,13 +193,18 @@ export function removeAllMcpxPatterns(settings: ClaudeSettings): {
 }
 
 /** Extract all mcpx-related patterns from settings */
-export function getMcpxPatterns(settings: ClaudeSettings): string[] {
-  return (settings.permissions?.allow ?? []).filter(isMcpxPattern);
+export function getMcpxPatterns(settings: ClientSettings, client: Client = "claude"): string[] {
+  return (settings.permissions?.allow ?? []).filter((p) => isMcpxPattern(p, client));
 }
 
 /** Get all mcpx-related patterns for a specific server */
-export function getServerPatterns(settings: ClaudeSettings, server: string): string[] {
-  return getMcpxPatterns(settings).filter(
-    (p) => p.startsWith(`Bash(mcpx exec:${server}:`) || p === `Bash(mcpx exec:${server}:*)`,
+export function getServerPatterns(
+  settings: ClientSettings,
+  server: string,
+  client: Client = "claude",
+): string[] {
+  const p = prefix(client);
+  return getMcpxPatterns(settings, client).filter(
+    (pat) => pat.startsWith(`${p}(mcpx exec:${server}:`) || pat === `${p}(mcpx exec:${server}:*)`,
   );
 }

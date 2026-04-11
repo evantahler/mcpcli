@@ -109,6 +109,22 @@ echo '{"action":"accept","content":{"confirm":true}}' | \
   mcpx exec my-server deploy_tool '{"target": "staging"}' --json
 ```
 
+## 6. Self-authorize (if needed)
+
+Cursor prompts you for every `mcpx exec` call. You can grant yourself granular permissions:
+
+```bash
+mcpx allow <server> --cursor              # all tools on a server
+mcpx allow <server> <tool> --cursor       # specific tool
+mcpx allow --all-read --cursor            # search, info, list, etc.
+mcpx allow --all --cursor                 # all mcpx exec calls
+mcpx allow --list --cursor                # show current permissions
+mcpx deny <server> --cursor               # revoke server permissions
+mcpx deny --all --cursor                  # revoke all permissions
+```
+
+This writes `Shell(mcpx exec:server:*)` patterns to `.cursor/cli.json`.
+
 ## Authentication
 
 Some HTTP servers require OAuth. If you see an "Not authenticated" error:
@@ -163,3 +179,10 @@ mcpx deauth <server>      # remove stored auth
 | `mcpx task get <server> <taskId>`    | Get task status                 |
 | `mcpx task result <server> <taskId>` | Retrieve completed task result  |
 | `mcpx task cancel <server> <taskId>` | Cancel a running task           |
+| `mcpx allow <server> --cursor`       | Allow exec all tools on a server |
+| `mcpx allow <server> <tools...> --cursor` | Allow specific tools only  |
+| `mcpx allow --all --cursor`          | Allow all mcpx exec calls       |
+| `mcpx allow --all-read --cursor`     | Allow read-only commands        |
+| `mcpx allow --list --cursor`         | Show current permissions        |
+| `mcpx deny <server> --cursor`        | Remove server permissions       |
+| `mcpx deny --all --cursor`           | Remove all mcpx permissions     |
