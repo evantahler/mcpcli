@@ -10,6 +10,7 @@ export interface UpdateInfo {
   currentVersion: string;
   latestVersion: string;
   hasUpdate: boolean;
+  aheadOfLatest: boolean;
   changelog?: string;
 }
 
@@ -80,13 +81,14 @@ export async function checkForUpdate(
 ): Promise<UpdateInfo> {
   const latestVersion = await fetchLatestVersion(signal);
   const hasUpdate = isNewerVersion(currentVersion, latestVersion);
+  const aheadOfLatest = isNewerVersion(latestVersion, currentVersion);
 
   let changelog: string | undefined;
   if (hasUpdate) {
     changelog = await fetchChangelog(currentVersion, latestVersion, signal);
   }
 
-  return { currentVersion, latestVersion, hasUpdate, changelog };
+  return { currentVersion, latestVersion, hasUpdate, aheadOfLatest, changelog };
 }
 
 /** Returns true if the cache is missing or older than 24 hours. */

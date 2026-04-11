@@ -40,7 +40,15 @@ export function registerCheckUpdateCommand(program: Command) {
         }
 
         if (!info.hasUpdate) {
-          console.log(green(`mcpx is up to date (v${info.currentVersion})`));
+          if (info.aheadOfLatest) {
+            console.log(
+              green(
+                `mcpx v${info.currentVersion} is ahead of latest published release (v${info.latestVersion})`,
+              ),
+            );
+          } else {
+            console.log(green(`mcpx is up to date (v${info.currentVersion})`));
+          }
           return;
         }
 
