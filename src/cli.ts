@@ -15,6 +15,9 @@ import { registerResourceCommand } from "./commands/resource.ts";
 import { registerPromptCommand } from "./commands/prompt.ts";
 import { registerServersCommand } from "./commands/servers.ts";
 import { registerTaskCommand } from "./commands/task.ts";
+import { registerCheckUpdateCommand } from "./commands/check-update.ts";
+import { registerUpgradeCommand } from "./commands/upgrade.ts";
+import { maybeCheckForUpdate } from "./update/background.ts";
 
 import pkg from "../package.json";
 
@@ -50,6 +53,8 @@ registerResourceCommand(program);
 registerPromptCommand(program);
 registerServersCommand(program);
 registerTaskCommand(program);
+registerCheckUpdateCommand(program);
+registerUpgradeCommand(program);
 
 // Detect unknown subcommands before commander misreports them as "too many arguments"
 const knownCommands = new Set(program.commands.map((c) => c.name()));
@@ -77,4 +82,13 @@ if (firstCommand && !knownCommands.has(firstCommand)) {
   process.exit(1);
 }
 
+// Fire-and-forget background update check
+const updateNotice = maybeCheckForUpdate();
+
 program.parse();
+
+// Print update notice after command output completes
+process.on("beforeExit", async () => {
+  const notice = await updateNotice;
+  if (notice) process.stderr.write(notice);
+});

@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  check:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,3 +16,23 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun lint
       - run: bun test
+
+  test-upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - name: Test upgrade pathways
+        run: bash test/e2e/test-upgrade.sh
+
+  complete:
+    runs-on: ubuntu-latest
+    needs: [test, test-upgrade]
+    steps:
+      - run: echo "All checks passed"
