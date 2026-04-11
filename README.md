@@ -12,14 +12,19 @@ Two audiences:
 ## Install
 
 ```bash
-# Via bun
+# Via bun (all platforms)
 bun install -g @evantahler/mcpx
 
-# Via curl
+# Via curl (macOS/Linux)
 curl -fsSL https://raw.githubusercontent.com/evantahler/mcpx/main/install.sh | bash
 ```
 
-The curl installer downloads a pre-built binary (macOS/Linux) — no runtime needed. The bun install method requires [Bun](https://bun.sh). Windows `.exe` binaries are available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
+```powershell
+# Via PowerShell (Windows)
+irm https://raw.githubusercontent.com/evantahler/mcpx/main/install.ps1 | iex
+```
+
+The curl/PowerShell installers download a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh). Binaries for all platforms are also available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
 
 ## Quick Start
 
