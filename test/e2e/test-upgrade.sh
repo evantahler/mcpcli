@@ -11,8 +11,8 @@ FAIL=0
 ERRORS=""
 EXPECTED_VERSION=$(jq -r .version package.json)
 
-pass() { ((PASS++)); echo "  ✔ $1"; }
-fail() { ((FAIL++)); ERRORS+="  ✖ $1"$'\n'; echo "  ✖ $1"; }
+pass() { PASS=$((PASS + 1)); echo "  ✔ $1"; }
+fail() { FAIL=$((FAIL + 1)); ERRORS+="  ✖ $1"$'\n'; echo "  ✖ $1"; }
 
 clear_cache() { rm -f ~/.mcpx/update.json; }
 
@@ -59,13 +59,6 @@ assert_eq "npm: check-update currentVersion matches" "$CHECK_VER" "$EXPECTED_VER
 clear_cache
 UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
 assert_json_field "npm: upgrade has currentVersion" "$UPGRADE" ".currentVersion"
-
-UPGRADE_EXIT=$?
-if [ "$UPGRADE_EXIT" -eq 0 ]; then
-  pass "npm: upgrade exited 0"
-else
-  fail "npm: upgrade exited $UPGRADE_EXIT"
-fi
 
 npm uninstall -g @evantahler/mcpx 2>&1
 hash -r
