@@ -42,6 +42,9 @@ mcpx info github search_repositories
 # Execute a tool
 mcpx exec github search_repositories '{"query": "mcp server"}'
 
+# Execute a tool without specifying the server (auto-resolved)
+mcpx exec search_repositories '{"query": "mcp server"}'
+
 # Search tools — combines keyword and semantic matching
 mcpx search "post a ticket to linear"
 
@@ -70,6 +73,7 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx index`                           | Build/rebuild the search index                         |
 | `mcpx index -i`                        | Show index status                                      |
 | `mcpx exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
+| `mcpx exec <tool> [json]`              | Execute tool (server auto-resolved if unambiguous)     |
 | `mcpx exec <server> <tool> -f file`    | Read tool args from a JSON file                        |
 | `mcpx exec <server>`                   | List available tools for a server                      |
 | `mcpx auth <server>`                   | Authenticate with an HTTP MCP server (OAuth)           |
@@ -89,8 +93,8 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx prompt`                          | List all prompts across all servers                    |
 | `mcpx prompt <server>`                 | List prompts for a server                              |
 | `mcpx prompt <server> <name> [json]`   | Get a specific prompt                                  |
-| `mcpx exec <server> <tool> --no-wait`  | Execute as async task, return task handle immediately  |
-| `mcpx exec <server> <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
+| `mcpx exec [server] <tool> --no-wait`  | Execute as async task, return task handle immediately  |
+| `mcpx exec [server] <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
 | `mcpx task list <server>`              | List tasks on a server                                 |
 | `mcpx task get <server> <taskId>`      | Get task status                                        |
 | `mcpx task result <server> <taskId>`   | Retrieve completed task result                         |
@@ -579,7 +583,7 @@ Then in any Claude Code session, the agent can use `/mcpx` or the skill triggers
 
 1. **Search first** — `mcpx search "<intent>"` to find relevant tools
 2. **Inspect** — `mcpx info <server> <tool>` to get the schema before calling
-3. **Execute** — `mcpx exec <server> <tool> '<json>'` to execute
+3. **Execute** — `mcpx exec <tool> '<json>'` to execute (or `mcpx exec <server> <tool> '<json>'` if the tool name is ambiguous)
 
 This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
 
@@ -614,7 +618,8 @@ To discover tools:
   mcpx info <server> <tool>              # tool schema
 
 To execute tools:
-  mcpx exec <server> <tool> '<json args>'
+  mcpx exec <tool> '<json args>'              # server auto-resolved
+  mcpx exec <server> <tool> '<json args>'     # explicit server
   mcpx exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.

@@ -2,6 +2,7 @@ import { join } from "path";
 
 const CLI = join(import.meta.dir, "../../src/cli.ts");
 const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
+const MULTI_CONFIG = join(import.meta.dir, "../fixtures/multi-server-config");
 const CWD = join(import.meta.dir, "../..");
 
 /** Spawn the CLI with the mock config and the given args. */
@@ -31,4 +32,13 @@ export function runJson(...args: string[]) {
   return run("--json", ...args);
 }
 
-export { CLI, CONFIG, CWD };
+/** Spawn the CLI with the multi-server config and the given args. */
+export function runMultiServer(...args: string[]) {
+  return Bun.spawn(["bun", "run", CLI, "-c", MULTI_CONFIG, ...args], {
+    stdout: "pipe",
+    stderr: "pipe",
+    cwd: CWD,
+  });
+}
+
+export { CLI, CONFIG, MULTI_CONFIG, CWD };

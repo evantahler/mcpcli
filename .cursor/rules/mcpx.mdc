@@ -25,7 +25,8 @@ This shows parameters, types, required fields, and the full JSON Schema.
 ## 3. Execute the tool
 
 ```bash
-mcpx exec <server> <tool> '<json args>'
+mcpx exec <tool> '<json args>'                # server auto-resolved if unambiguous
+mcpx exec <server> <tool> '<json args>'       # explicit server (required if tool name exists on multiple servers)
 mcpx exec <server> <tool> -f params.json
 ```
 
@@ -52,7 +53,10 @@ mcpx search "send a message"
 # See what parameters Slack_SendMessage needs
 mcpx info arcade Slack_SendMessage
 
-# Send a message
+# Send a message (server optional if tool name is unique)
+mcpx exec Slack_SendMessage '{"channel":"#general","message":"hello"}'
+
+# Or explicitly specify the server
 mcpx exec arcade Slack_SendMessage '{"channel":"#general","message":"hello"}'
 
 # Chain commands — search repos and read the first result
@@ -118,7 +122,8 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx info <server>`                  | Server overview (version, capabilities, tools) |
 | `mcpx info <server> <tool>`           | Show tool schema                  |
 | `mcpx exec <server>`                  | List tools for a server           |
-| `mcpx exec <server> <tool> '<json>'`  | Execute a tool                    |
+| `mcpx exec <tool> '<json>'`           | Execute tool (server auto-resolved) |
+| `mcpx exec <server> <tool> '<json>'`  | Execute tool (explicit server)    |
 | `mcpx exec <server> <tool> -f file`   | Execute with args from file       |
 | `mcpx search "<query>"`               | Search tools (keyword + semantic) |
 | `mcpx search -k "<pattern>"`          | Keyword/glob search only          |

@@ -2,7 +2,7 @@ import { describe, test, expect, afterAll } from "bun:test";
 import { join } from "path";
 import { mkdtempSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { run, runWithStdin, CLI, CONFIG } from "../helpers/run.ts";
+import { run, runWithStdin, runMultiServer, CLI, CONFIG } from "../helpers/run.ts";
 
 const tempDir = mkdtempSync(join(tmpdir(), "mcpx-test-"));
 afterAll(() => rmSync(tempDir, { recursive: true, force: true }));
@@ -203,5 +203,87 @@ describe("mcpx exec", () => {
 
     const result = JSON.parse(stdout);
     expect(result.content[0].text).toContain("declined");
+  });
+});
+
+describe("mcpx exec (server-optional)", () => {
+  test("resolves tool without server when unambiguous", async () => {
+    const proc = run("exec", "echo", '{"message": "no server"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("no server");
+  });
+
+  test("resolves add tool without server", async () => {
+    const proc = run("exec", "add", '{"a": 3, "b": 7}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe(10);
+  });
+
+  test("errors on unknown tool name", async () => {
+    const proc = run("exec", "nonexistent_tool");
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Unknown server or tool");
+    expect(stderr).toContain("mcpx search");
+  });
+
+  test("backwards compat: server + tool still works", async () => {
+    const proc = run("exec", "mock", "echo", '{"message": "compat"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("compat");
+  });
+
+  test("backwards compat: server-only lists tools", async () => {
+    const proc = run("exec", "mock");
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("echo");
+    expect(stdout).toContain("add");
+  });
+});
+
+describe("mcpx exec (multi-server disambiguation)", () => {
+  test("errors on ambiguous tool across servers", async () => {
+    const proc = runMultiServer("exec", "echo", '{"message": "hi"}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Ambiguous tool");
+    expect(stderr).toContain("mock");
+    expect(stderr).toContain("mock2");
+  });
+
+  test("resolves unique tool across servers", async () => {
+    const proc = runMultiServer("exec", "multiply", '{"a": 4, "b": 5}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe(20);
+  });
+
+  test("server + tool still works with multi-server config", async () => {
+    const proc = runMultiServer("exec", "mock", "echo", '{"message": "explicit"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("explicit");
   });
 });
