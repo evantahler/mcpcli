@@ -11,6 +11,9 @@ FAIL=0
 ERRORS=""
 EXPECTED_VERSION=$(jq -r .version package.json)
 
+# Ensure bun's global bin is in PATH (CI may not have it)
+export PATH="$HOME/.bun/bin:$PATH"
+
 pass() { PASS=$((PASS + 1)); echo "  ✔ $1"; }
 fail() { FAIL=$((FAIL + 1)); ERRORS+="  ✖ $1"$'\n'; echo "  ✖ $1"; }
 
