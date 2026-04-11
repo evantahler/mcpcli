@@ -1,6 +1,11 @@
 import { describe, test, expect } from "bun:test";
 import ansis from "ansis";
-import { formatCallResult, wrapDescription } from "../../src/output/formatter.ts";
+import {
+  formatCallResult,
+  jsonToMarkdown,
+  renderMarkdownToAnsi,
+  wrapDescription,
+} from "../../src/output/formatter.ts";
 
 describe("formatCallResult nested JSON parsing", () => {
   test("parses JSON strings inside text content", () => {
@@ -51,6 +56,255 @@ describe("formatCallResult nested JSON parsing", () => {
     };
     const parsed = JSON.parse(formatCallResult(result, {}));
     expect(parsed.isError).toBe(false);
+  });
+});
+
+describe("formatCallResult with format: text", () => {
+  const opts = { format: "text" as const };
+
+  test("extracts plain text from content blocks", () => {
+    const result = {
+      content: [{ type: "text", text: "hello world" }],
+    };
+    expect(formatCallResult(result, opts)).toBe("hello world");
+  });
+
+  test("pretty-prints JSON text content", () => {
+    const result = {
+      content: [{ type: "text", text: '{"name":"Evan","count":42}' }],
+    };
+    const output = formatCallResult(result, opts);
+    expect(JSON.parse(output)).toEqual({ name: "Evan", count: 42 });
+    // Should be pretty-printed with indentation
+    expect(output).toContain("\n");
+  });
+
+  test("joins multiple text blocks with newlines", () => {
+    const result = {
+      content: [
+        { type: "text", text: "line one" },
+        { type: "text", text: "line two" },
+      ],
+    };
+    expect(formatCallResult(result, opts)).toBe("line one\nline two");
+  });
+
+  test("shows placeholder for image content", () => {
+    const result = {
+      content: [{ type: "image", mimeType: "image/png", data: "AAAA" }],
+    };
+    expect(formatCallResult(result, opts)).toContain("[image: image/png,");
+  });
+
+  test("shows placeholder for resource content", () => {
+    const result = {
+      content: [{ type: "resource", uri: "file:///hello.txt" }],
+    };
+    expect(formatCallResult(result, opts)).toBe("[resource: file:///hello.txt]");
+  });
+
+  test("prefixes error results with error:", () => {
+    const result = {
+      content: [{ type: "text", text: "something went wrong" }],
+      isError: true,
+    };
+    expect(formatCallResult(result, opts)).toBe("error: something went wrong");
+  });
+
+  test("falls back to JSON for non-standard result shapes", () => {
+    const result = { unexpected: "data" };
+    const output = formatCallResult(result, opts);
+    expect(JSON.parse(output)).toEqual({ unexpected: "data" });
+  });
+
+  test("handles empty content array", () => {
+    const result = { content: [] };
+    const output = formatCallResult(result, opts);
+    expect(JSON.parse(output)).toEqual({ content: [] });
+  });
+
+  test("handles unknown content types", () => {
+    const result = {
+      content: [{ type: "custom_widget" }],
+    };
+    expect(formatCallResult(result, opts)).toBe("[custom_widget]");
+  });
+});
+
+describe("formatCallResult with format: markdown", () => {
+  const opts = { format: "markdown" as const };
+
+  test("renders plain text through markdown", () => {
+    const result = {
+      content: [{ type: "text", text: "hello world" }],
+    };
+    const output = formatCallResult(result, opts);
+    // Should contain the text (possibly with ANSI codes and trailing whitespace)
+    expect(ansis.strip(output).trim()).toContain("hello world");
+  });
+
+  test("renders bold/italic markdown content", () => {
+    const result = {
+      content: [{ type: "text", text: "**bold** and *italic*" }],
+    };
+    const output = formatCallResult(result, opts);
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("bold");
+    expect(stripped).toContain("italic");
+  });
+
+  test("renders headings with bold styling", () => {
+    const result = {
+      content: [{ type: "text", text: "# Title\n\nBody text" }],
+    };
+    const output = formatCallResult(result, opts);
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("Title");
+    expect(stripped).toContain("Body text");
+  });
+
+  test("renders code blocks with borders", () => {
+    const result = {
+      content: [{ type: "text", text: "```js\nconsole.log(42)\n```" }],
+    };
+    const output = formatCallResult(result, opts);
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("console.log(42)");
+    expect(stripped).toContain("│");
+  });
+
+  test("renders JSON content as a structured markdown document", () => {
+    const result = {
+      content: [{ type: "text", text: '{"name":"Evan","active":true}' }],
+    };
+    const output = formatCallResult(result, opts);
+    const stripped = ansis.strip(output);
+    // Keys become headings, values become text
+    expect(stripped).toContain("Name");
+    expect(stripped).toContain("Evan");
+    expect(stripped).toContain("Active");
+    expect(stripped).toContain("true");
+  });
+});
+
+describe("jsonToMarkdown", () => {
+  test("renders primitive values as plain text", () => {
+    expect(jsonToMarkdown("hello")).toBe("hello");
+    expect(jsonToMarkdown(42)).toBe("42");
+    expect(jsonToMarkdown(true)).toBe("true");
+    expect(jsonToMarkdown(null)).toBe("null");
+  });
+
+  test("renders flat object with keys as h1 headings", () => {
+    const md = jsonToMarkdown({ display_name: "Evan", active: true });
+    expect(md).toContain("# Display Name\n\nEvan");
+    expect(md).toContain("# Active\n\ntrue");
+  });
+
+  test("humanizes key names", () => {
+    const md = jsonToMarkdown({ my_email_address: "a@b.com", firstName: "Evan" });
+    expect(md).toContain("# My Email Address");
+    expect(md).toContain("# First Name");
+  });
+
+  test("renders nested objects with increasing heading depth", () => {
+    const md = jsonToMarkdown({ user: { name: "Evan", role: "admin" } });
+    expect(md).toContain("# User");
+    expect(md).toContain("## Name\n\nEvan");
+    expect(md).toContain("## Role\n\nadmin");
+  });
+
+  test("renders arrays of primitives as bullet lists", () => {
+    const md = jsonToMarkdown({ tags: ["a", "b", "c"] });
+    expect(md).toContain("# Tags");
+    expect(md).toContain("- a\n- b\n- c");
+  });
+
+  test("renders arrays of objects with numbered sub-sections", () => {
+    const md = jsonToMarkdown({
+      teams: [
+        { name: "Engineering", key: "ENG" },
+        { name: "Product", key: "PRO" },
+      ],
+    });
+    expect(md).toContain("# Teams");
+    expect(md).toContain("## 1");
+    expect(md).toContain("### Name\n\nEngineering");
+    expect(md).toContain("### Key\n\nENG");
+    expect(md).toContain("## 2");
+    expect(md).toContain("### Name\n\nProduct");
+  });
+
+  test("caps heading depth at 6 and uses bold labels beyond", () => {
+    // depth 7+ should use **bold** instead of headings
+    const deep = { a: { b: { c: { d: { e: { f: { g: "deep" } } } } } } };
+    const md = jsonToMarkdown(deep);
+    expect(md).toContain("###### F");
+    expect(md).toContain("**G:** deep");
+  });
+});
+
+describe("formatCallResult with format: json (explicit)", () => {
+  test("behaves identically to default", () => {
+    const result = {
+      content: [{ type: "text", text: '{"name":"Evan"}' }],
+    };
+    const defaultOutput = formatCallResult(result, {});
+    const jsonOutput = formatCallResult(result, { format: "json" });
+    expect(jsonOutput).toBe(defaultOutput);
+  });
+});
+
+describe("renderMarkdownToAnsi", () => {
+  test("renders basic markdown preserving text", () => {
+    const output = renderMarkdownToAnsi("**hello** world");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("hello");
+    expect(stripped).toContain("world");
+  });
+
+  test("renders lists with bullet markers", () => {
+    const output = renderMarkdownToAnsi("- item 1\n- item 2");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("item 1");
+    expect(stripped).toContain("item 2");
+    expect(stripped).toContain("•");
+  });
+
+  test("renders inline code", () => {
+    const output = renderMarkdownToAnsi("use `foo()` here");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("foo()");
+  });
+
+  test("renders code blocks with border characters", () => {
+    const output = renderMarkdownToAnsi("```js\nconst x = 1;\n```");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("const x = 1;");
+    expect(stripped).toContain("│");
+  });
+
+  test("renders blockquotes with border", () => {
+    const output = renderMarkdownToAnsi("> quoted text");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("quoted text");
+    expect(stripped).toContain("│");
+  });
+
+  test("renders headings", () => {
+    const output = renderMarkdownToAnsi("# Title\n\nBody");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("Title");
+    expect(stripped).toContain("Body");
+    // H1 should have rule underline
+    expect(stripped).toContain("═");
+  });
+
+  test("renders links with href", () => {
+    const output = renderMarkdownToAnsi("[click](https://example.com)");
+    const stripped = ansis.strip(output);
+    expect(stripped).toContain("click");
+    expect(stripped).toContain("https://example.com");
   });
 });
 

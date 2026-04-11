@@ -135,6 +135,66 @@ describe("mcpx exec", () => {
     expect(stderr).toContain("File not found");
   });
 
+  test("--format text extracts text content from result", async () => {
+    const proc = run("--format", "text", "exec", "mock", "echo", '{"message": "hello world"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toBe("hello world");
+  });
+
+  test("--format text pretty-prints JSON text content", async () => {
+    const proc = run(
+      "--format",
+      "text",
+      "exec",
+      "mock",
+      "echo",
+      '{"message": "{\\"name\\":\\"Evan\\"}"}',
+    );
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout);
+    expect(parsed).toEqual({ name: "Evan" });
+  });
+
+  test("--format markdown renders text through markdown formatter", async () => {
+    const proc = run(
+      "--format",
+      "markdown",
+      "exec",
+      "mock",
+      "echo",
+      '{"message": "**bold** text"}',
+    );
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+    // Should contain the text content (possibly with ANSI formatting)
+    expect(stdout).toContain("bold");
+    expect(stdout).toContain("text");
+  });
+
+  test("--format json matches default piped behavior", async () => {
+    const defaultProc = run("exec", "mock", "echo", '{"message": "test"}');
+    const jsonProc = run("--format", "json", "exec", "mock", "echo", '{"message": "test"}');
+    const [defaultExit, jsonExit] = await Promise.all([defaultProc.exited, jsonProc.exited]);
+    const defaultStdout = await new Response(defaultProc.stdout).text();
+    const jsonStdout = await new Response(jsonProc.stdout).text();
+    expect(defaultExit).toBe(0);
+    expect(jsonExit).toBe(0);
+    expect(jsonStdout.trim()).toBe(defaultStdout.trim());
+  });
+
+  test("invalid --format value exits with error", async () => {
+    const proc = run("--format", "csv", "exec", "mock", "echo", '{"message": "test"}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Invalid format");
+  });
+
   test("--no-interactive declines elicitation requests", async () => {
     const proc = run("--no-interactive", "exec", "mock", "confirm_action", '{"action": "deploy"}');
     const exitCode = await proc.exited;
