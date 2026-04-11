@@ -25,6 +25,7 @@ program
   .option("-c, --config <path>", "config directory path")
   .option("-d, --with-descriptions", "include tool descriptions in output")
   .option("-j, --json", "force JSON output")
+  .option("-F, --format <format>", "output format (json, text, markdown)")
   .option("-v, --verbose", "show HTTP details and JSON-RPC protocol messages")
   .option("-S, --show-secrets", "show full auth tokens in verbose output")
   .option("-N, --no-interactive", "decline server elicitation requests")
@@ -56,7 +57,14 @@ const cliArgs = process.argv.slice(2);
 let firstCommand: string | undefined;
 for (let i = 0; i < cliArgs.length; i++) {
   const a = cliArgs[i];
-  if (a === "-c" || a === "--config" || a === "-l" || a === "--log-level") {
+  if (
+    a === "-c" ||
+    a === "--config" ||
+    a === "-l" ||
+    a === "--log-level" ||
+    a === "-F" ||
+    a === "--format"
+  ) {
     i++; // skip the option's value argument
     continue;
   }
