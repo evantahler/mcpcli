@@ -277,6 +277,25 @@ describe("mcpx exec (multi-server disambiguation)", () => {
     expect(result.content[0].text).toBe(20);
   });
 
+  test("errors when tool not found on specified server, suggests correct server", async () => {
+    // multiply only exists on mock2, not mock
+    const proc = runMultiServer("exec", "mock", "multiply", '{"a": 2, "b": 3}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("not found on server");
+    expect(stderr).toContain("mock2");
+  });
+
+  test("errors when tool not found on any server with explicit server", async () => {
+    const proc = run("exec", "mock", "nonexistent_tool");
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("not found on server");
+    expect(stderr).toContain("mcpx search");
+  });
+
   test("server + tool still works with multi-server config", async () => {
     const proc = runMultiServer("exec", "mock", "echo", '{"message": "explicit"}');
     const exitCode = await proc.exited;

@@ -35,6 +35,31 @@ async function resolveExecArgs(
     if (!second) {
       return { mode: "list-tools", server: first };
     }
+
+    // Validate the tool exists on the specified server
+    const serverTools = await manager.listTools(first);
+    const toolExists = serverTools.some((t) => t.name === second);
+
+    if (!toolExists) {
+      const { tools } = await manager.getAllTools();
+      const matches = tools.filter((t) => t.tool.name === second);
+
+      if (matches.length === 1) {
+        throw new Error(
+          `Tool "${second}" not found on server "${first}". Did you mean:\n  mcpx exec ${matches[0]!.server} ${second}`,
+        );
+      } else if (matches.length > 1) {
+        const servers = matches.map((m) => m.server).join(", ");
+        throw new Error(
+          `Tool "${second}" not found on server "${first}". Found on: ${servers}\nUsage: mcpx exec <server> ${second} [args]`,
+        );
+      } else {
+        throw new Error(
+          `Tool "${second}" not found on server "${first}". Run "mcpx search ${second}" to find similar tools.`,
+        );
+      }
+    }
+
     return { mode: "call-tool", server: first, tool: second, argsStr: third };
   }
 
