@@ -135,30 +135,6 @@ describe("mcpx exec", () => {
     expect(stderr).toContain("File not found");
   });
 
-  test("--format text extracts text content from result", async () => {
-    const proc = run("--format", "text", "exec", "mock", "echo", '{"message": "hello world"}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
-    expect(stdout.trim()).toBe("hello world");
-  });
-
-  test("--format text pretty-prints JSON text content", async () => {
-    const proc = run(
-      "--format",
-      "text",
-      "exec",
-      "mock",
-      "echo",
-      '{"message": "{\\"name\\":\\"Evan\\"}"}',
-    );
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
-    const parsed = JSON.parse(stdout);
-    expect(parsed).toEqual({ name: "Evan" });
-  });
-
   test("--format markdown renders text through markdown formatter", async () => {
     const proc = run(
       "--format",

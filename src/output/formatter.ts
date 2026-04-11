@@ -6,7 +6,7 @@ import type { SearchResult } from "../search/index.ts";
 import { formatOutput } from "./format-output.ts";
 import { formatTable } from "./format-table.ts";
 
-export const VALID_FORMATS = ["json", "text", "markdown"] as const;
+export const VALID_FORMATS = ["json", "markdown"] as const;
 
 export type OutputFormat = (typeof VALID_FORMATS)[number];
 
@@ -355,66 +355,12 @@ export function formatCallResult(result: unknown, options: FormatOptions): strin
   const format = options.format ?? "json";
 
   switch (format) {
-    case "text":
-      return formatCallResultAsText(result);
     case "markdown":
       return formatCallResultAsMarkdown(result);
     case "json":
     default:
       return JSON.stringify(parseNestedJson(result), null, 2);
   }
-}
-
-/** Extract human-readable text from an MCP tool call result */
-function formatCallResultAsText(result: unknown): string {
-  const r = result as {
-    content?: Array<{
-      type: string;
-      text?: string;
-      data?: string;
-      mimeType?: string;
-      uri?: string;
-    }>;
-    isError?: boolean;
-  };
-
-  if (!r.content || !Array.isArray(r.content) || r.content.length === 0) {
-    return JSON.stringify(result, null, 2);
-  }
-
-  const parts: string[] = [];
-
-  for (const block of r.content) {
-    switch (block.type) {
-      case "text":
-        if (block.text !== undefined) {
-          try {
-            const parsed = JSON.parse(block.text);
-            parts.push(JSON.stringify(parsed, null, 2));
-          } catch {
-            parts.push(block.text);
-          }
-        }
-        break;
-      case "image":
-        parts.push(
-          `[image: ${block.mimeType ?? "unknown type"}, ${block.data ? Math.ceil((block.data.length * 3) / 4) : 0} bytes]`,
-        );
-        break;
-      case "resource":
-        parts.push(`[resource: ${block.uri ?? "unknown"}]`);
-        break;
-      default:
-        parts.push(`[${block.type}]`);
-        break;
-    }
-  }
-
-  let output = parts.join("\n");
-  if (r.isError) {
-    output = `error: ${output}`;
-  }
-  return output;
 }
 
 /** Render an MCP tool call result as styled markdown for terminal output */
