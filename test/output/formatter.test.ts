@@ -220,7 +220,7 @@ describe("jsonToMarkdown", () => {
     expect(md).toContain("- a\n- b\n- c");
   });
 
-  test("renders arrays of objects with numbered sub-sections", () => {
+  test("renders arrays of objects with numbered sub-sections and labels", () => {
     const md = jsonToMarkdown({
       teams: [
         { name: "Engineering", key: "ENG" },
@@ -228,19 +228,65 @@ describe("jsonToMarkdown", () => {
       ],
     });
     expect(md).toContain("# Teams");
-    expect(md).toContain("## 1");
-    expect(md).toContain("### Name\n\nEngineering");
-    expect(md).toContain("### Key\n\nENG");
-    expect(md).toContain("## 2");
-    expect(md).toContain("### Name\n\nProduct");
+    expect(md).toContain("## 1. Engineering");
+    expect(md).toContain("- **Key:** ENG");
+    expect(md).toContain("## 2. Product");
+    expect(md).toContain("- **Key:** PRO");
+    // Name is used as the label, so it should not appear as a separate bullet
+    expect(md).not.toContain("- **Name:**");
   });
 
-  test("caps heading depth at 6 and uses bold labels beyond", () => {
-    // depth 7+ should use **bold** instead of headings
+  test("falls back to numeric labels when no label key exists", () => {
+    const md = jsonToMarkdown({
+      items: [
+        { count: 10, active: true },
+        { count: 20, active: false },
+      ],
+    });
+    expect(md).toContain("## 1");
+    expect(md).toContain("## 2");
+    expect(md).not.toContain("## 1.");
+  });
+
+  test("uses bullet lists at depth 3+", () => {
     const deep = { a: { b: { c: { d: { e: { f: { g: "deep" } } } } } } };
     const md = jsonToMarkdown(deep);
-    expect(md).toContain("###### F");
-    expect(md).toContain("**G:** deep");
+    expect(md).toContain("# A");
+    expect(md).toContain("## B");
+    // depth 3+ uses bullets instead of headings
+    expect(md).toContain("- **C:**");
+    expect(md).toContain("- **G:** deep");
+    expect(md).not.toContain("###");
+  });
+
+  test("renders nested arrays within bullets compactly", () => {
+    const md = jsonToMarkdown({
+      team: {
+        name: "Engineering",
+        members: [
+          { name: "Alice", email: "alice@co.com" },
+          { name: "Bob", email: "bob@co.com" },
+        ],
+      },
+    });
+    expect(md).toContain("# Team");
+    expect(md).toContain("## Name");
+    expect(md).toContain("## Members");
+    // Members rendered as bullets with labels
+    expect(md).toContain("- Alice");
+    expect(md).toContain("- Bob");
+    expect(md).toContain("- **Email:** alice@co.com");
+  });
+
+  test("finds labels with different key casings", () => {
+    const md = jsonToMarkdown({
+      users: [
+        { display_name: "Evan", id: "1" },
+        { displayName: "Nate", id: "2" },
+      ],
+    });
+    expect(md).toContain("## 1. Evan");
+    expect(md).toContain("## 2. Nate");
   });
 });
 
