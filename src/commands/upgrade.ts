@@ -19,11 +19,23 @@ const GITHUB_REPO = pkgMeta.repository.url
   .replace(/^https:\/\/github\.com\//, "")
   .replace(/\.git$/, "");
 
-// TODO: Add Windows support (https://github.com/evantahler/mcpx/issues)
 function platformArtifactName(): string {
-  const os = process.platform === "darwin" ? "darwin" : "linux";
+  let os: string;
+  let ext = "";
+  switch (process.platform) {
+    case "darwin":
+      os = "darwin";
+      break;
+    case "win32":
+      os = "windows";
+      ext = ".exe";
+      break;
+    default:
+      os = "linux";
+      break;
+  }
   const arch = process.arch === "arm64" ? "arm64" : "x64";
-  return `mcpx-${os}-${arch}`;
+  return `mcpx-${os}-${arch}${ext}`;
 }
 
 async function upgradeWithPackageManager(command: string, args: string[]): Promise<boolean> {
