@@ -15,6 +15,8 @@ import { registerResourceCommand } from "./commands/resource.ts";
 import { registerPromptCommand } from "./commands/prompt.ts";
 import { registerServersCommand } from "./commands/servers.ts";
 import { registerTaskCommand } from "./commands/task.ts";
+import { registerAllowCommand } from "./commands/allow.ts";
+import { registerDenyCommand } from "./commands/deny.ts";
 import { registerCheckUpdateCommand } from "./commands/check-update.ts";
 import { registerUpgradeCommand } from "./commands/upgrade.ts";
 import { maybeCheckForUpdate } from "./update/background.ts";
@@ -53,6 +55,8 @@ registerResourceCommand(program);
 registerPromptCommand(program);
 registerServersCommand(program);
 registerTaskCommand(program);
+registerAllowCommand(program);
+registerDenyCommand(program);
 registerCheckUpdateCommand(program);
 registerUpgradeCommand(program);
 
