@@ -11,27 +11,108 @@ import { logger } from "../output/logger.ts";
 import { validateToolInput } from "../validation/schema.ts";
 import { parseJsonArgs, readStdin } from "../lib/input.ts";
 import { DEFAULTS } from "../constants.ts";
+import type { ServerManager } from "../client/manager.ts";
+
+type ResolvedArgs =
+  | { mode: "list-tools"; server: string }
+  | { mode: "call-tool"; server: string; tool: string; argsStr: string | undefined };
+
+/**
+ * Resolve the positional args into either list-tools or call-tool mode.
+ * Supports both `exec <server> <tool> [args]` and `exec <tool> [args]`.
+ */
+async function resolveExecArgs(
+  manager: ServerManager,
+  first: string,
+  second: string | undefined,
+  third: string | undefined,
+): Promise<ResolvedArgs> {
+  const serverNames = manager.getServerNames();
+  const isServer = serverNames.includes(first);
+
+  if (isServer) {
+    // Traditional form: exec <server> [tool] [args]
+    if (!second) {
+      return { mode: "list-tools", server: first };
+    }
+
+    // Validate the tool exists on the specified server
+    const serverTools = await manager.listTools(first);
+    const toolExists = serverTools.some((t) => t.name === second);
+
+    if (!toolExists) {
+      const { tools } = await manager.getAllTools();
+      const matches = tools.filter((t) => t.tool.name === second);
+
+      if (matches.length === 1) {
+        throw new Error(
+          `Tool "${second}" not found on server "${first}". Did you mean:\n  mcpx exec ${matches[0]!.server} ${second}`,
+        );
+      } else if (matches.length > 1) {
+        const servers = matches.map((m) => m.server).join(", ");
+        throw new Error(
+          `Tool "${second}" not found on server "${first}". Found on: ${servers}\nUsage: mcpx exec <server> ${second} [args]`,
+        );
+      } else {
+        throw new Error(
+          `Tool "${second}" not found on server "${first}". Run "mcpx search ${second}" to find similar tools.`,
+        );
+      }
+    }
+
+    return { mode: "call-tool", server: first, tool: second, argsStr: third };
+  }
+
+  // Not a server name — treat first as a tool name
+  const toolName = first;
+  const { tools } = await manager.getAllTools();
+  const matches = tools.filter((t) => t.tool.name === toolName);
+
+  if (matches.length === 0) {
+    throw new Error(
+      `Unknown server or tool "${first}". Run "mcpx search ${first}" to find similar tools.`,
+    );
+  }
+
+  if (matches.length > 1) {
+    const servers = matches.map((m) => m.server).join(", ");
+    throw new Error(
+      `Ambiguous tool "${toolName}" — found on multiple servers: ${servers}\nSpecify the server: mcpx exec <server> ${toolName} [args]`,
+    );
+  }
+
+  return { mode: "call-tool", server: matches[0]!.server, tool: toolName, argsStr: second };
+}
 
 export function registerExecCommand(program: Command) {
   program
-    .command("exec <server> [tool] [args]")
-    .description("execute a tool (omit tool name to list available tools)")
+    .command("exec <first> [second] [third]")
+    .description("execute a tool (server is optional if tool name is unambiguous)")
     .option("-f, --file <path>", "read JSON args from a file")
     .option("--no-wait", "return task handle immediately without waiting for completion")
     .option("--ttl <ms>", "task TTL in milliseconds", String(DEFAULTS.TASK_TTL_MS))
     .action(
       async (
-        server: string,
-        tool: string | undefined,
-        argsStr: string | undefined,
+        first: string,
+        second: string | undefined,
+        third: string | undefined,
         options: { file?: string; wait: boolean; ttl: string },
       ) => {
         const { manager, formatOptions } = await getContext(program);
 
-        if (!tool) {
+        let resolved: ResolvedArgs;
+        try {
+          resolved = await resolveExecArgs(manager, first, second, third);
+        } catch (err) {
+          console.error(formatError(String(err), formatOptions));
+          await manager.close();
+          process.exit(1);
+        }
+
+        if (resolved.mode === "list-tools") {
           try {
-            const tools = await manager.listTools(server);
-            console.log(formatServerTools(server, tools, formatOptions));
+            const tools = await manager.listTools(resolved.server);
+            console.log(formatServerTools(resolved.server, tools, formatOptions));
           } catch (err) {
             console.error(formatError(String(err), formatOptions));
             process.exit(1);
@@ -40,6 +121,9 @@ export function registerExecCommand(program: Command) {
           }
           return;
         }
+
+        const { server, tool, argsStr } = resolved;
+
         try {
           // Error if both --file and positional arg provided
           if (options.file && argsStr) {

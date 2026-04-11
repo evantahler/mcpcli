@@ -2,7 +2,7 @@ import { describe, test, expect, afterAll } from "bun:test";
 import { join } from "path";
 import { mkdtempSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { run, runWithStdin, CLI, CONFIG } from "../helpers/run.ts";
+import { run, runWithStdin, runMultiServer, CLI, CONFIG } from "../helpers/run.ts";
 
 const tempDir = mkdtempSync(join(tmpdir(), "mcpx-test-"));
 afterAll(() => rmSync(tempDir, { recursive: true, force: true }));
@@ -135,6 +135,42 @@ describe("mcpx exec", () => {
     expect(stderr).toContain("File not found");
   });
 
+  test("--format markdown renders text through markdown formatter", async () => {
+    const proc = run(
+      "--format",
+      "markdown",
+      "exec",
+      "mock",
+      "echo",
+      '{"message": "**bold** text"}',
+    );
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+    // Should contain the text content (possibly with ANSI formatting)
+    expect(stdout).toContain("bold");
+    expect(stdout).toContain("text");
+  });
+
+  test("--format json matches default piped behavior", async () => {
+    const defaultProc = run("exec", "mock", "echo", '{"message": "test"}');
+    const jsonProc = run("--format", "json", "exec", "mock", "echo", '{"message": "test"}');
+    const [defaultExit, jsonExit] = await Promise.all([defaultProc.exited, jsonProc.exited]);
+    const defaultStdout = await new Response(defaultProc.stdout).text();
+    const jsonStdout = await new Response(jsonProc.stdout).text();
+    expect(defaultExit).toBe(0);
+    expect(jsonExit).toBe(0);
+    expect(jsonStdout.trim()).toBe(defaultStdout.trim());
+  });
+
+  test("invalid --format value exits with error", async () => {
+    const proc = run("--format", "csv", "exec", "mock", "echo", '{"message": "test"}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Invalid format");
+  });
+
   test("--no-interactive declines elicitation requests", async () => {
     const proc = run("--no-interactive", "exec", "mock", "confirm_action", '{"action": "deploy"}');
     const exitCode = await proc.exited;
@@ -143,5 +179,106 @@ describe("mcpx exec", () => {
 
     const result = JSON.parse(stdout);
     expect(result.content[0].text).toContain("declined");
+  });
+});
+
+describe("mcpx exec (server-optional)", () => {
+  test("resolves tool without server when unambiguous", async () => {
+    const proc = run("exec", "echo", '{"message": "no server"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("no server");
+  });
+
+  test("resolves add tool without server", async () => {
+    const proc = run("exec", "add", '{"a": 3, "b": 7}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe(10);
+  });
+
+  test("errors on unknown tool name", async () => {
+    const proc = run("exec", "nonexistent_tool");
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Unknown server or tool");
+    expect(stderr).toContain("mcpx search");
+  });
+
+  test("backwards compat: server + tool still works", async () => {
+    const proc = run("exec", "mock", "echo", '{"message": "compat"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("compat");
+  });
+
+  test("backwards compat: server-only lists tools", async () => {
+    const proc = run("exec", "mock");
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("echo");
+    expect(stdout).toContain("add");
+  });
+});
+
+describe("mcpx exec (multi-server disambiguation)", () => {
+  test("errors on ambiguous tool across servers", async () => {
+    const proc = runMultiServer("exec", "echo", '{"message": "hi"}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Ambiguous tool");
+    expect(stderr).toContain("mock");
+    expect(stderr).toContain("mock2");
+  });
+
+  test("resolves unique tool across servers", async () => {
+    const proc = runMultiServer("exec", "multiply", '{"a": 4, "b": 5}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe(20);
+  });
+
+  test("errors when tool not found on specified server, suggests correct server", async () => {
+    // multiply only exists on mock2, not mock
+    const proc = runMultiServer("exec", "mock", "multiply", '{"a": 2, "b": 3}');
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("not found on server");
+    expect(stderr).toContain("mock2");
+  });
+
+  test("errors when tool not found on any server with explicit server", async () => {
+    const proc = run("exec", "mock", "nonexistent_tool");
+    const exitCode = await proc.exited;
+    const stderr = await new Response(proc.stderr).text();
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("not found on server");
+    expect(stderr).toContain("mcpx search");
+  });
+
+  test("server + tool still works with multi-server config", async () => {
+    const proc = runMultiServer("exec", "mock", "echo", '{"message": "explicit"}');
+    const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.content[0].text).toBe("explicit");
   });
 });

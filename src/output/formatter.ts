@@ -6,12 +6,17 @@ import type { SearchResult } from "../search/index.ts";
 import { formatOutput } from "./format-output.ts";
 import { formatTable } from "./format-table.ts";
 
+export const VALID_FORMATS = ["json", "markdown"] as const;
+
+export type OutputFormat = (typeof VALID_FORMATS)[number];
+
 export interface FormatOptions {
   json?: boolean;
   withDescriptions?: boolean;
   verbose?: boolean;
   showSecrets?: boolean;
   logLevel?: string;
+  format?: OutputFormat;
 }
 
 export interface UnifiedItem {
@@ -345,9 +350,282 @@ function exampleValue(name: string, prop: Record<string, unknown>): unknown {
   }
 }
 
-/** Format a tool call result */
-export function formatCallResult(result: unknown, _options: FormatOptions): string {
-  return JSON.stringify(parseNestedJson(result), null, 2);
+/** Format a tool call result, dispatching on the --format option */
+export function formatCallResult(result: unknown, options: FormatOptions): string {
+  const format = options.format ?? "json";
+
+  switch (format) {
+    case "markdown":
+      return formatCallResultAsMarkdown(result);
+    case "json":
+    default:
+      return JSON.stringify(parseNestedJson(result), null, 2);
+  }
+}
+
+/** Render an MCP tool call result as styled markdown for terminal output */
+function formatCallResultAsMarkdown(result: unknown): string {
+  const r = result as {
+    content?: Array<{
+      type: string;
+      text?: string;
+      data?: string;
+      mimeType?: string;
+      uri?: string;
+    }>;
+    isError?: boolean;
+  };
+
+  if (!r.content || !Array.isArray(r.content) || r.content.length === 0) {
+    return renderMarkdownToAnsi(jsonToMarkdown(result));
+  }
+
+  const parts: string[] = [];
+
+  for (const block of r.content) {
+    switch (block.type) {
+      case "text":
+        if (block.text !== undefined) {
+          try {
+            const parsed = JSON.parse(block.text);
+            parts.push(jsonToMarkdown(parsed));
+          } catch {
+            // Plain text / already markdown — pass through as-is
+            parts.push(block.text);
+          }
+        }
+        break;
+      case "image":
+        parts.push(
+          `[image: ${block.mimeType ?? "unknown type"}, ${block.data ? Math.ceil((block.data.length * 3) / 4) : 0} bytes]`,
+        );
+        break;
+      case "resource":
+        parts.push(`[resource: ${block.uri ?? "unknown"}]`);
+        break;
+      default:
+        parts.push(`[${block.type}]`);
+        break;
+    }
+  }
+
+  let output = parts.join("\n\n");
+  if (r.isError) {
+    output = `**error:** ${output}`;
+  }
+  return renderMarkdownToAnsi(output);
+}
+
+/** Convert a key name like "display_name" to "Display Name" */
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Check if a value is a plain primitive (string, number, boolean, null) */
+function isPrimitive(value: unknown): value is string | number | boolean | null {
+  return value === null || typeof value !== "object";
+}
+
+/**
+ * URL placeholders: Bun.markdown.ansi() wraps and auto-links URLs, so we
+ * replace them with short tokens before rendering, then swap them back after.
+ */
+let urlCounter = 0;
+let urlMap = new Map<string, string>();
+
+function resetUrlPlaceholders(): void {
+  urlCounter = 0;
+  urlMap = new Map();
+}
+
+function restoreUrlPlaceholders(ansiOutput: string): string {
+  for (const [token, url] of urlMap) {
+    ansiOutput = ansiOutput.replace(token, `\x1b[34m\x1b[4m${url}\x1b[24m\x1b[39m`);
+  }
+  return ansiOutput;
+}
+
+/** Format a primitive value, replacing URLs with placeholders to avoid mangling */
+function formatPrimitive(value: string | number | boolean | null): string {
+  const str = String(value ?? "null");
+  if (typeof value === "string" && /^https?:\/\/\S+$/.test(value)) {
+    const token = `URLPLACEHOLDER${urlCounter++}`;
+    urlMap.set(token, str);
+    return token;
+  }
+  return str;
+}
+
+/** Normalize a key for label matching: lowercase, strip underscores/hyphens */
+function normalizeKey(key: string): string {
+  return key.replace(/[_-]/g, "").toLowerCase();
+}
+
+/** Priority-ordered label keys (checked after normalization) */
+const LABEL_KEYS = [
+  "name",
+  "displayname",
+  "fullname",
+  "username",
+  "screenname",
+  "title",
+  "subject",
+  "headline",
+  "heading",
+  "label",
+  "description",
+  "summary",
+  "email",
+  "url",
+  "slug",
+  "key",
+  "identifier",
+];
+
+/** Find the best label field in an object, returning { originalKey, value } or null */
+function findLabel(obj: Record<string, unknown>): { originalKey: string; value: string } | null {
+  const entries = Object.entries(obj);
+  for (const candidate of LABEL_KEYS) {
+    for (const [key, val] of entries) {
+      if (normalizeKey(key) === candidate && typeof val === "string" && val.length > 0) {
+        return { originalKey: key, value: val };
+      }
+    }
+  }
+  return null;
+}
+
+/** Render object entries as an indented bullet list */
+function objectToBullets(entries: [string, unknown][], indent: number, skipKey?: string): string {
+  const prefix = " ".repeat(indent);
+  const lines: string[] = [];
+
+  for (const [key, val] of entries) {
+    if (key === skipKey) continue;
+    const heading = humanizeKey(key);
+
+    if (isPrimitive(val)) {
+      lines.push(`${prefix}- **${heading}:** ${formatPrimitive(val)}`);
+    } else if (Array.isArray(val) && val.every(isPrimitive)) {
+      lines.push(`${prefix}- **${heading}:**`);
+      for (const v of val) {
+        lines.push(`${prefix}  - ${formatPrimitive(v)}`);
+      }
+    } else if (Array.isArray(val)) {
+      lines.push(`${prefix}- **${heading}:**`);
+      for (const item of val) {
+        if (isPrimitive(item)) {
+          lines.push(`${prefix}  - ${formatPrimitive(item)}`);
+        } else {
+          const itemObj = item as Record<string, unknown>;
+          const label = findLabel(itemObj);
+          if (label) {
+            lines.push(`${prefix}  - ${label.value}`);
+            lines.push(objectToBullets(Object.entries(itemObj), indent + 4, label.originalKey));
+          } else {
+            lines.push(`${prefix}  -`);
+            lines.push(objectToBullets(Object.entries(itemObj), indent + 4));
+          }
+        }
+      }
+    } else {
+      lines.push(`${prefix}- **${heading}:**`);
+      lines.push(objectToBullets(Object.entries(val as Record<string, unknown>), indent + 2));
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Convert a JSON value into a readable markdown document.
+ * Depth 1–2 use headings; depth 3+ switch to compact bullet lists.
+ * Arrays of objects use a label field (name, title, etc.) in the heading when available.
+ */
+export function jsonToMarkdown(value: unknown, depth: number = 1, skipKey?: string): string {
+  if (isPrimitive(value)) {
+    return formatPrimitive(value);
+  }
+
+  // At depth >= 3, switch to bullet-list rendering
+  if (depth >= 3) {
+    if (Array.isArray(value)) {
+      if (value.every(isPrimitive)) {
+        return value.map((v) => `- ${formatPrimitive(v)}`).join("\n");
+      }
+      return value
+        .map((item) => {
+          if (isPrimitive(item)) return `- ${formatPrimitive(item)}`;
+          const obj = item as Record<string, unknown>;
+          const label = findLabel(obj);
+          const header = label ? `- ${label.value}` : `-`;
+          return `${header}\n${objectToBullets(Object.entries(obj), 2, label?.originalKey)}`;
+        })
+        .join("\n");
+    }
+    return objectToBullets(Object.entries(value as Record<string, unknown>), 0, skipKey);
+  }
+
+  if (Array.isArray(value)) {
+    // Array of all primitives → bullet list
+    if (value.every(isPrimitive)) {
+      return value.map((v) => `- ${formatPrimitive(v)}`).join("\n");
+    }
+    // Array of objects → numbered sub-sections with label
+    return value
+      .map((item, i) => {
+        if (isPrimitive(item)) {
+          return `- ${formatPrimitive(item)}`;
+        }
+        const obj = item as Record<string, unknown>;
+        const labelInfo = findLabel(obj);
+        const numberLabel = labelInfo ? `${i + 1}. ${labelInfo.value}` : `${i + 1}`;
+        const heading = depth <= 6 ? `${"#".repeat(depth)} ${numberLabel}` : `**${numberLabel}**`;
+        return `${heading}\n\n${jsonToMarkdown(item, depth + 1, labelInfo?.originalKey)}`;
+      })
+      .join("\n\n");
+  }
+
+  // Object → each key becomes a heading
+  const entries = Object.entries(value as Record<string, unknown>);
+  const lines: string[] = [];
+
+  for (const [key, val] of entries) {
+    const heading = humanizeKey(key);
+
+    if (isPrimitive(val)) {
+      if (depth <= 6) {
+        lines.push(`${"#".repeat(depth)} ${heading}\n\n${formatPrimitive(val)}`);
+      } else {
+        lines.push(`**${heading}:** ${formatPrimitive(val)}`);
+      }
+    } else if (Array.isArray(val) && val.every(isPrimitive)) {
+      // Array of primitives: heading then bullet list
+      const list = val.map((v) => `- ${formatPrimitive(v)}`).join("\n");
+      if (depth <= 6) {
+        lines.push(`${"#".repeat(depth)} ${heading}\n\n${list}`);
+      } else {
+        lines.push(`**${heading}:**\n${list}`);
+      }
+    } else {
+      // Nested object or array of objects
+      const label = depth <= 6 ? `${"#".repeat(depth)} ${heading}` : `**${heading}**`;
+      lines.push(`${label}\n\n${jsonToMarkdown(val, depth + 1)}`);
+    }
+  }
+
+  return lines.join("\n\n");
+}
+
+/** Render a markdown string to ANSI-styled terminal output using Bun's built-in renderer */
+export function renderMarkdownToAnsi(input: string): string {
+  const result = Bun.markdown.ansi(input);
+  const restored = restoreUrlPlaceholders(result);
+  resetUrlPlaceholders();
+  return restored;
 }
 
 /** Recursively parse JSON strings inside MCP content blocks */

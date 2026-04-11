@@ -12,14 +12,19 @@ Two audiences:
 ## Install
 
 ```bash
-# Via bun
+# Via bun (all platforms)
 bun install -g @evantahler/mcpx
 
-# Via curl
+# Via curl (macOS/Linux)
 curl -fsSL https://raw.githubusercontent.com/evantahler/mcpx/main/install.sh | bash
 ```
 
-The curl installer downloads a pre-built binary (macOS/Linux) — no runtime needed. The bun install method requires [Bun](https://bun.sh). Windows `.exe` binaries are available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
+```powershell
+# Via PowerShell (Windows)
+irm https://raw.githubusercontent.com/evantahler/mcpx/main/install.ps1 | iex
+```
+
+The curl/PowerShell installers download a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh). Binaries for all platforms are also available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
 
 ## Quick Start
 
@@ -41,6 +46,9 @@ mcpx info github search_repositories
 
 # Execute a tool
 mcpx exec github search_repositories '{"query": "mcp server"}'
+
+# Execute a tool without specifying the server (auto-resolved)
+mcpx exec search_repositories '{"query": "mcp server"}'
 
 # Search tools — combines keyword and semantic matching
 mcpx search "post a ticket to linear"
@@ -70,6 +78,7 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx index`                           | Build/rebuild the search index                         |
 | `mcpx index -i`                        | Show index status                                      |
 | `mcpx exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
+| `mcpx exec <tool> [json]`              | Execute tool (server auto-resolved if unambiguous)     |
 | `mcpx exec <server> <tool> -f file`    | Read tool args from a JSON file                        |
 | `mcpx exec <server>`                   | List available tools for a server                      |
 | `mcpx auth <server>`                   | Authenticate with an HTTP MCP server (OAuth)           |
@@ -89,8 +98,8 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx prompt`                          | List all prompts across all servers                    |
 | `mcpx prompt <server>`                 | List prompts for a server                              |
 | `mcpx prompt <server> <name> [json]`   | Get a specific prompt                                  |
-| `mcpx exec <server> <tool> --no-wait`  | Execute as async task, return task handle immediately  |
-| `mcpx exec <server> <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
+| `mcpx exec [server] <tool> --no-wait`  | Execute as async task, return task handle immediately  |
+| `mcpx exec [server] <tool> --ttl <ms>` | Set task TTL in milliseconds (default: 60000)          |
 | `mcpx task list <server>`              | List tasks on a server                                 |
 | `mcpx task get <server> <taskId>`      | Get task status                                        |
 | `mcpx task result <server> <taskId>`   | Retrieve completed task result                         |
@@ -103,6 +112,8 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx allow --cursor <server>`         | Allow for Cursor instead of Claude Code                |
 | `mcpx deny <server>`                   | Remove permissions for a server                        |
 | `mcpx deny --all`                      | Remove all mcpx-related permissions                    |
+| `mcpx check-update`                    | Check for a newer version of mcpx                      |
+| `mcpx upgrade`                         | Upgrade mcpx to the latest version                     |
 
 ## Options
 
@@ -115,6 +126,7 @@ mcpx search -n 5 "manage pull requests"
 | `-v, --verbose`           | Show HTTP details and JSON-RPC protocol messages         |
 | `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
 | `-j, --json`              | Force JSON output (default when piped)                   |
+| `-F, --format <format>`   | Output format: `json` or `markdown`                      |
 | `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
 
@@ -503,7 +515,31 @@ mcpx info github | jq '.tools[].name'
 mcpx info github --json
 ```
 
-Tool results are always JSON, designed for chaining:
+### Output Formats (`--format`)
+
+Tool results (`exec`, `task result`) support three output formats via the global `--format` / `-F` flag:
+
+| Format     | Description                                                             |
+| ---------- | ----------------------------------------------------------------------- |
+| `json`     | Full MCP protocol response as JSON (default)                            |
+| `text`     | Extract text from content blocks, strip protocol wrapper                |
+| `markdown` | Extract text and render with rich terminal formatting (colors, borders) |
+
+```bash
+# Default JSON output — full MCP response with content array
+mcpx exec github search_repositories '{"query":"mcp"}'
+
+# Markdown — rich terminal rendering with colors and formatting
+mcpx exec github search_repositories '{"query":"mcp"}' -F markdown
+```
+
+The `markdown` format extracts text from MCP content blocks and renders it through Bun's built-in markdown parser with ANSI styling — headings, bold/italic, code blocks with borders, colored links, and bullet lists. JSON content is converted to a structured document with headings and bullet lists.
+
+For other commands (`list`, `info`, `search`), `--format json` forces JSON output and `--format markdown` uses the existing human-friendly formatting.
+
+### Chaining tool results
+
+Tool results are JSON by default, designed for chaining:
 
 ```bash
 # Search repos and read the first result
@@ -557,7 +593,7 @@ Then in any Claude Code session, the agent can use `/mcpx` or the skill triggers
 
 1. **Search first** — `mcpx search "<intent>"` to find relevant tools
 2. **Inspect** — `mcpx info <server> <tool>` to get the schema before calling
-3. **Execute** — `mcpx exec <server> <tool> '<json>'` to execute
+3. **Execute** — `mcpx exec <tool> '<json>'` to execute (or `mcpx exec <server> <tool> '<json>'` if the tool name is ambiguous)
 
 This keeps tool schemas out of the system prompt entirely. The agent discovers what it needs on-demand, saving tokens and context window space.
 
@@ -592,7 +628,8 @@ To discover tools:
   mcpx info <server> <tool>              # tool schema
 
 To execute tools:
-  mcpx exec <server> <tool> '<json args>'
+  mcpx exec <tool> '<json args>'              # server auto-resolved
+  mcpx exec <server> <tool> '<json args>'     # explicit server
   mcpx exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.

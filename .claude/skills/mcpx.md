@@ -45,11 +45,12 @@ This shows parameters, types, required fields, and the full JSON Schema.
 ## 3. Execute the tool
 
 ```bash
-mcpx exec <server> <tool> '<json args>'
+mcpx exec <tool> '<json args>'                # server auto-resolved if unambiguous
+mcpx exec <server> <tool> '<json args>'       # explicit server (required if tool name exists on multiple servers)
 mcpx exec <server> <tool> -f params.json
 ```
 
-Output is JSON when piped. Use `--json` to force JSON output in any context — prefer this when you need to parse results programmatically.
+Output is JSON by default. Use `--json` to force JSON output in any context — prefer this when you need to parse results programmatically. Use `--format markdown` for rich terminal rendering with colors, headings, and bullet lists.
 
 ## Rules
 
@@ -58,6 +59,7 @@ Output is JSON when piped. Use `--json` to force JSON output in any context — 
 - Use `mcpx search -k` for exact name matching
 - Pipe results through `jq` when you need to extract specific fields
 - Use `--json` when parsing output programmatically (automatic when piped, but explicit is safer)
+- Use `--format markdown` for rich terminal-rendered output with colors and formatting
 - Use `-v` for verbose debugging (HTTP details + JSON-RPC protocol messages) if an exec fails unexpectedly
 - Use `-l debug` to see all server log messages, or `-l error` for errors only
 
@@ -70,7 +72,10 @@ mcpx search "send a message"
 # See what parameters Slack_SendMessage needs
 mcpx info arcade Slack_SendMessage
 
-# Send a message
+# Send a message (server optional if tool name is unique)
+mcpx exec Slack_SendMessage '{"channel":"#general","message":"hello"}'
+
+# Or explicitly specify the server
 mcpx exec arcade Slack_SendMessage '{"channel":"#general","message":"hello"}'
 
 # Chain commands — search repos and read the first result
@@ -136,7 +141,8 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx info <server>`                  | Server overview (version, capabilities, tools) |
 | `mcpx info <server> <tool>`           | Show tool schema                  |
 | `mcpx exec <server>`                  | List tools for a server           |
-| `mcpx exec <server> <tool> '<json>'`  | Execute a tool                    |
+| `mcpx exec <tool> '<json>'`           | Execute tool (server auto-resolved) |
+| `mcpx exec <server> <tool> '<json>'`  | Execute tool (explicit server)    |
 | `mcpx exec <server> <tool> -f file`   | Execute with args from file       |
 | `mcpx search "<query>"`               | Search tools (keyword + semantic) |
 | `mcpx search -k "<pattern>"`          | Keyword/glob search only          |
@@ -175,18 +181,21 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx deny <server>`                 | Remove server permissions         |
 | `mcpx deny --all`                    | Remove all mcpx permissions       |
 | `mcpx deny --cursor <server>`        | Target Cursor instead of Claude   |
+| `mcpx check-update`                  | Check for a newer version of mcpx |
+| `mcpx upgrade`                       | Upgrade mcpx to the latest version|
 
 ## Global flags
 
-| Flag                      | Purpose                                                  |
-| ------------------------- | -------------------------------------------------------- |
-| `-j, --json`              | Force JSON output (default when piped)                   |
-| `-v, --verbose`           | Show HTTP details and JSON-RPC protocol messages         |
-| `-d, --with-descriptions` | Include tool descriptions in list output                 |
-| `-c, --config <path>`     | Specify config file location                             |
-| `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
-| `-S, --show-secrets`      | Show full auth tokens in verbose output (unmasked)       |
-| `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
+| Flag                        | Purpose                                                  |
+| --------------------------- | -------------------------------------------------------- |
+| `-j, --json`                | Force JSON output (default when piped)                   |
+| `-F, --format <format>`     | Output format: `json` or `markdown`                      |
+| `-v, --verbose`             | Show HTTP details and JSON-RPC protocol messages         |
+| `-d, --with-descriptions`   | Include tool descriptions in list output                 |
+| `-c, --config <path>`       | Specify config file location                             |
+| `-N, --no-interactive`      | Decline server elicitation requests (for scripted usage) |
+| `-S, --show-secrets`        | Show full auth tokens in verbose output (unmasked)       |
+| `-l, --log-level <level>`   | Minimum server log level to display (default: `warning`) |
 
 ## `add` options
 
