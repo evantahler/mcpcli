@@ -72,7 +72,9 @@ hash -r
 echo ""
 echo "═══ TEST 2: bun pathway ═══"
 
-bun install -g . 2>&1
+# bun install -g . doesn't work like npm for local packages, so pack first
+TARBALL=$(npm pack --pack-destination /tmp 2>/dev/null | tail -1)
+bun install -g "/tmp/$TARBALL" 2>&1
 hash -r
 
 VER=$(mcpx --version)
@@ -91,6 +93,7 @@ UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
 assert_json_field "bun: upgrade has currentVersion" "$UPGRADE" ".currentVersion"
 
 bun remove -g @evantahler/mcpx 2>&1
+rm -f "/tmp/$TARBALL"
 hash -r
 
 # ══════════════════════════════════════════════════════════════
