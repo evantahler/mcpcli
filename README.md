@@ -4,10 +4,11 @@ A command-line interface for MCP servers. **curl for MCP.**
 
 The internet is debating CLI vs MCP like they're competitors. [They're not.](https://arcade.dev/blog/curl-for-mcp)
 
-Two audiences:
+Three audiences:
 
-1. **AI/LLM agents** that prefer shelling out over maintaining persistent MCP connections — better for token management, progressive tool discovery, and sharing a single pool of MCP servers across multiple agents on one machine
-2. **MCP developers** who need a fast way to discover, debug, and test their servers from the terminal
+1. **Coding agents** (Claude Code, Cursor) that prefer shelling out over maintaining persistent MCP connections — better for token management, progressive tool discovery, and sharing a single pool of MCP servers across multiple agents on one machine
+2. **Non-coding agents** that need programmatic access to MCP tools from TypeScript — remote, persistent, or isolated agents that don't have a shell
+3. **MCP developers** who need a fast way to discover, debug, and test their servers from the terminal
 
 ## Install
 
@@ -633,6 +634,51 @@ To execute tools:
   mcpx exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.
+```
+
+### Programmatic Usage (TypeScript SDK)
+
+For agents that don't have shell access — remote, persistent, or isolated agents running in TypeScript:
+
+```typescript
+import { McpxClient } from "@evantahler/mcpx";
+
+const client = new McpxClient();
+// or: new McpxClient({ configDir: "/path/to/.mcpx" })
+// or: new McpxClient({ servers: { mcpServers: { ... } } })
+
+// 1. Search for tools
+const results = await client.search("send a message");
+
+// 2. Inspect the tool schema
+const tool = await client.info("arcade", "Slack_SendMessage");
+
+// 3. Execute the tool
+const result = await client.exec("arcade", "Slack_SendMessage", {
+  channel: "#general",
+  message: "hello",
+});
+
+// Also available: listTools, listResources, readResource,
+// listPrompts, getPrompt, listTasks, getTask, cancelTask,
+// getServerInfo, getServerNames, validateToolInput
+
+await client.close();
+```
+
+The SDK uses the same config files as the CLI (`~/.mcpx/servers.json`, `auth.json`, `search.json`). Server management (add, remove, auth) is done via the CLI — the SDK is read-only.
+
+You can also pass server config directly, bypassing file loading entirely:
+
+```typescript
+const client = new McpxClient({
+  servers: {
+    mcpServers: {
+      local: { command: "node", args: ["server.js"] },
+      remote: { url: "https://mcp.example.com" },
+    },
+  },
+});
 ```
 
 ## Permissions (Claude Code & Cursor)

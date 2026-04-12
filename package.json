@@ -1,8 +1,14 @@
 {
   "name": "@evantahler/mcpx",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "description": "A command-line interface for MCP servers. curl for MCP.",
   "type": "module",
+  "exports": {
+    ".": "./src/sdk.ts",
+    "./cli": "./src/cli.ts"
+  },
+  "main": "./src/sdk.ts",
+  "types": "./src/sdk.ts",
   "bin": {
     "mcpx": "./src/cli.ts"
   },

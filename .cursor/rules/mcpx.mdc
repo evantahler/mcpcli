@@ -225,6 +225,22 @@ mcpx deauth <server>           # remove stored auth
 | `--project` | Install to project location (default)      |
 | `-f, --force` | Overwrite if file already exists         |
 
+## Programmatic Usage (TypeScript SDK)
+
+For agents that don't have shell access (remote, persistent, or isolated agents), mcpx can be used as a TypeScript library:
+
+```typescript
+import { McpxClient } from "@evantahler/mcpx";
+
+const client = new McpxClient();
+const results = await client.search("send a message");
+const tool = await client.info("arcade", "Slack_SendMessage");
+const result = await client.exec("arcade", "Slack_SendMessage", { channel: "#general", message: "hello" });
+await client.close();
+```
+
+The SDK follows the same search → inspect → exec workflow. Server management (add, remove, auth) is still done via the CLI.
+
 ## Environment variables
 
 | Variable          | Purpose                     | Default    |
