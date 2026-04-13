@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { program } from "commander";
+import { bold, cyan, yellow, dim, green } from "ansis";
 import { registerListCommand } from "./commands/list.ts";
 import { registerInfoCommand } from "./commands/info.ts";
 import { registerSearchCommand } from "./commands/search.ts";
@@ -39,6 +40,15 @@ program
     "minimum server log level (debug|info|notice|warning|error|critical|alert|emergency)",
     "warning",
   );
+
+program.configureHelp({
+  styleTitle: (str) => bold(str),
+  styleCommandText: (str) => cyan(str),
+  styleSubcommandText: (str) => cyan(str),
+  styleOptionText: (str) => yellow(str),
+  styleArgumentText: (str) => green(str),
+  styleDescriptionText: (str) => dim(str),
+});
 
 registerListCommand(program);
 registerInfoCommand(program);
