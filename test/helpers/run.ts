@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 
 const CLI = join(import.meta.dir, "../../src/cli.ts");
 const CONFIG = join(import.meta.dir, "../fixtures/mock-config");

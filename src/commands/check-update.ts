@@ -16,9 +16,7 @@ export function registerCheckUpdateCommand(program: Command) {
 			const isTTY = process.stderr.isTTY ?? false;
 
 			const spinner =
-				!json && isTTY
-					? createSpinner("Checking for updates...", { stream: process.stderr }).start()
-					: null;
+				!json && isTTY ? createSpinner("Checking for updates...", { stream: process.stderr }).start() : null;
 
 			try {
 				const info = await checkForUpdate(pkg.version);
@@ -42,9 +40,7 @@ export function registerCheckUpdateCommand(program: Command) {
 				if (!info.hasUpdate) {
 					if (info.aheadOfLatest) {
 						console.log(
-							yellow(
-								`mcpx v${info.currentVersion} is ahead of latest published release (v${info.latestVersion})`,
-							),
+							yellow(`mcpx v${info.currentVersion} is ahead of latest published release (v${info.latestVersion})`),
 						);
 					} else {
 						console.log(green(`mcpx is up to date (v${info.currentVersion})`));

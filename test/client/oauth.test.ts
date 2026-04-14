@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AuthFile } from "../../src/config/schemas.ts";
 
 // Mock the SDK's refreshAuthorization before importing the provider
@@ -64,7 +64,7 @@ describe("McpOAuthProvider", () => {
 		});
 		const after = Date.now();
 
-		const expiresAt = new Date(auth["srv"]!.expires_at!).getTime();
+		const expiresAt = new Date(auth.srv?.expires_at!).getTime();
 		expect(expiresAt).toBeGreaterThanOrEqual(before + 3600 * 1000);
 		expect(expiresAt).toBeLessThanOrEqual(after + 3600 * 1000);
 
@@ -195,9 +195,7 @@ describe("refreshIfNeeded", () => {
 			},
 		};
 		const provider = makeProvider(auth);
-		await expect(provider.refreshIfNeeded("http://example.com")).rejects.toThrow(
-			"no refresh token available",
-		);
+		await expect(provider.refreshIfNeeded("http://example.com")).rejects.toThrow("no refresh token available");
 	});
 
 	test("throws when expired with refresh token but no client info", async () => {
@@ -212,9 +210,7 @@ describe("refreshIfNeeded", () => {
 			},
 		};
 		const provider = makeProvider(auth);
-		await expect(provider.refreshIfNeeded("http://example.com")).rejects.toThrow(
-			"No client information",
-		);
+		await expect(provider.refreshIfNeeded("http://example.com")).rejects.toThrow("No client information");
 	});
 
 	test("refreshes token when expired with refresh token and client info", async () => {
@@ -259,7 +255,7 @@ describe("refreshIfNeeded", () => {
 			expect(tokens?.refresh_token).toBe("new-refresh-token");
 
 			// Verify expires_at was updated to a future date
-			const expiresAt = new Date(auth["test-server"]!.expires_at!).getTime();
+			const expiresAt = new Date(auth["test-server"]?.expires_at!).getTime();
 			expect(expiresAt).toBeGreaterThan(Date.now());
 
 			// Verify auth.json was written to disk

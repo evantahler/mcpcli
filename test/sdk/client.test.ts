@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "path";
+import { join } from "node:path";
 import type { SearchIndex, ServersFile } from "../../src/sdk.ts";
 import { McpxClient } from "../../src/sdk.ts";
 
@@ -59,8 +59,8 @@ describe("McpxClient", () => {
 		client = new McpxClient({ servers: makeInlineServers() });
 		const tools = await client.listTools();
 		expect(tools.length).toBeGreaterThan(0);
-		expect(tools[0]!.server).toBe("mock");
-		expect(tools[0]!.tool.name).toBeDefined();
+		expect(tools[0]?.server).toBe("mock");
+		expect(tools[0]?.tool.name).toBeDefined();
 		const names = tools.map((t) => t.tool.name);
 		expect(names).toContain("echo");
 		expect(names).toContain("add");
@@ -81,8 +81,8 @@ describe("McpxClient", () => {
 		client = new McpxClient({ servers: makeInlineServers() });
 		const tool = await client.info("mock", "echo");
 		expect(tool).toBeDefined();
-		expect(tool!.name).toBe("echo");
-		expect(tool!.inputSchema.properties).toHaveProperty("message");
+		expect(tool?.name).toBe("echo");
+		expect(tool?.inputSchema.properties).toHaveProperty("message");
 	});
 
 	test("info returns undefined for unknown tool", async () => {
@@ -136,7 +136,7 @@ describe("McpxClient", () => {
 		});
 		expect(result.valid).toBe(false);
 		expect(result.errors.length).toBeGreaterThan(0);
-		expect(result.errors[0]!.message).toContain("number");
+		expect(result.errors[0]?.message).toContain("number");
 	});
 
 	test("validateToolInput fails with wrong property name", async () => {
@@ -161,7 +161,7 @@ describe("McpxClient", () => {
 		client = new McpxClient({ servers: makeInlineServers() });
 		const result = await client.validateToolInput("mock", "nonexistent", {});
 		expect(result.valid).toBe(false);
-		expect(result.errors[0]!.message).toContain("Tool not found");
+		expect(result.errors[0]?.message).toContain("Tool not found");
 	});
 
 	// ---------------------------------------------------------------------------
@@ -214,7 +214,7 @@ describe("McpxClient", () => {
 		// "slack" should match only the Slack tool
 		const slackResults = await client.search("slack", { keywordOnly: true });
 		expect(slackResults.length).toBe(1);
-		expect(slackResults[0]!.tool).toBe("Slack_SendMessage");
+		expect(slackResults[0]?.tool).toBe("Slack_SendMessage");
 
 		// "send" should match both Slack and Gmail
 		const sendResults = await client.search("send", { keywordOnly: true });
@@ -225,7 +225,7 @@ describe("McpxClient", () => {
 		// "github" should match the GitHub tool
 		const githubResults = await client.search("github", { keywordOnly: true });
 		expect(githubResults.length).toBe(1);
-		expect(githubResults[0]!.tool).toBe("search_repositories");
+		expect(githubResults[0]?.tool).toBe("search_repositories");
 	});
 
 	test("keyword search returns empty for unrelated query", async () => {
@@ -298,7 +298,6 @@ describe("McpxClient", () => {
 
 	test("semantic search ranks messaging tools higher for messaging query", async () => {
 		// Mock the embedder to return our synthetic "messaging" query vector
-		const { semanticSearch: origSemantic } = await import("../../src/search/semantic.ts");
 		const { mock } = await import("bun:test");
 		const mod = await import("../../src/search/semantic.ts");
 		mock.module("../../src/search/semantic.ts", () => ({
@@ -339,7 +338,7 @@ describe("McpxClient", () => {
 
 		expect(results.length).toBe(3);
 		// GitHub (code) should rank first for a code query
-		expect(results[0]!.tool).toBe("search_repositories");
+		expect(results[0]?.tool).toBe("search_repositories");
 
 		mock.restore();
 	});
@@ -359,8 +358,8 @@ describe("McpxClient", () => {
 		// "slack" matches keyword for Slack, semantic also contributes
 		const results = await client.search("slack");
 		expect(results.length).toBeGreaterThan(0);
-		expect(results[0]!.tool).toBe("Slack_SendMessage");
-		expect(results[0]!.matchType).toBe("both");
+		expect(results[0]?.tool).toBe("Slack_SendMessage");
+		expect(results[0]?.matchType).toBe("both");
 
 		mock.restore();
 	});
@@ -373,8 +372,8 @@ describe("McpxClient", () => {
 		client = new McpxClient({ servers: makeInlineServers() });
 		const resources = await client.listResources();
 		expect(resources.length).toBeGreaterThan(0);
-		expect(resources[0]!.server).toBe("mock");
-		expect(resources[0]!.resource.uri).toBeDefined();
+		expect(resources[0]?.server).toBe("mock");
+		expect(resources[0]?.resource.uri).toBeDefined();
 	});
 
 	test("listResources with server filter", async () => {
@@ -389,7 +388,7 @@ describe("McpxClient", () => {
 		const result = (await client.readResource("mock", "file:///hello.txt")) as {
 			contents: { text: string }[];
 		};
-		expect(result.contents[0]!.text).toBe("Hello, World!");
+		expect(result.contents[0]?.text).toBe("Hello, World!");
 	});
 
 	// ---------------------------------------------------------------------------
@@ -410,7 +409,7 @@ describe("McpxClient", () => {
 		const result = (await client.getPrompt("mock", "greet", { name: "SDK" })) as {
 			messages: { content: { text: string } }[];
 		};
-		expect(result.messages[0]!.content.text).toBe("Hello, SDK!");
+		expect(result.messages[0]?.content.text).toBe("Hello, SDK!");
 	});
 
 	// ---------------------------------------------------------------------------

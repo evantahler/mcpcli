@@ -13,9 +13,7 @@ export function interpolateEnvString(value: string): string {
 		const envValue = process.env[varName];
 		if (envValue === undefined) {
 			if (isStrictEnv()) {
-				throw new Error(
-					`Environment variable "${varName}" is not set (set ${ENV.STRICT_ENV}=false to warn instead)`,
-				);
+				throw new Error(`Environment variable "${varName}" is not set (set ${ENV.STRICT_ENV}=false to warn instead)`);
 			}
 			console.warn(`Warning: environment variable "${varName}" is not set`);
 			return "";

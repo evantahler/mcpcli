@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CLI = join(import.meta.dir, "../../src/cli.ts");
 
@@ -57,10 +57,7 @@ describe("mcpx allow", () => {
 	});
 
 	test("allows specific tools", async () => {
-		const { exitCode } = await run(
-			["allow", "github", "search_repositories", "get_file", "--json"],
-			tmpDir,
-		);
+		const { exitCode } = await run(["allow", "github", "search_repositories", "get_file", "--json"], tmpDir);
 		expect(exitCode).toBe(0);
 
 		const settings = await readSettings(tmpDir);
@@ -97,9 +94,7 @@ describe("mcpx allow", () => {
 		await run(["allow", "github", "--json"], tmpDir);
 
 		const settings = await readSettings(tmpDir);
-		const count = settings.permissions.allow.filter(
-			(p: string) => p === "Bash(mcpx exec:github:*)",
-		).length;
+		const count = settings.permissions.allow.filter((p: string) => p === "Bash(mcpx exec:github:*)").length;
 		expect(count).toBe(1);
 	});
 
@@ -194,9 +189,7 @@ describe("mcpx deny", () => {
 		expect(exitCode).toBe(0);
 
 		const settings = await readSettings(tmpDir);
-		expect(settings.permissions.allow).not.toContain(
-			"Bash(mcpx exec:github:search_repositories:*)",
-		);
+		expect(settings.permissions.allow).not.toContain("Bash(mcpx exec:github:search_repositories:*)");
 		expect(settings.permissions.allow).toContain("Bash(mcpx exec:github:get_file:*)");
 	});
 
@@ -209,9 +202,7 @@ describe("mcpx deny", () => {
 		expect(exitCode).toBe(0);
 
 		const settings = await readSettings(tmpDir);
-		const githubPatterns = settings.permissions.allow.filter((p: string) =>
-			p.includes("mcpx exec:github"),
-		);
+		const githubPatterns = settings.permissions.allow.filter((p: string) => p.includes("mcpx exec:github"));
 		expect(githubPatterns.length).toBe(0);
 	});
 
@@ -223,9 +214,7 @@ describe("mcpx deny", () => {
 		expect(exitCode).toBe(0);
 
 		const settings = await readSettings(tmpDir);
-		const mcpxPatterns = (settings.permissions.allow as string[]).filter((p) =>
-			p.startsWith("Bash(mcpx "),
-		);
+		const mcpxPatterns = (settings.permissions.allow as string[]).filter((p) => p.startsWith("Bash(mcpx "));
 		expect(mcpxPatterns.length).toBe(0);
 	});
 
@@ -345,9 +334,7 @@ describe("mcpx allow --cursor", () => {
 		await run(["allow", "github", "--cursor", "--json"], tmpDir);
 
 		const settings = await readCursorSettings(tmpDir);
-		const count = settings.permissions.allow.filter(
-			(p: string) => p === "Shell(mcpx exec:github:*)",
-		).length;
+		const count = settings.permissions.allow.filter((p: string) => p === "Shell(mcpx exec:github:*)").length;
 		expect(count).toBe(1);
 	});
 
@@ -369,10 +356,7 @@ describe("mcpx allow --cursor", () => {
 	});
 
 	test("dry-run does not write", async () => {
-		const { exitCode, stdout } = await run(
-			["allow", "github", "--cursor", "--dry-run", "--json"],
-			tmpDir,
-		);
+		const { exitCode, stdout } = await run(["allow", "github", "--cursor", "--dry-run", "--json"], tmpDir);
 		expect(exitCode).toBe(0);
 
 		const parsed = JSON.parse(stdout);
@@ -438,16 +422,11 @@ describe("mcpx deny --cursor", () => {
 	test("removes specific tool permissions", async () => {
 		await run(["allow", "github", "search_repositories", "get_file", "--cursor", "--json"], tmpDir);
 
-		const { exitCode } = await run(
-			["deny", "github", "search_repositories", "--cursor", "--json"],
-			tmpDir,
-		);
+		const { exitCode } = await run(["deny", "github", "search_repositories", "--cursor", "--json"], tmpDir);
 		expect(exitCode).toBe(0);
 
 		const settings = await readCursorSettings(tmpDir);
-		expect(settings.permissions.allow).not.toContain(
-			"Shell(mcpx exec:github:search_repositories:*)",
-		);
+		expect(settings.permissions.allow).not.toContain("Shell(mcpx exec:github:search_repositories:*)");
 		expect(settings.permissions.allow).toContain("Shell(mcpx exec:github:get_file:*)");
 	});
 
@@ -459,9 +438,7 @@ describe("mcpx deny --cursor", () => {
 		expect(exitCode).toBe(0);
 
 		const settings = await readCursorSettings(tmpDir);
-		const githubPatterns = settings.permissions.allow.filter((p: string) =>
-			p.includes("mcpx exec:github"),
-		);
+		const githubPatterns = settings.permissions.allow.filter((p: string) => p.includes("mcpx exec:github"));
 		expect(githubPatterns.length).toBe(0);
 	});
 
@@ -473,9 +450,7 @@ describe("mcpx deny --cursor", () => {
 		expect(exitCode).toBe(0);
 
 		const settings = await readCursorSettings(tmpDir);
-		const mcpxPatterns = (settings.permissions.allow as string[]).filter((p) =>
-			p.startsWith("Shell(mcpx "),
-		);
+		const mcpxPatterns = (settings.permissions.allow as string[]).filter((p) => p.startsWith("Shell(mcpx "));
 		expect(mcpxPatterns.length).toBe(0);
 	});
 

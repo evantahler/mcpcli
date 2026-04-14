@@ -1,7 +1,7 @@
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import type { Command } from "commander";
-import { access, mkdir, readFile, writeFile } from "fs/promises";
-import { homedir } from "os";
-import { dirname, join, resolve } from "path";
 
 interface SkillTarget {
 	label: string;
@@ -21,13 +21,7 @@ export function registerSkillCommand(program: Command) {
 		.option("--project", "install to project location (default)")
 		.option("-f, --force", "overwrite if file already exists")
 		.action(
-			async (options: {
-				claude?: boolean;
-				cursor?: boolean;
-				global?: boolean;
-				project?: boolean;
-				force?: boolean;
-			}) => {
+			async (options: { claude?: boolean; cursor?: boolean; global?: boolean; project?: boolean; force?: boolean }) => {
 				if (!options.claude && !options.cursor) {
 					console.error("error: specify at least one agent target: --claude, --cursor");
 					process.exit(1);

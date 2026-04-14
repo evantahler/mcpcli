@@ -42,9 +42,7 @@ export function withCommand<TArgs extends unknown[]>(
 		const appCtx = await getContext(program);
 		const { manager, formatOptions } = appCtx;
 
-		const spinner = options.spinnerText
-			? logger.startSpinner(options.spinnerText, formatOptions)
-			: noopSpinner;
+		const spinner = options.spinnerText ? logger.startSpinner(options.spinnerText, formatOptions) : noopSpinner;
 
 		try {
 			await handler({ ...appCtx, spinner }, ...args);

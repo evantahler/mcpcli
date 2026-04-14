@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 import { DEFAULT_CONFIG_DIR } from "../constants.ts";
 import type { UpdateCache } from "./checker.ts";
 
@@ -18,7 +18,7 @@ export async function loadUpdateCache(): Promise<UpdateCache | undefined> {
 /** Save update check result to the cache file. */
 export async function saveUpdateCache(cache: UpdateCache): Promise<void> {
 	try {
-		await Bun.write(UPDATE_CACHE_PATH, JSON.stringify(cache, null, 2) + "\n");
+		await Bun.write(UPDATE_CACHE_PATH, `${JSON.stringify(cache, null, 2)}\n`);
 	} catch {
 		// Ignore write failures (e.g. permissions)
 	}

@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { ServerManager } from "./client/manager.ts";
-import { type LoadConfigOptions, loadConfig } from "./config/loader.ts";
+import { loadConfig } from "./config/loader.ts";
 import type { Config } from "./config/schemas.ts";
 import { DEFAULTS, ENV } from "./constants.ts";
 import { type FormatOptions, type OutputFormat, VALID_FORMATS } from "./output/formatter.ts";

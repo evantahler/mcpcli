@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CLI = join(import.meta.dir, "../../src/cli.ts");
 const HTTP_SERVER = join(import.meta.dir, "../fixtures/mock-http-server.ts");
@@ -110,9 +110,9 @@ describe("HTTP MCP server end-to-end", () => {
 			const results = await runAndParse<PingResult[]>("ping");
 			expect(results).toBeInstanceOf(Array);
 			expect(results.length).toBe(1);
-			expect(results[0]!.server).toBe("remote");
-			expect(results[0]!.success).toBe(true);
-			expect(results[0]!.latencyMs).toBeGreaterThan(0);
+			expect(results[0]?.server).toBe("remote");
+			expect(results[0]?.success).toBe(true);
+			expect(results[0]?.latencyMs).toBeGreaterThan(0);
 		},
 		{ timeout: TIMEOUT },
 	);
@@ -149,7 +149,7 @@ describe("HTTP MCP server end-to-end", () => {
 			const items = await runAndParse<UnifiedItem[]>("-d");
 			const echo = items.find((i) => i.type === "tool" && i.name === "echo");
 			expect(echo).toBeDefined();
-			expect(echo!.description!.length).toBeGreaterThan(0);
+			expect(echo?.description?.length).toBeGreaterThan(0);
 		},
 		{ timeout: TIMEOUT },
 	);
@@ -182,16 +182,11 @@ describe("HTTP MCP server end-to-end", () => {
 	test(
 		"executes the echo tool",
 		async () => {
-			const result = await runAndParse<CallResult>(
-				"exec",
-				"remote",
-				"echo",
-				'{"message":"hello from mcpx"}',
-			);
+			const result = await runAndParse<CallResult>("exec", "remote", "echo", '{"message":"hello from mcpx"}');
 			expect(result.content).toBeInstanceOf(Array);
 			expect(result.content.length).toBeGreaterThanOrEqual(1);
-			expect(result.content[0]!.type).toBe("text");
-			expect(result.content[0]!.text).toContain("hello from mcpx");
+			expect(result.content[0]?.type).toBe("text");
+			expect(result.content[0]?.text).toContain("hello from mcpx");
 		},
 		{ timeout: TIMEOUT },
 	);
@@ -201,7 +196,7 @@ describe("HTTP MCP server end-to-end", () => {
 		async () => {
 			const result = await runAndParse<CallResult>("exec", "remote", "add", '{"a":2,"b":3}');
 			expect(result.content).toBeInstanceOf(Array);
-			expect(String(result.content[0]!.text)).toBe("5");
+			expect(String(result.content[0]?.text)).toBe("5");
 		},
 		{ timeout: TIMEOUT },
 	);

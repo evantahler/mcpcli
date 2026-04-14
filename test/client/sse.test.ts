@@ -33,6 +33,7 @@ describe("createSseTransport", () => {
 			saveTokens: () => Promise.resolve(),
 			saveClientInformation: () => Promise.resolve(),
 		};
+		// biome-ignore lint/suspicious/noExplicitAny: minimal mock for test
 		const transport = createSseTransport({ config, authProvider: fakeProvider as any });
 		expect(transport).toBeInstanceOf(SSEClientTransport);
 	});

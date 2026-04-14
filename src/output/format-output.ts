@@ -9,11 +9,7 @@ import { isInteractive } from "./formatter.ts";
  * Otherwise falls back to the existing auto-detection:
  *   non-interactive → JSON, interactive → formatted text.
  */
-export function formatOutput(
-	jsonData: unknown,
-	interactiveFn: () => string,
-	options: FormatOptions,
-): string {
+export function formatOutput(jsonData: unknown, interactiveFn: () => string, options: FormatOptions): string {
 	if (options.format) {
 		if (options.format === "json") {
 			return JSON.stringify(jsonData, null, 2);

@@ -5,6 +5,7 @@ import { wrapTransportWithTrace } from "../../src/client/trace.ts";
 
 /** Strip ANSI escape codes so assertions work on both TTY and non-TTY (CI) */
 function stripAnsi(s: string): string {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ANSI escape code stripping
 	return s.replace(/\u001b\[\d+m/g, "");
 }
 
@@ -160,7 +161,7 @@ describe("wrapTransportWithTrace", () => {
 		} as JSONRPCMessage);
 
 		stderr.output; // clear outgoing line
-		const outgoingLine = stderr.output.split("\n")[0];
+		const _outgoingLine = stderr.output.split("\n")[0];
 
 		mock.triggerMessage({
 			jsonrpc: "2.0",

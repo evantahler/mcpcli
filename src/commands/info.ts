@@ -19,9 +19,7 @@ export function registerInfoCommand(program: Command) {
 						const toolSchema = await manager.getToolSchema(server, tool);
 						spinner.stop();
 						if (!toolSchema) {
-							console.error(
-								formatError(`Tool "${tool}" not found on server "${server}"`, formatOptions),
-							);
+							console.error(formatError(`Tool "${tool}" not found on server "${server}"`, formatOptions));
 							process.exit(1);
 						}
 						console.log(formatToolSchema(server, toolSchema, formatOptions));

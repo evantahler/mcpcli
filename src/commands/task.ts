@@ -1,10 +1,5 @@
 import type { Command } from "commander";
-import {
-	formatCallResult,
-	formatError,
-	formatTaskStatus,
-	formatTasksList,
-} from "../output/formatter.ts";
+import { formatCallResult, formatTaskStatus, formatTasksList } from "../output/formatter.ts";
 import { withCommand } from "./with-command.ts";
 
 export function registerTaskCommand(program: Command) {
@@ -15,12 +10,7 @@ export function registerTaskCommand(program: Command) {
 			withCommand(
 				program,
 				{ spinnerText: "Connecting..." },
-				async (
-					{ manager, formatOptions, spinner },
-					action: string,
-					server: string,
-					taskId?: string,
-				) => {
+				async ({ manager, formatOptions, spinner }, action: string, server: string, taskId?: string) => {
 					spinner.update(`Connecting to ${server}...`);
 
 					switch (action) {

@@ -26,10 +26,7 @@ export function registerPingCommand(program: Command) {
 				process.exit(1);
 			}
 
-			const spinner = logger.startSpinner(
-				`Pinging ${targetServers.length} server(s)...`,
-				formatOptions,
-			);
+			const spinner = logger.startSpinner(`Pinging ${targetServers.length} server(s)...`, formatOptions);
 
 			const results: PingResult[] = [];
 

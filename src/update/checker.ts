@@ -2,9 +2,7 @@ import pkg from "../../package.json";
 import { DEFAULTS } from "../constants.ts";
 
 const NPM_REGISTRY_URL = `https://registry.npmjs.org/${pkg.name}/latest`;
-const GITHUB_REPO = pkg.repository.url
-	.replace(/^https:\/\/github\.com\//, "")
-	.replace(/\.git$/, "");
+const GITHUB_REPO = pkg.repository.url.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
 
 export interface UpdateInfo {
 	currentVersion: string;
@@ -75,10 +73,7 @@ export async function fetchChangelog(
 }
 
 /** Check npm for a newer version and fetch changelog if available. */
-export async function checkForUpdate(
-	currentVersion: string,
-	signal?: AbortSignal,
-): Promise<UpdateInfo> {
+export async function checkForUpdate(currentVersion: string, signal?: AbortSignal): Promise<UpdateInfo> {
 	const latestVersion = await fetchLatestVersion(signal);
 	const hasUpdate = isNewerVersion(currentVersion, latestVersion);
 	const aheadOfLatest = isNewerVersion(latestVersion, currentVersion);

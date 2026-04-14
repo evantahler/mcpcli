@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CLI, CONFIG, run, runMultiServer, runWithStdin } from "../helpers/run.ts";
 
 const tempDir = mkdtempSync(join(tmpdir(), "mcpx-test-"));
@@ -41,14 +41,11 @@ describe("mcpx exec", () => {
 	test("reads args piped from a file via stdin", async () => {
 		const filePath = join(tempDir, "pipe-args.json");
 		writeFileSync(filePath, '{"message": "piped from file"}');
-		const proc = Bun.spawn(
-			["bash", "-c", `cat ${filePath} | bun run ${CLI} -c ${CONFIG} exec mock echo`],
-			{
-				stdout: "pipe",
-				stderr: "pipe",
-				cwd: join(import.meta.dir, "../.."),
-			},
-		);
+		const proc = Bun.spawn(["bash", "-c", `cat ${filePath} | bun run ${CLI} -c ${CONFIG} exec mock echo`], {
+			stdout: "pipe",
+			stderr: "pipe",
+			cwd: join(import.meta.dir, "../.."),
+		});
 		const exitCode = await proc.exited;
 		const stdout = await new Response(proc.stdout).text();
 		expect(exitCode).toBe(0);
@@ -136,14 +133,7 @@ describe("mcpx exec", () => {
 	});
 
 	test("--format markdown renders text through markdown formatter", async () => {
-		const proc = run(
-			"--format",
-			"markdown",
-			"exec",
-			"mock",
-			"echo",
-			'{"message": "**bold** text"}',
-		);
+		const proc = run("--format", "markdown", "exec", "mock", "echo", '{"message": "**bold** text"}');
 		const exitCode = await proc.exited;
 		const stdout = await new Response(proc.stdout).text();
 		expect(exitCode).toBe(0);

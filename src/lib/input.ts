@@ -3,10 +3,7 @@
  */
 
 /** Parse a JSON string as a key-value object, optionally coercing all values to strings. */
-export function parseJsonArgs(
-	str: string,
-	opts?: { coerceToString?: boolean },
-): Record<string, unknown> {
+export function parseJsonArgs(str: string, opts?: { coerceToString?: boolean }): Record<string, unknown> {
 	try {
 		const parsed = JSON.parse(str);
 		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {

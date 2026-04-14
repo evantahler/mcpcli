@@ -1,5 +1,5 @@
-import { homedir } from "os";
-import { join } from "path";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 /** Default config directory (~/.mcpx) */
 export const DEFAULT_CONFIG_DIR = join(homedir(), ".mcpx");

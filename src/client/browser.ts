@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec } from "node:child_process";
 
 /**
  * Open a URL in the default browser (macOS/Windows/Linux).

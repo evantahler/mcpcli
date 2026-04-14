@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadConfig, saveAuth, saveSearchIndex } from "../../src/config/loader.ts";
 
 const FIXTURES_DIR = join(import.meta.dir, "../fixtures");
@@ -16,9 +16,9 @@ describe("loadConfig", () => {
 		expect(config.configDir).toBe(FIXTURES_DIR);
 		expect(Object.keys(config.servers.mcpServers)).toEqual(["filesystem", "github", "internal"]);
 		expect(config.auth.github).toBeDefined();
-		expect(config.auth.github!.tokens.access_token).toBe("gho_test123");
+		expect(config.auth.github?.tokens.access_token).toBe("gho_test123");
 		expect(config.searchIndex.tools).toHaveLength(1);
-		expect(config.searchIndex.tools[0]!.tool).toBe("search_repositories");
+		expect(config.searchIndex.tools[0]?.tool).toBe("search_repositories");
 
 		delete process.env.TEST_API_KEY;
 		delete process.env.TEST_TOKEN;
@@ -114,13 +114,8 @@ describe("validateServersFile", () => {
 	test("rejects server without command or url", async () => {
 		const tmpDir = await mkdtemp(join(tmpdir(), "mcpx-test-"));
 		try {
-			await Bun.write(
-				join(tmpDir, "servers.json"),
-				JSON.stringify({ mcpServers: { bad: { name: "nope" } } }),
-			);
-			await expect(loadConfig({ configFlag: tmpDir })).rejects.toThrow(
-				'must have either "command"',
-			);
+			await Bun.write(join(tmpDir, "servers.json"), JSON.stringify({ mcpServers: { bad: { name: "nope" } } }));
+			await expect(loadConfig({ configFlag: tmpDir })).rejects.toThrow('must have either "command"');
 		} finally {
 			await rm(tmpDir, { recursive: true });
 		}

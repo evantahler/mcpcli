@@ -36,9 +36,7 @@ export function formatTable<T>(items: T[], options: TableOptions<T>): string {
 	const termWidth = getTerminalWidth();
 
 	// Calculate max width for each column
-	const maxWidths = options.columns.map((col) =>
-		Math.max(...items.map((item) => col.value(item).length)),
-	);
+	const maxWidths = options.columns.map((col) => Math.max(...items.map((item) => col.value(item).length)));
 
 	return items
 		.map((item) => {

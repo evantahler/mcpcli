@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { join } from "path";
+import { join } from "node:path";
 
 const CLI = join(import.meta.dir, "../../src/cli.ts");
 const CONFIG = join(import.meta.dir, "../fixtures/mock-config");
@@ -56,13 +56,10 @@ describe("stdio MCP server integration", () => {
 	});
 
 	test("lists items with descriptions", async () => {
-		const items =
-			await runAndParse<{ server: string; type: string; name: string; description: string }[]>(
-				"-d",
-			);
+		const items = await runAndParse<{ server: string; type: string; name: string; description: string }[]>("-d");
 		const echo = items.find((i) => i.type === "tool" && i.name === "echo");
 		expect(echo).toBeDefined();
-		expect(echo!.description).toContain("Echoes");
+		expect(echo?.description).toContain("Echoes");
 	});
 
 	test("inspects a specific server to list its tools", async () => {
@@ -90,7 +87,7 @@ describe("stdio MCP server integration", () => {
 			'{"message":"hello world"}',
 		);
 		expect(result.content).toBeInstanceOf(Array);
-		expect(result.content[0]!.text).toBe("hello world");
+		expect(result.content[0]?.text).toBe("hello world");
 	});
 
 	test("calls add tool with numeric arguments", async () => {
@@ -100,7 +97,7 @@ describe("stdio MCP server integration", () => {
 			"add",
 			'{"a":10,"b":32}',
 		);
-		expect(result.content[0]!.text).toBe(42);
+		expect(result.content[0]?.text).toBe(42);
 	});
 
 	test("validates tool input and rejects missing required fields", async () => {
@@ -132,7 +129,7 @@ describe("stdio MCP server integration", () => {
 		const stdout = await new Response(proc.stdout).text();
 		expect(exitCode).toBe(0);
 		const result = JSON.parse(stdout) as { content: { text: string }[] };
-		expect(result.content[0]!.text).toBe("from stdin");
+		expect(result.content[0]?.text).toBe("from stdin");
 	});
 
 	test("exits with error for unknown server", async () => {
@@ -142,20 +139,17 @@ describe("stdio MCP server integration", () => {
 	});
 
 	test("MCP_DEBUG=1 enables verbose output on stderr", async () => {
-		const proc = Bun.spawn(
-			["bun", "run", CLI, "-c", CONFIG, "--json", "exec", "mock", "echo", '{"message":"test"}'],
-			{
-				stdout: "pipe",
-				stderr: "pipe",
-				env: { ...process.env, MCP_DEBUG: "1" },
-				cwd: join(import.meta.dir, "../.."),
-			},
-		);
+		const proc = Bun.spawn(["bun", "run", CLI, "-c", CONFIG, "--json", "exec", "mock", "echo", '{"message":"test"}'], {
+			stdout: "pipe",
+			stderr: "pipe",
+			env: { ...process.env, MCP_DEBUG: "1" },
+			cwd: join(import.meta.dir, "../.."),
+		});
 		const exitCode = await proc.exited;
 		const stdout = await new Response(proc.stdout).text();
 		expect(exitCode).toBe(0);
 		// Should still produce valid JSON on stdout
 		const result = JSON.parse(stdout);
-		expect(result.content[0]!.text).toBe("test");
+		expect(result.content[0]?.text).toBe("test");
 	});
 });

@@ -31,7 +31,7 @@ describe("validateToolInput", () => {
 		const result = validateToolInput("s", tool, { name: "hello" });
 		expect(result.valid).toBe(false);
 		expect(result.errors.length).toBeGreaterThan(0);
-		expect(result.errors[0]!.message).toContain("age");
+		expect(result.errors[0]?.message).toContain("age");
 	});
 
 	test("catches wrong type", () => {
@@ -41,7 +41,7 @@ describe("validateToolInput", () => {
 		});
 		const result = validateToolInput("s", tool, { count: "not a number" });
 		expect(result.valid).toBe(false);
-		expect(result.errors[0]!.message).toContain("number");
+		expect(result.errors[0]?.message).toContain("number");
 	});
 
 	test("catches invalid enum value", () => {
@@ -51,7 +51,7 @@ describe("validateToolInput", () => {
 		});
 		const result = validateToolInput("s", tool, { color: "purple" });
 		expect(result.valid).toBe(false);
-		expect(result.errors[0]!.message).toContain("one of");
+		expect(result.errors[0]?.message).toContain("one of");
 	});
 
 	test("validates nested objects", () => {
@@ -67,7 +67,7 @@ describe("validateToolInput", () => {
 		});
 		const result = validateToolInput("s", tool, { user: {} });
 		expect(result.valid).toBe(false);
-		expect(result.errors[0]!.message).toContain("email");
+		expect(result.errors[0]?.message).toContain("email");
 	});
 
 	test("passes when no schema properties defined", () => {

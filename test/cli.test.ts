@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { join } from "path";
+import { join } from "node:path";
 import pkg from "../package.json";
 
 const CONFIG = join(import.meta.dir, "fixtures/mock-config");

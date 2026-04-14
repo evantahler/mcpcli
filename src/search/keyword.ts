@@ -41,7 +41,7 @@ export function keywordSearch(query: string, tools: IndexedTool[]): KeywordMatch
 		let bestField = "";
 
 		// Glob matching against tool name
-		if (globMatcher && globMatcher(tool.tool)) {
+		if (globMatcher?.(tool.tool)) {
 			bestScore = 1.0;
 			bestField = "name";
 		}

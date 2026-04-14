@@ -46,7 +46,7 @@ async function resolveExecArgs(
 
 			if (matches.length === 1) {
 				throw new Error(
-					`Tool "${second}" not found on server "${first}". Did you mean:\n  mcpx exec ${matches[0]!.server} ${second}`,
+					`Tool "${second}" not found on server "${first}". Did you mean:\n  mcpx exec ${matches[0]?.server} ${second}`,
 				);
 			} else if (matches.length > 1) {
 				const servers = matches.map((m) => m.server).join(", ");
@@ -69,9 +69,7 @@ async function resolveExecArgs(
 	const matches = tools.filter((t) => t.tool.name === toolName);
 
 	if (matches.length === 0) {
-		throw new Error(
-			`Unknown server or tool "${first}". Run "mcpx search ${first}" to find similar tools.`,
-		);
+		throw new Error(`Unknown server or tool "${first}". Run "mcpx search ${first}" to find similar tools.`);
 	}
 
 	if (matches.length > 1) {
@@ -81,7 +79,7 @@ async function resolveExecArgs(
 		);
 	}
 
-	return { mode: "call-tool", server: matches[0]!.server, tool: toolName, argsStr: second };
+	return { mode: "call-tool", server: matches[0]?.server, tool: toolName, argsStr: second };
 }
 
 export function registerExecCommand(program: Command) {
@@ -166,9 +164,7 @@ export function registerExecCommand(program: Command) {
 						| undefined;
 					const supportsTask = await manager.serverSupportsTask(server);
 					const useTask =
-						supportsTask &&
-						taskSupport?.taskSupport !== undefined &&
-						taskSupport.taskSupport !== "forbidden";
+						supportsTask && taskSupport?.taskSupport !== undefined && taskSupport.taskSupport !== "forbidden";
 
 					if (useTask) {
 						const abortController = new AbortController();

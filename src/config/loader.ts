@@ -1,4 +1,4 @@
-import { join, resolve } from "path";
+import { join, resolve } from "node:path";
 import { DEFAULT_CONFIG_DIR, ENV } from "../constants.ts";
 import { interpolateEnv } from "./env.ts";
 import {
@@ -99,15 +99,14 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<Confi
 	// Load search.json
 	const searchPath = join(configDir, "search.json");
 	const rawSearch = await readJsonFile(searchPath);
-	const searchIndex: SearchIndex =
-		rawSearch !== undefined ? validateSearchIndex(rawSearch) : EMPTY_SEARCH_INDEX;
+	const searchIndex: SearchIndex = rawSearch !== undefined ? validateSearchIndex(rawSearch) : EMPTY_SEARCH_INDEX;
 
 	return { configDir, servers, auth, searchIndex };
 }
 
 /** Write a JSON file to the config directory */
 async function saveJsonFile(configDir: string, filename: string, data: unknown): Promise<void> {
-	await Bun.write(join(configDir, filename), JSON.stringify(data, null, 2) + "\n");
+	await Bun.write(join(configDir, filename), `${JSON.stringify(data, null, 2)}\n`);
 }
 
 /** Save auth.json to the config directory */
@@ -132,9 +131,7 @@ export async function saveServers(configDir: string, servers: ServersFile): Prom
 }
 
 /** Load servers.json without env interpolation (preserves ${VAR} placeholders) */
-export async function loadRawServers(
-	configFlag?: string,
-): Promise<{ configDir: string; servers: ServersFile }> {
+export async function loadRawServers(configFlag?: string): Promise<{ configDir: string; servers: ServersFile }> {
 	let configDir = resolveConfigDir(configFlag);
 
 	if (!(await hasServersFile(configDir))) {

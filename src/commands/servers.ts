@@ -19,9 +19,7 @@ export function registerServersCommand(program: Command) {
 								name,
 								type: isStdioServer(cfg) ? "stdio" : "http",
 								...(isHttpServer(cfg) ? { transport: cfg.transport ?? "http" } : {}),
-								...(isStdioServer(cfg)
-									? { command: cfg.command, args: cfg.args ?? [] }
-									: { url: cfg.url }),
+								...(isStdioServer(cfg) ? { command: cfg.command, args: cfg.args ?? [] } : { url: cfg.url }),
 							})),
 							null,
 							2,
@@ -50,9 +48,7 @@ export function registerServersCommand(program: Command) {
 					const type = isStdioServer(cfg)
 						? green(typeLabel(cfg).padEnd(maxType))
 						: yellow(typeLabel(cfg).padEnd(maxType));
-					const detail = isStdioServer(cfg)
-						? dim([cfg.command, ...(cfg.args ?? [])].join(" "))
-						: dim(cfg.url);
+					const detail = isStdioServer(cfg) ? dim([cfg.command, ...(cfg.args ?? [])].join(" ")) : dim(cfg.url);
 					console.log(`${n}  ${type}  ${detail}`);
 				}
 			}),

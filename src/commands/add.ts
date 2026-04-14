@@ -127,12 +127,7 @@ function collect(value: string, previous: string[]): string[] {
 	return previous.concat([value]);
 }
 
-function buildStdioConfig(options: {
-	command?: string;
-	args?: string;
-	env?: string;
-	cwd?: string;
-}): ServerConfig {
+function buildStdioConfig(options: { command?: string; args?: string; env?: string; cwd?: string }): ServerConfig {
 	const config: Record<string, unknown> = { command: options.command! };
 
 	if (options.args) {

@@ -47,9 +47,7 @@ describe("needsCheck", () => {
 
 	test("returns false when cache is fresh", () => {
 		const recent = new Date(Date.now() - 1000).toISOString();
-		expect(needsCheck({ lastCheckAt: recent, latestVersion: "1.0.0", hasUpdate: false })).toBe(
-			false,
-		);
+		expect(needsCheck({ lastCheckAt: recent, latestVersion: "1.0.0", hasUpdate: false })).toBe(false);
 	});
 });
 

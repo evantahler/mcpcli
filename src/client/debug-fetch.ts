@@ -33,22 +33,19 @@ export function createDebugFetch(showSecrets: boolean): FetchLike {
 }
 
 function log(line: string) {
-	logger.writeRaw(line + "\n");
+	logger.writeRaw(`${line}\n`);
 }
 
-function logHeaders(
-	prefix: string,
-	headers: RequestInit["headers"],
-	fmt: (s: string) => string,
-	showSecrets: boolean,
-) {
+function logHeaders(prefix: string, headers: RequestInit["headers"], fmt: (s: string) => string, showSecrets: boolean) {
 	if (!headers) return;
 
 	const format = (key: string, value: string) =>
 		fmt(`${prefix} ${key}: ${showSecrets ? value : maskSensitive(key, value)}`);
 
 	if (headers instanceof Headers) {
-		headers.forEach((value, key) => log(format(key, value)));
+		headers.forEach((value, key) => {
+			log(format(key, value));
+		});
 	} else if (Array.isArray(headers)) {
 		for (const pair of headers) {
 			log(format(String(pair[0]), String(pair[1])));
@@ -75,7 +72,7 @@ export function maskSensitive(key: string, value: string): string {
 	const lower = key.toLowerCase();
 	if (lower === "authorization" || lower === "cookie" || lower === "set-cookie") {
 		if (value.length <= 12) return value;
-		return value.slice(0, 12) + "...";
+		return `${value.slice(0, 12)}...`;
 	}
 	return value;
 }

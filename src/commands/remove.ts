@@ -34,9 +34,7 @@ export function registerRemoveCommand(program: Command) {
 				const searchIndex = await loadSearchIndex(configDir);
 				const indexedCount = searchIndex.tools.filter((t) => t.server === name).length;
 				if (indexedCount > 0) {
-					console.log(
-						`Would remove ${indexedCount} tool(s) for "${name}" from ${configDir}/search.json`,
-					);
+					console.log(`Would remove ${indexedCount} tool(s) for "${name}" from ${configDir}/search.json`);
 				}
 				return;
 			}

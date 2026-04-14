@@ -64,9 +64,7 @@ function logOutgoing(
 	}
 
 	if (options.json) {
-		logger.writeRaw(
-			JSON.stringify({ trace: "outgoing", server: options.serverName, message }) + "\n",
-		);
+		logger.writeRaw(`${JSON.stringify({ trace: "outgoing", server: options.serverName, message })}\n`);
 		return;
 	}
 
@@ -99,13 +97,13 @@ function logIncoming(
 
 		if (options.json) {
 			logger.writeRaw(
-				JSON.stringify({
+				`${JSON.stringify({
 					trace: "incoming",
 					server: options.serverName,
 					message,
 					...(elapsed !== undefined && { elapsed_ms: elapsed }),
 					request_method: method,
-				}) + "\n",
+				})}\n`,
 			);
 			return;
 		}
@@ -121,9 +119,7 @@ function logIncoming(
 		const m = message as { method: string; params?: unknown };
 
 		if (options.json) {
-			logger.writeRaw(
-				JSON.stringify({ trace: "incoming", server: options.serverName, message }) + "\n",
-			);
+			logger.writeRaw(`${JSON.stringify({ trace: "incoming", server: options.serverName, message })}\n`);
 			return;
 		}
 
@@ -164,9 +160,7 @@ function summarizeResult(method: string, result: unknown): string | undefined {
 		case "resources/list":
 			return Array.isArray(r.resources) ? `${r.resources.length} resources` : undefined;
 		case "resources/templates/list":
-			return Array.isArray(r.resourceTemplates)
-				? `${r.resourceTemplates.length} templates`
-				: undefined;
+			return Array.isArray(r.resourceTemplates) ? `${r.resourceTemplates.length} templates` : undefined;
 		case "prompts/list":
 			return Array.isArray(r.prompts) ? `${r.prompts.length} prompts` : undefined;
 		case "initialize": {

@@ -1,4 +1,4 @@
-import { bold, cyan, dim, green, yellow } from "ansis";
+import { bold, dim, green, yellow } from "ansis";
 import type { Command } from "commander";
 import {
 	addPatterns,
@@ -52,8 +52,7 @@ export function registerAllowCommand(program: Command) {
 				// --list mode: show current permissions across all scopes
 				if (options.list) {
 					// Cursor maps local and project to the same file, so only show unique scopes
-					const scopes: Scope[] =
-						client === "cursor" ? ["local", "global"] : ["local", "project", "global"];
+					const scopes: Scope[] = client === "cursor" ? ["local", "global"] : ["local", "project", "global"];
 					const results: { scope: Scope; path: string; patterns: string[] }[] = [];
 
 					for (const scope of scopes) {

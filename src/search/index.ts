@@ -18,11 +18,7 @@ export interface SearchOptions {
 }
 
 /** Search tools using keyword and/or semantic matching */
-export async function search(
-	query: string,
-	index: SearchIndex,
-	options: SearchOptions = {},
-): Promise<SearchResult[]> {
+export async function search(query: string, index: SearchIndex, options: SearchOptions = {}): Promise<SearchResult[]> {
 	const topK = options.topK ?? DEFAULTS.SEARCH_TOP_K;
 	const results = new Map<string, SearchResult>();
 

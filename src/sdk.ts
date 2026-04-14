@@ -168,11 +168,7 @@ export class McpxClient {
 	}
 
 	/** Execute a tool and return the result. */
-	async exec(
-		server: string,
-		tool: string,
-		args?: Record<string, unknown>,
-	): Promise<CallToolResult> {
+	async exec(server: string, tool: string, args?: Record<string, unknown>): Promise<CallToolResult> {
 		const manager = await this.ensureConnected();
 		return manager.callTool(server, tool, args ?? {}) as Promise<CallToolResult>;
 	}
@@ -197,11 +193,7 @@ export class McpxClient {
 	// ---------------------------------------------------------------------------
 
 	/** Validate arguments against a tool's inputSchema. */
-	async validateToolInput(
-		server: string,
-		toolName: string,
-		args: Record<string, unknown>,
-	): Promise<ValidationResult> {
+	async validateToolInput(server: string, toolName: string, args: Record<string, unknown>): Promise<ValidationResult> {
 		const tool = await this.info(server, toolName);
 		if (!tool) {
 			return { valid: false, errors: [{ path: "(root)", message: `Tool not found: ${toolName}` }] };

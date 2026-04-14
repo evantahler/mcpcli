@@ -1,7 +1,6 @@
-import { bold, dim, green, red, yellow } from "ansis";
+import { bold, dim, red, yellow } from "ansis";
 import type { Command } from "commander";
 import {
-	allExecPattern,
 	type Client,
 	execPattern,
 	getServerPatterns,
@@ -117,9 +116,7 @@ export function registerDenyCommand(program: Command) {
 							if (result.removed.length === 0) {
 								lines.push(dim("No matching patterns found — no changes."));
 							} else {
-								lines.push(
-									bold(`Removed ${result.removed.length} permission(s)`) + dim(` → ${path}`),
-								);
+								lines.push(bold(`Removed ${result.removed.length} permission(s)`) + dim(` → ${path}`));
 								for (const p of result.removed) {
 									lines.push(`  ${red("-")} ${p}`);
 								}

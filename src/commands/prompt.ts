@@ -1,11 +1,6 @@
 import type { Command } from "commander";
 import { parseJsonArgs, readStdin } from "../lib/input.ts";
-import {
-	formatError,
-	formatPromptList,
-	formatPromptMessages,
-	formatServerPrompts,
-} from "../output/formatter.ts";
+import { formatError, formatPromptList, formatPromptMessages, formatServerPrompts } from "../output/formatter.ts";
 import { withCommand } from "./with-command.ts";
 
 export function registerPromptCommand(program: Command) {
@@ -16,12 +11,7 @@ export function registerPromptCommand(program: Command) {
 			withCommand(
 				program,
 				{ spinnerText: "Connecting to servers..." },
-				async (
-					{ manager, formatOptions, spinner },
-					server?: string,
-					name?: string,
-					argsStr?: string,
-				) => {
+				async ({ manager, formatOptions, spinner }, server?: string, name?: string, argsStr?: string) => {
 					if (server) {
 						spinner.update(`Connecting to ${server}...`);
 					}

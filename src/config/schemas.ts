@@ -6,14 +6,7 @@ import type {
 import type { Prompt, Resource, Tool } from "@modelcontextprotocol/sdk/types.js";
 
 // Re-export SDK types we use throughout the codebase
-export type {
-	OAuthClientInformation,
-	OAuthClientInformationMixed,
-	OAuthTokens,
-	Prompt,
-	Resource,
-	Tool,
-};
+export type { OAuthClientInformation, OAuthClientInformationMixed, OAuthTokens, Prompt, Resource, Tool };
 
 // --- Server config (our format, not MCP spec) ---
 
@@ -121,9 +114,7 @@ export function validateServersFile(data: unknown): ServersFile {
 		}
 		if (hasUrl && c.transport !== undefined) {
 			if (c.transport !== "sse" && c.transport !== "streamable-http") {
-				throw new Error(
-					`Server "${name}" has invalid transport "${c.transport}" — must be "sse" or "streamable-http"`,
-				);
+				throw new Error(`Server "${name}" has invalid transport "${c.transport}" — must be "sse" or "streamable-http"`);
 			}
 		}
 	}

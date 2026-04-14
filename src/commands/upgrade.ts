@@ -1,23 +1,16 @@
-import { cyan, dim, green, red, yellow } from "ansis";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { dim, green, red, yellow } from "ansis";
 import { $ } from "bun";
 import type { Command } from "commander";
 import { createSpinner } from "nanospinner";
-import { tmpdir } from "os";
-import { join } from "path";
 import pkg from "../../package.json";
 import pkgMeta from "../../package.json";
 import { clearUpdateCache, loadUpdateCache, saveUpdateCache } from "../update/cache.ts";
 import type { UpdateCache } from "../update/checker.ts";
-import {
-	checkForUpdate,
-	detectInstallMethod,
-	type InstallMethod,
-	needsCheck,
-} from "../update/checker.ts";
+import { checkForUpdate, detectInstallMethod, type InstallMethod, needsCheck } from "../update/checker.ts";
 
-const GITHUB_REPO = pkgMeta.repository.url
-	.replace(/^https:\/\/github\.com\//, "")
-	.replace(/\.git$/, "");
+const GITHUB_REPO = pkgMeta.repository.url.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
 
 function platformArtifactName(): string {
 	let os: string;
@@ -95,9 +88,7 @@ export function registerUpgradeCommand(program: Command) {
 			const isTTY = process.stderr.isTTY ?? false;
 
 			const spinner =
-				!json && isTTY
-					? createSpinner("Checking for updates...", { stream: process.stderr }).start()
-					: null;
+				!json && isTTY ? createSpinner("Checking for updates...", { stream: process.stderr }).start() : null;
 
 			try {
 				// Check for update (use cache if fresh)
@@ -148,20 +139,12 @@ export function registerUpgradeCommand(program: Command) {
 				switch (method) {
 					case "bun":
 						spinner?.stop();
-						success = await upgradeWithPackageManager("bun", [
-							"install",
-							"-g",
-							`@evantahler/mcpx@${latestVersion}`,
-						]);
+						success = await upgradeWithPackageManager("bun", ["install", "-g", `@evantahler/mcpx@${latestVersion}`]);
 						break;
 
 					case "npm":
 						spinner?.stop();
-						success = await upgradeWithPackageManager("npm", [
-							"install",
-							"-g",
-							`@evantahler/mcpx@${latestVersion}`,
-						]);
+						success = await upgradeWithPackageManager("npm", ["install", "-g", `@evantahler/mcpx@${latestVersion}`]);
 						break;
 
 					case "binary":

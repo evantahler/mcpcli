@@ -65,7 +65,7 @@ function wrapLines(text: string, maxWidth: number): string[] {
 		if (current.length === 0) {
 			current = word;
 		} else if (current.length + 1 + word.length <= maxWidth) {
-			current += " " + word;
+			current += ` ${word}`;
 		} else {
 			lines.push(current);
 			current = word;
@@ -90,7 +90,7 @@ export function wrapDescription(text: string, prefixWidth: number, termWidth: nu
 		const fallbackIndent = Math.min(prefixWidth, 4);
 		const fallbackAvail = termWidth - fallbackIndent;
 		if (fallbackAvail < 20) {
-			return dim(text.length > termWidth ? text.slice(0, termWidth - 3) + "..." : text);
+			return dim(text.length > termWidth ? `${text.slice(0, termWidth - 3)}...` : text);
 		}
 		const wrapped = wrapLines(text, fallbackAvail);
 		const indent = " ".repeat(fallbackIndent);
@@ -132,9 +132,7 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
 			// Header: server name + version
 			const header = cyan.bold(overview.serverName);
 			if (overview.version) {
-				lines.push(
-					`${header}  ${dim(`v${overview.version.version}`)}  ${dim(`(${overview.version.name})`)}`,
-				);
+				lines.push(`${header}  ${dim(`v${overview.version.version}`)}  ${dim(`(${overview.version.name})`)}`);
 			} else {
 				lines.push(header);
 			}
@@ -160,7 +158,7 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
 			// Tools
 			lines.push("");
 			if (overview.tools.length === 0) {
-				lines.push(bold("Tools:") + " " + dim("none"));
+				lines.push(`${bold("Tools:")} ${dim("none")}`);
 			} else {
 				lines.push(bold(`Tools (${overview.tools.length}):`));
 				const maxName = Math.max(...overview.tools.map((t) => t.name.length));
@@ -171,10 +169,7 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
 					const name = `  ${bold(t.name.padEnd(maxName))}`;
 					if (t.description) {
 						const pw = visibleLength(name) + 2;
-						const desc =
-							termWidth != null
-								? wrapDescription(t.description, pw, termWidth)
-								: dim(t.description);
+						const desc = termWidth != null ? wrapDescription(t.description, pw, termWidth) : dim(t.description);
 						lines.push(`${name}  ${desc}`);
 					} else {
 						lines.push(name);
@@ -217,11 +212,7 @@ export function formatToolList(tools: ToolWithServer[], options: FormatOptions):
 }
 
 /** Format tools for a single server */
-export function formatServerTools(
-	serverName: string,
-	tools: Tool[],
-	options: FormatOptions,
-): string {
+export function formatServerTools(serverName: string, tools: Tool[], options: FormatOptions): string {
 	return formatOutput(
 		{
 			server: serverName,
@@ -357,7 +348,6 @@ export function formatCallResult(result: unknown, options: FormatOptions): strin
 	switch (format) {
 		case "markdown":
 			return formatCallResultAsMarkdown(result);
-		case "json":
 		default:
 			return JSON.stringify(parseNestedJson(result), null, 2);
 	}
@@ -622,6 +612,7 @@ export function jsonToMarkdown(value: unknown, depth: number = 1, skipKey?: stri
 
 /** Render a markdown string to ANSI-styled terminal output using Bun's built-in renderer */
 export function renderMarkdownToAnsi(input: string): string {
+	// biome-ignore lint/suspicious/noExplicitAny: Bun.markdown.ansi is not yet in @types/bun
 	const result = (Bun as any).markdown.ansi(input) as string;
 	const restored = restoreUrlPlaceholders(result);
 	resetUrlPlaceholders();
@@ -685,8 +676,7 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
 						.filter((l) => l.length > 0)
 						.join(" ");
 					const indent = " ".repeat(descIndent);
-					const desc =
-						termWidth != null ? wrapDescription(fullDesc, descIndent, termWidth) : dim(fullDesc);
+					const desc = termWidth != null ? wrapDescription(fullDesc, descIndent, termWidth) : dim(fullDesc);
 					return `${header}\n${indent}${desc}`;
 				})
 				.join("\n\n");
@@ -696,10 +686,7 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
 }
 
 /** Format a list of resources with server names */
-export function formatResourceList(
-	resources: ResourceWithServer[],
-	options: FormatOptions,
-): string {
+export function formatResourceList(resources: ResourceWithServer[], options: FormatOptions): string {
 	return formatOutput(
 		resources.map((r) => ({
 			server: r.server,
@@ -721,11 +708,7 @@ export function formatResourceList(
 }
 
 /** Format resources for a single server */
-export function formatServerResources(
-	serverName: string,
-	resources: Resource[],
-	options: FormatOptions,
-): string {
+export function formatServerResources(serverName: string, resources: Resource[], options: FormatOptions): string {
 	return formatOutput(
 		{
 			server: serverName,
@@ -762,8 +745,7 @@ export function formatResourceContents(
 		{ server: serverName, uri, contents: (result as { contents: unknown })?.contents ?? result },
 		() => {
 			const contents =
-				(result as { contents?: Array<{ text?: string; blob?: string; mimeType?: string }> })
-					?.contents ?? [];
+				(result as { contents?: Array<{ text?: string; blob?: string; mimeType?: string }> })?.contents ?? [];
 			const lines: string[] = [];
 			lines.push(`${cyan(serverName)}/${bold(uri)}`);
 			lines.push("");
@@ -808,11 +790,7 @@ export function formatPromptList(prompts: PromptWithServer[], options: FormatOpt
 }
 
 /** Format prompts for a single server */
-export function formatServerPrompts(
-	serverName: string,
-	prompts: Prompt[],
-	options: FormatOptions,
-): string {
+export function formatServerPrompts(serverName: string, prompts: Prompt[], options: FormatOptions): string {
 	return formatOutput(
 		{
 			server: serverName,
@@ -840,8 +818,7 @@ export function formatServerPrompts(
 				if (p.description) {
 					const prefix = `${name}${args}`;
 					const pw = visibleLength(prefix) + 2;
-					const desc =
-						termWidth != null ? wrapDescription(p.description, pw, termWidth) : dim(p.description);
+					const desc = termWidth != null ? wrapDescription(p.description, pw, termWidth) : dim(p.description);
 					return `${prefix}  ${desc}`;
 				}
 				return `${name}${args}`;
@@ -942,9 +919,8 @@ export function formatTaskStatus(
 			if (task.statusMessage) lines.push(`${bold("Message:")} ${dim(String(task.statusMessage))}`);
 			if (task.createdAt) lines.push(`${bold("Created:")} ${dim(String(task.createdAt))}`);
 			if (task.lastUpdatedAt) lines.push(`${bold("Updated:")} ${dim(String(task.lastUpdatedAt))}`);
-			if (task.ttl != null) lines.push(`${bold("TTL:")} ${dim(String(task.ttl) + "ms")}`);
-			if (task.pollInterval != null)
-				lines.push(`${bold("Poll interval:")} ${dim(String(task.pollInterval) + "ms")}`);
+			if (task.ttl != null) lines.push(`${bold("TTL:")} ${dim(`${String(task.ttl)}ms`)}`);
+			if (task.pollInterval != null) lines.push(`${bold("Poll interval:")} ${dim(`${String(task.pollInterval)}ms`)}`);
 			return lines.join("\n");
 		},
 		options,

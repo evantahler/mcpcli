@@ -1,9 +1,5 @@
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import {
-	auth,
-	discoverOAuthServerInfo,
-	refreshAuthorization,
-} from "@modelcontextprotocol/sdk/client/auth.js";
+import { auth, discoverOAuthServerInfo, refreshAuthorization } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
 	OAuthClientInformationMixed,
 	OAuthClientMetadata,
@@ -97,9 +93,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
 		return this._codeVerifier;
 	}
 
-	async invalidateCredentials(
-		scope: "all" | "client" | "tokens" | "verifier" | "discovery",
-	): Promise<void> {
+	async invalidateCredentials(scope: "all" | "client" | "tokens" | "verifier" | "discovery"): Promise<void> {
 		const entry = this.auth[this.serverName];
 		if (!entry) return;
 
@@ -170,14 +164,12 @@ export class McpOAuthProvider implements OAuthClientProvider {
 
 		const clientInfo = this.clientInformation();
 		if (!clientInfo) {
-			throw new Error(
-				`No client information for "${this.serverName}". Run: mcpx auth ${this.serverName}`,
-			);
+			throw new Error(`No client information for "${this.serverName}". Run: mcpx auth ${this.serverName}`);
 		}
 
 		const tokens = await refreshAuthorization(serverUrl, {
 			clientInformation: clientInfo,
-			refreshToken: this.auth[this.serverName]!.tokens.refresh_token!,
+			refreshToken: this.auth[this.serverName]?.tokens.refresh_token!,
 		});
 
 		await this.saveTokens(tokens);
@@ -210,7 +202,7 @@ export function startCallbackServer(): {
 			const error = url.searchParams.get("error");
 			if (error) {
 				const desc = url.searchParams.get("error_description") || error;
-				rejectCode!(new Error(`OAuth error: ${desc}`));
+				rejectCode?.(new Error(`OAuth error: ${desc}`));
 				return new Response(
 					"<html><body><h1>Authentication Failed</h1><p>You can close this window.</p></body></html>",
 					{ headers: { "Content-Type": "text/html" } },
@@ -219,18 +211,16 @@ export function startCallbackServer(): {
 
 			const code = url.searchParams.get("code");
 			if (!code) {
-				rejectCode!(new Error("No authorization code received"));
-				return new Response(
-					"<html><body><h1>Error</h1><p>No authorization code received.</p></body></html>",
-					{ headers: { "Content-Type": "text/html" } },
-				);
+				rejectCode?.(new Error("No authorization code received"));
+				return new Response("<html><body><h1>Error</h1><p>No authorization code received.</p></body></html>", {
+					headers: { "Content-Type": "text/html" },
+				});
 			}
 
-			resolveCode!(code);
-			return new Response(
-				"<html><body><h1>Authenticated!</h1><p>You can close this window.</p></body></html>",
-				{ headers: { "Content-Type": "text/html" } },
-			);
+			resolveCode?.(code);
+			return new Response("<html><body><h1>Authenticated!</h1><p>You can close this window.</p></body></html>", {
+				headers: { "Content-Type": "text/html" },
+			});
 		},
 	});
 

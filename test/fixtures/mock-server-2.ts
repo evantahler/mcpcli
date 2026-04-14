@@ -98,5 +98,5 @@ function handleMessage(line: string) {
 function respond(id: number | undefined, result: unknown) {
 	if (id === undefined) return;
 	const response = JSON.stringify({ jsonrpc: "2.0", id, result });
-	process.stdout.write(response + "\n");
+	process.stdout.write(`${response}\n`);
 }

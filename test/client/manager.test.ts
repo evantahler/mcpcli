@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { join } from "path";
+import { join } from "node:path";
 import * as httpModule from "../../src/client/http.ts";
 import { ServerManager } from "../../src/client/manager.ts";
 import { McpOAuthProvider } from "../../src/client/oauth.ts";
@@ -41,7 +41,7 @@ describe("ServerManager", () => {
 		const result = (await manager.callTool("mock", "echo", { message: "hello" })) as {
 			content: { type: string; text: string }[];
 		};
-		expect(result.content[0]!.text).toBe("hello");
+		expect(result.content[0]?.text).toBe("hello");
 	});
 
 	test("calls add tool", async () => {
@@ -49,7 +49,7 @@ describe("ServerManager", () => {
 		const result = (await manager.callTool("mock", "add", { a: 3, b: 4 })) as {
 			content: { type: string; text: string }[];
 		};
-		expect(result.content[0]!.text).toBe("7");
+		expect(result.content[0]?.text).toBe("7");
 	});
 
 	test("applies allowedTools filter", async () => {
@@ -89,8 +89,8 @@ describe("ServerManager", () => {
 		manager = new ServerManager({ servers: makeServersFile(), configDir: "/tmp", auth: {} });
 		const tool = await manager.getToolSchema("mock", "echo");
 		expect(tool).toBeDefined();
-		expect(tool!.name).toBe("echo");
-		expect(tool!.inputSchema.properties).toHaveProperty("message");
+		expect(tool?.name).toBe("echo");
+		expect(tool?.inputSchema.properties).toHaveProperty("message");
 	});
 
 	test("getToolSchema returns undefined for unknown tool", async () => {
@@ -109,8 +109,8 @@ describe("ServerManager", () => {
 		const { tools, errors } = await manager.getAllTools();
 		expect(errors).toEqual([]);
 		expect(tools.length).toBeGreaterThan(0);
-		expect(tools[0]!.server).toBe("mock");
-		expect(tools[0]!.tool.name).toBeDefined();
+		expect(tools[0]?.server).toBe("mock");
+		expect(tools[0]?.tool.name).toBeDefined();
 	});
 
 	test("caches client connections", async () => {
@@ -178,9 +178,7 @@ describe("ServerManager with HTTP servers", () => {
 			maxRetries: 0,
 		});
 
-		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
-			undefined,
-		);
+		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(undefined);
 
 		try {
 			await manager.getClient("http-server");
@@ -259,9 +257,7 @@ describe("ServerManager with HTTP servers", () => {
 
 		const sseSpy = spyOn(sseModule, "createSseTransport");
 		const httpSpy = spyOn(httpModule, "createHttpTransport");
-		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
-			undefined,
-		);
+		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(undefined);
 
 		manager = new ServerManager({
 			servers: {
@@ -299,9 +295,7 @@ describe("ServerManager with HTTP servers", () => {
 
 		const sseSpy = spyOn(sseModule, "createSseTransport");
 		const httpSpy = spyOn(httpModule, "createHttpTransport");
-		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
-			undefined,
-		);
+		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(undefined);
 
 		manager = new ServerManager({
 			servers: {
@@ -341,9 +335,7 @@ describe("ServerManager with HTTP servers", () => {
 		};
 
 		const sseSpy = spyOn(sseModule, "createSseTransport");
-		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(
-			undefined,
-		);
+		const refreshSpy = spyOn(McpOAuthProvider.prototype, "refreshIfNeeded").mockResolvedValue(undefined);
 
 		manager = new ServerManager({
 			servers: {

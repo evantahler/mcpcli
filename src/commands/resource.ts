@@ -1,10 +1,5 @@
 import type { Command } from "commander";
-import {
-	formatError,
-	formatResourceContents,
-	formatResourceList,
-	formatServerResources,
-} from "../output/formatter.ts";
+import { formatError, formatResourceContents, formatResourceList, formatServerResources } from "../output/formatter.ts";
 import { withCommand } from "./with-command.ts";
 
 export function registerResourceCommand(program: Command) {

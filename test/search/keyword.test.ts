@@ -33,7 +33,7 @@ describe("keywordSearch", () => {
 	test("matches tool name substring", () => {
 		const results = keywordSearch("gmail", tools);
 		expect(results.length).toBeGreaterThan(0);
-		expect(results[0]!.tool).toBe("Gmail_SendEmail");
+		expect(results[0]?.tool).toBe("Gmail_SendEmail");
 	});
 
 	test("matches keywords", () => {
@@ -46,19 +46,19 @@ describe("keywordSearch", () => {
 	test("matches description text", () => {
 		const results = keywordSearch("pull request", tools);
 		expect(results.length).toBeGreaterThan(0);
-		expect(results[0]!.tool).toBe("Github_CreatePullRequest");
+		expect(results[0]?.tool).toBe("Github_CreatePullRequest");
 	});
 
 	test("glob matching on tool name", () => {
 		const results = keywordSearch("Gmail_*", tools);
 		expect(results.length).toBe(1);
-		expect(results[0]!.tool).toBe("Gmail_SendEmail");
+		expect(results[0]?.tool).toBe("Gmail_SendEmail");
 	});
 
 	test("case insensitive", () => {
 		const results = keywordSearch("SLACK", tools);
 		expect(results.length).toBeGreaterThan(0);
-		expect(results[0]!.tool).toBe("Slack_SendMessage");
+		expect(results[0]?.tool).toBe("Slack_SendMessage");
 	});
 
 	test("returns empty for no match", () => {
@@ -69,12 +69,12 @@ describe("keywordSearch", () => {
 	test("results sorted by score descending", () => {
 		const results = keywordSearch("send", tools);
 		for (let i = 1; i < results.length; i++) {
-			expect(results[i]!.score).toBeLessThanOrEqual(results[i - 1]!.score);
+			expect(results[i]?.score).toBeLessThanOrEqual(results[i - 1]?.score);
 		}
 	});
 
 	test("multi-word query matches better", () => {
 		const results = keywordSearch("send email", tools);
-		expect(results[0]!.tool).toBe("Gmail_SendEmail");
+		expect(results[0]?.tool).toBe("Gmail_SendEmail");
 	});
 });

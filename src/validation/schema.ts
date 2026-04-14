@@ -43,11 +43,7 @@ function validateWithSchema(
 }
 
 /** Validate tool arguments against the tool's inputSchema */
-export function validateToolInput(
-	serverName: string,
-	tool: Tool,
-	input: Record<string, unknown>,
-): ValidationResult {
+export function validateToolInput(serverName: string, tool: Tool, input: Record<string, unknown>): ValidationResult {
 	const schema = tool.inputSchema;
 	if (!schema || Object.keys(schema).length === 0) {
 		return { valid: true, errors: [] };
@@ -64,9 +60,7 @@ export function validateElicitationResponse(
 }
 
 function formatAjvError(err: ErrorObject): ValidationError {
-	const path = err.instancePath
-		? err.instancePath.replace(/^\//, "").replace(/\//g, ".")
-		: "(root)";
+	const path = err.instancePath ? err.instancePath.replace(/^\//, "").replace(/\//g, ".") : "(root)";
 
 	switch (err.keyword) {
 		case "required": {

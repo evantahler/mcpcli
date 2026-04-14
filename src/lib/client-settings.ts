@@ -1,6 +1,6 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { homedir } from "os";
-import { join } from "path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 export type Client = "claude" | "cursor";
 export type Scope = "local" | "project" | "global";
@@ -53,7 +53,7 @@ export async function readClientSettings(path: string): Promise<ClientSettings> 
 export async function writeClientSettings(path: string, settings: ClientSettings): Promise<void> {
 	const dir = join(path, "..");
 	await mkdir(dir, { recursive: true });
-	await writeFile(path, JSON.stringify(settings, null, 2) + "\n", "utf-8");
+	await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
 }
 
 /** Generate a permission pattern for mcpx exec with a specific server and optional tool */
@@ -66,16 +66,7 @@ export function execPattern(server: string, tool?: string, client: Client = "cla
 }
 
 /** Read-only mcpx commands that are safe to allow broadly */
-const READ_ONLY_COMMANDS = [
-	"search",
-	"info",
-	"servers",
-	"ping",
-	"resource",
-	"prompt",
-	"task",
-	"index",
-];
+const READ_ONLY_COMMANDS = ["search", "info", "servers", "ping", "resource", "prompt", "task", "index"];
 
 /** Generate patterns for all read-only mcpx commands */
 export function readOnlyPatterns(client: Client = "claude"): string[] {
@@ -198,11 +189,7 @@ export function getMcpxPatterns(settings: ClientSettings, client: Client = "clau
 }
 
 /** Get all mcpx-related patterns for a specific server */
-export function getServerPatterns(
-	settings: ClientSettings,
-	server: string,
-	client: Client = "claude",
-): string[] {
+export function getServerPatterns(settings: ClientSettings, server: string, client: Client = "claude"): string[] {
 	const p = prefix(client);
 	return getMcpxPatterns(settings, client).filter(
 		(pat) => pat.startsWith(`${p}(mcpx exec:${server}:`) || pat === `${p}(mcpx exec:${server}:*)`,

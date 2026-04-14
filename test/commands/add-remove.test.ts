@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CLI = join(import.meta.dir, "../../src/cli.ts");
 
@@ -115,41 +115,24 @@ describe("mcpx add", () => {
 		expect(exitCode).toBe(0);
 
 		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
-		expect(servers.mcpServers["filtered"].allowedTools).toEqual(["read", "write"]);
-		expect(servers.mcpServers["filtered"].disabledTools).toEqual(["delete"]);
+		expect(servers.mcpServers.filtered.allowedTools).toEqual(["read", "write"]);
+		expect(servers.mcpServers.filtered.disabledTools).toEqual(["delete"]);
 	});
 
 	test("errors if server already exists without --force", async () => {
 		await run(["-c", tmpDir, "add", "dupe", "--command", "echo", "--no-index"]);
-		const { exitCode, stderr } = await run([
-			"-c",
-			tmpDir,
-			"add",
-			"dupe",
-			"--command",
-			"cat",
-			"--no-index",
-		]);
+		const { exitCode, stderr } = await run(["-c", tmpDir, "add", "dupe", "--command", "cat", "--no-index"]);
 		expect(exitCode).not.toBe(0);
 		expect(stderr).toContain("already exists");
 	});
 
 	test("overwrites with --force", async () => {
 		await run(["-c", tmpDir, "add", "dupe", "--command", "echo", "--no-index"]);
-		const { exitCode } = await run([
-			"-c",
-			tmpDir,
-			"add",
-			"dupe",
-			"--command",
-			"cat",
-			"--force",
-			"--no-index",
-		]);
+		const { exitCode } = await run(["-c", tmpDir, "add", "dupe", "--command", "cat", "--force", "--no-index"]);
 		expect(exitCode).toBe(0);
 
 		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
-		expect(servers.mcpServers["dupe"].command).toBe("cat");
+		expect(servers.mcpServers.dupe.command).toBe("cat");
 	});
 
 	test("adds an http server with --transport sse", async () => {
@@ -195,15 +178,7 @@ describe("mcpx add", () => {
 	});
 
 	test("adds an http server without --transport (auto-detect)", async () => {
-		const { exitCode } = await run([
-			"-c",
-			tmpDir,
-			"add",
-			"my-auto",
-			"--url",
-			"https://example.com/mcp",
-			"--no-index",
-		]);
+		const { exitCode } = await run(["-c", tmpDir, "add", "my-auto", "--url", "https://example.com/mcp", "--no-index"]);
 		expect(exitCode).toBe(0);
 
 		const servers = await Bun.file(join(tmpDir, "servers.json")).json();

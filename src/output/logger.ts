@@ -3,16 +3,7 @@ import { createSpinner } from "nanospinner";
 import type { FormatOptions } from "./formatter.ts";
 
 /** MCP log levels ordered by severity (RFC 5424) */
-const LOG_LEVELS = [
-	"debug",
-	"info",
-	"notice",
-	"warning",
-	"error",
-	"critical",
-	"alert",
-	"emergency",
-] as const;
+const LOG_LEVELS = ["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"] as const;
 
 type LogLevel = (typeof LOG_LEVELS)[number];
 
@@ -72,10 +63,10 @@ class Logger {
 	private writeStderr(msg: string): void {
 		if (this.activeSpinner) {
 			this.activeSpinner.clear();
-			process.stderr.write(msg + "\n");
+			process.stderr.write(`${msg}\n`);
 			this.activeSpinner.render();
 		} else {
-			process.stderr.write(msg + "\n");
+			process.stderr.write(`${msg}\n`);
 		}
 	}
 
@@ -114,17 +105,14 @@ class Logger {
 	}
 
 	/** Display a structured server log message. Suppressed if below configured log level. */
-	logServerMessage(
-		serverName: string,
-		params: { level: string; logger?: string; data: unknown },
-	): void {
+	logServerMessage(serverName: string, params: { level: string; logger?: string; data: unknown }): void {
 		const minLevel = this.formatOptions.logLevel ?? "warning";
 		if (logLevelIndex(params.level) < logLevelIndex(minLevel)) return;
 
 		if (this.formatOptions.json) {
 			// JSON mode: structured object to stderr
 			const obj = { server: serverName, ...params };
-			process.stderr.write(JSON.stringify(obj) + "\n");
+			process.stderr.write(`${JSON.stringify(obj)}\n`);
 			return;
 		}
 

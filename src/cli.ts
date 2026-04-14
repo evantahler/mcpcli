@@ -75,14 +75,7 @@ const cliArgs = process.argv.slice(2);
 let firstCommand: string | undefined;
 for (let i = 0; i < cliArgs.length; i++) {
 	const a = cliArgs[i]!;
-	if (
-		a === "-c" ||
-		a === "--config" ||
-		a === "-l" ||
-		a === "--log-level" ||
-		a === "-F" ||
-		a === "--format"
-	) {
+	if (a === "-c" || a === "--config" || a === "-l" || a === "--log-level" || a === "-F" || a === "--format") {
 		i++; // skip the option's value argument
 		continue;
 	}

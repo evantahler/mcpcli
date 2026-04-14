@@ -18,10 +18,7 @@ export interface ElicitationOptions {
 type ElicitAction = "accept" | "cancel" | "decline";
 
 /** Top-level elicitation request handler, registered on the MCP Client */
-export async function handleElicitation(
-	request: ElicitRequest,
-	options: ElicitationOptions,
-): Promise<ElicitResult> {
+export async function handleElicitation(request: ElicitRequest, options: ElicitationOptions): Promise<ElicitResult> {
 	if (options.noInteractive) {
 		return { action: "decline" };
 	}
@@ -74,8 +71,7 @@ async function handleFormJson(params: ElicitRequestFormParams): Promise<ElicitRe
 /** Interactive TTY: prompt user for each field */
 async function handleFormInteractive(params: ElicitRequestFormParams): Promise<ElicitResult> {
 	const rl = createInterface({ input: process.stdin, output: process.stderr });
-	const question = (prompt: string): Promise<string> =>
-		new Promise((resolve) => rl.question(prompt, resolve));
+	const question = (prompt: string): Promise<string> => new Promise((resolve) => rl.question(prompt, resolve));
 
 	try {
 		process.stderr.write(`\n${ansis.bold("Server requests input:")} ${params.message}\n`);
@@ -99,10 +95,7 @@ async function handleFormInteractive(params: ElicitRequestFormParams): Promise<E
 		}
 
 		// Validate collected values against the full schema
-		const validation = validateElicitationResponse(
-			schema as unknown as Record<string, unknown>,
-			content,
-		);
+		const validation = validateElicitationResponse(schema as unknown as Record<string, unknown>, content);
 		if (!validation.valid) {
 			const msgs = validation.errors.map((e) => `  ${e.path}: ${e.message}`).join("\n");
 			process.stderr.write(ansis.red(`Validation failed:\n${msgs}\n`));
@@ -180,9 +173,7 @@ async function promptNumber(
 ): Promise<number | undefined> {
 	const def = (schema as { default?: number }).default;
 	const defHint = def !== undefined ? ` [${def}]` : "";
-	const answer = await question(
-		`  ${marker}${label} (${(schema as { type: string }).type})${defHint}: `,
-	);
+	const answer = await question(`  ${marker}${label} (${(schema as { type: string }).type})${defHint}: `);
 	if (!answer && def !== undefined) return def;
 	if (!answer) return undefined;
 	const num = Number(answer);
@@ -245,7 +236,7 @@ async function promptOneOfEnum(
 	const answer = await question("  > ");
 	if (!answer && def !== undefined) return def;
 	const idx = parseInt(answer, 10) - 1;
-	if (idx >= 0 && idx < options.length) return options[idx]!.const;
+	if (idx >= 0 && idx < options.length) return options[idx]?.const;
 	// Try matching by const value directly
 	const match = options.find((o) => o.const === answer);
 	if (match) return match.const;
@@ -258,9 +249,7 @@ async function promptMultiSelect(
 	marker: string,
 	question: (prompt: string) => Promise<string>,
 ): Promise<string[] | undefined> {
-	const items = (
-		schema as { items?: { enum?: string[]; anyOf?: { const: string; title: string }[] } }
-	).items;
+	const items = (schema as { items?: { enum?: string[]; anyOf?: { const: string; title: string }[] } }).items;
 	const def = (schema as { default?: string[] }).default;
 
 	let values: string[];
@@ -324,8 +313,7 @@ async function handleUrlJson(params: ElicitRequestURLParams): Promise<ElicitResu
 
 async function handleUrlInteractive(params: ElicitRequestURLParams): Promise<ElicitResult> {
 	const rl = createInterface({ input: process.stdin, output: process.stderr });
-	const question = (prompt: string): Promise<string> =>
-		new Promise((resolve) => rl.question(prompt, resolve));
+	const question = (prompt: string): Promise<string> => new Promise((resolve) => rl.question(prompt, resolve));
 
 	try {
 		const domain = (() => {

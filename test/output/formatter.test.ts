@@ -1,11 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import ansis from "ansis";
-import {
-	formatCallResult,
-	jsonToMarkdown,
-	renderMarkdownToAnsi,
-	wrapDescription,
-} from "../../src/output/formatter.ts";
+import { formatCallResult, jsonToMarkdown, renderMarkdownToAnsi, wrapDescription } from "../../src/output/formatter.ts";
 
 describe("formatCallResult nested JSON parsing", () => {
 	test("parses JSON strings inside text content", () => {
@@ -309,7 +304,7 @@ describe("wrapDescription", () => {
 		expect(lines.length).toBeGreaterThan(1);
 		// Continuation lines should start with 10 spaces
 		for (let i = 1; i < lines.length; i++) {
-			expect(lines[i]!.startsWith(" ".repeat(10))).toBe(true);
+			expect(lines[i]?.startsWith(" ".repeat(10))).toBe(true);
 		}
 	});
 

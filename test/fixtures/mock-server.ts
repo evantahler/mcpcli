@@ -5,7 +5,12 @@
  * Implements just enough of the protocol to support initialize, listTools, and callTool.
  */
 
-import { readFileSync } from "fs";
+export {};
+
+/**
+ * Minimal MCP server over stdio for testing.
+ * Implements just enough of the protocol to support initialize, listTools, and callTool.
+ */
 
 let buffer = "";
 let nextRequestId = 1000;
@@ -93,9 +98,7 @@ function handleMessage(line: string) {
 			});
 		} else if (params.uri === "file:///data.json") {
 			respond(msg.id, {
-				contents: [
-					{ uri: params.uri, mimeType: "application/json", text: '{"key":"value","count":42}' },
-				],
+				contents: [{ uri: params.uri, mimeType: "application/json", text: '{"key":"value","count":42}' }],
 			});
 		} else {
 			respond(msg.id, { error: { code: -32602, message: `Resource not found: ${params.uri}` } });
@@ -320,11 +323,7 @@ function handleMessage(line: string) {
 			return;
 		}
 		if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
-			respondError(
-				msg.id,
-				-32602,
-				`Cannot cancel task: already in terminal status '${task.status}'`,
-			);
+			respondError(msg.id, -32602, `Cannot cancel task: already in terminal status '${task.status}'`);
 			return;
 		}
 		task.status = "cancelled";
@@ -345,18 +344,18 @@ function handleMessage(line: string) {
 function respond(id: number | undefined, result: unknown) {
 	if (id === undefined) return;
 	const response = JSON.stringify({ jsonrpc: "2.0", id, result });
-	process.stdout.write(response + "\n");
+	process.stdout.write(`${response}\n`);
 }
 
 function respondError(id: number | undefined, code: number, message: string) {
 	if (id === undefined) return;
 	const response = JSON.stringify({ jsonrpc: "2.0", id, error: { code, message } });
-	process.stdout.write(response + "\n");
+	process.stdout.write(`${response}\n`);
 }
 
 function notify(method: string, params: unknown) {
 	const message = JSON.stringify({ jsonrpc: "2.0", method, params });
-	process.stdout.write(message + "\n");
+	process.stdout.write(`${message}\n`);
 }
 
 /** Send a JSON-RPC request to the client and return the result */
@@ -365,7 +364,7 @@ function request(method: string, params: unknown): Promise<unknown> {
 	return new Promise((resolve) => {
 		pendingRequests.set(id, resolve);
 		const msg = JSON.stringify({ jsonrpc: "2.0", id, method, params });
-		process.stdout.write(msg + "\n");
+		process.stdout.write(`${msg}\n`);
 	});
 }
 

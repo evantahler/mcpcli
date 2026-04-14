@@ -8,7 +8,6 @@ import type {
 	ListTasksResult,
 	LoggingLevel,
 	ServerCapabilities,
-	Task,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
 	CallToolResultSchema,
@@ -17,14 +16,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
-import type {
-	AuthFile,
-	Prompt,
-	Resource,
-	ServerConfig,
-	ServersFile,
-	Tool,
-} from "../config/schemas.ts";
+import type { AuthFile, Prompt, Resource, ServerConfig, ServersFile, Tool } from "../config/schemas.ts";
 import { isHttpServer, isStdioServer } from "../config/schemas.ts";
 import { logger } from "../output/logger.ts";
 import { handleElicitation } from "./elicitation.ts";
@@ -283,8 +275,7 @@ export class ServerManager {
 					items.push(...result.value);
 				} else {
 					const name = batch[j]!;
-					const message =
-						result.reason instanceof Error ? result.reason.message : String(result.reason);
+					const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
 					errors.push({ server: name, message });
 				}
 			}
@@ -300,17 +291,14 @@ export class ServerManager {
 		return Promise.race([
 			promise.finally(() => clearTimeout(timer)),
 			new Promise<never>((_, reject) => {
-				timer = setTimeout(
-					() => reject(new Error(`${label}: timed out after ${this.timeout / 1000}s`)),
-					this.timeout,
-				);
+				timer = setTimeout(() => reject(new Error(`${label}: timed out after ${this.timeout / 1000}s`)), this.timeout);
 				timer.unref();
 			}),
 		]);
 	}
 
 	/** Retry a function up to maxRetries times, clearing cached client between attempts */
-	private async withRetry<T>(fn: () => Promise<T>, label: string, serverName?: string): Promise<T> {
+	private async withRetry<T>(fn: () => Promise<T>, _label: string, serverName?: string): Promise<T> {
 		let lastError: Error | undefined;
 		for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
 			try {
@@ -368,11 +356,7 @@ export class ServerManager {
 	}
 
 	/** Call a tool on a specific server */
-	async callTool(
-		serverName: string,
-		toolName: string,
-		args: Record<string, unknown> = {},
-	): Promise<unknown> {
+	async callTool(serverName: string, toolName: string, args: Record<string, unknown> = {}): Promise<unknown> {
 		return this.callWithResilience(serverName, `callTool(${serverName}/${toolName})`, (client) =>
 			client.callTool({ name: toolName, arguments: args }),
 		);
@@ -440,11 +424,7 @@ export class ServerManager {
 	}
 
 	/** Get a specific prompt by name, optionally with arguments */
-	async getPrompt(
-		serverName: string,
-		name: string,
-		args?: Record<string, string>,
-	): Promise<unknown> {
+	async getPrompt(serverName: string, name: string, args?: Record<string, string>): Promise<unknown> {
 		return this.callWithResilience(serverName, `getPrompt(${serverName}/${name})`, (client) =>
 			client.getPrompt({ name, arguments: args }),
 		);
@@ -468,24 +448,17 @@ export class ServerManager {
 		taskOptions?: { ttl?: number; signal?: AbortSignal },
 	): AsyncGenerator<ResponseMessage<CallToolResult>> {
 		const client = await this.getClient(serverName);
-		const stream = client.experimental.tasks.callToolStream(
-			{ name: toolName, arguments: args },
-			CallToolResultSchema,
-			{
-				task: { ttl: taskOptions?.ttl },
-				signal: taskOptions?.signal,
-			},
-		);
+		const stream = client.experimental.tasks.callToolStream({ name: toolName, arguments: args }, CallToolResultSchema, {
+			task: { ttl: taskOptions?.ttl },
+			signal: taskOptions?.signal,
+		});
 		yield* stream;
 	}
 
 	/** Get the status of a task */
 	async getTask(serverName: string, taskId: string): Promise<GetTaskResult> {
 		const client = await this.getClient(serverName);
-		return this.withTimeout(
-			client.experimental.tasks.getTask(taskId),
-			`getTask(${serverName}/${taskId})`,
-		);
+		return this.withTimeout(client.experimental.tasks.getTask(taskId), `getTask(${serverName}/${taskId})`);
 	}
 
 	/** Retrieve the result of a completed task */
@@ -500,19 +473,13 @@ export class ServerManager {
 	/** List tasks on a server */
 	async listTasks(serverName: string, cursor?: string): Promise<ListTasksResult> {
 		const client = await this.getClient(serverName);
-		return this.withTimeout(
-			client.experimental.tasks.listTasks(cursor),
-			`listTasks(${serverName})`,
-		);
+		return this.withTimeout(client.experimental.tasks.listTasks(cursor), `listTasks(${serverName})`);
 	}
 
 	/** Cancel a running task */
 	async cancelTask(serverName: string, taskId: string): Promise<CancelTaskResult> {
 		const client = await this.getClient(serverName);
-		return this.withTimeout(
-			client.experimental.tasks.cancelTask(taskId),
-			`cancelTask(${serverName}/${taskId})`,
-		);
+		return this.withTimeout(client.experimental.tasks.cancelTask(taskId), `cancelTask(${serverName}/${taskId})`);
 	}
 
 	/** Get all server names */
