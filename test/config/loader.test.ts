@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadConfig, saveAuth, saveSearchIndex } from "../../src/config/loader.ts";
@@ -143,6 +143,18 @@ describe("saveAuth / saveSearchIndex", () => {
 
 		const raw = await Bun.file(join(tmpDir, "auth.json")).json();
 		expect(raw.test.tokens.access_token).toBe("abc");
+	});
+
+	test("sets restrictive permissions on auth.json", async () => {
+		await saveAuth(tmpDir, {
+			test: {
+				tokens: { access_token: "secret", token_type: "bearer" },
+			},
+		});
+
+		const info = await stat(join(tmpDir, "auth.json"));
+		const mode = info.mode & 0o777;
+		expect(mode).toBe(0o600);
 	});
 
 	test("saves and reloads search.json", async () => {

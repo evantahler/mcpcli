@@ -1,3 +1,4 @@
+import { chmod } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { DEFAULT_CONFIG_DIR, ENV } from "../constants.ts";
 import { interpolateEnv } from "./env.ts";
@@ -63,6 +64,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<Confi
 		const cwd = process.cwd();
 		if (await hasServersFile(cwd)) {
 			configDir = cwd;
+			process.stderr.write(`Note: using servers.json from current directory (${cwd})\n`);
 		}
 	}
 
@@ -109,9 +111,10 @@ async function saveJsonFile(configDir: string, filename: string, data: unknown):
 	await Bun.write(join(configDir, filename), `${JSON.stringify(data, null, 2)}\n`);
 }
 
-/** Save auth.json to the config directory */
+/** Save auth.json to the config directory with restrictive permissions */
 export async function saveAuth(configDir: string, auth: AuthFile): Promise<void> {
-	return saveJsonFile(configDir, "auth.json", auth);
+	await saveJsonFile(configDir, "auth.json", auth);
+	await chmod(join(configDir, "auth.json"), 0o600).catch(() => {});
 }
 
 /** Load search.json from the config directory */

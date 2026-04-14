@@ -28,8 +28,9 @@ function validateWithSchema(
 		try {
 			validate = ajv.compile(schema);
 			validatorCache.set(cacheKey, validate);
-		} catch {
-			return { valid: true, errors: [] };
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "unknown error";
+			return { valid: false, errors: [{ path: "(schema)", message: `schema compilation failed: ${msg}` }] };
 		}
 	}
 
