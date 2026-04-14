@@ -301,7 +301,7 @@ export async function runOAuthFlow(serverUrl: string, provider: McpOAuthProvider
 
   const { server, authCodePromise } = startCallbackServer();
   try {
-    provider.setCallbackPort(server.port);
+    provider.setCallbackPort(server.port!);
 
     const result = await auth(provider, { serverUrl });
     if (result === "REDIRECT") {

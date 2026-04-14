@@ -171,7 +171,12 @@ const server = Bun.serve({
     }
 
     if (req.method === "POST") {
-      const body = await req.json();
+      const body = (await req.json()) as {
+        jsonrpc: string;
+        id?: number;
+        method: string;
+        params?: unknown;
+      };
       const response = handleJsonRpc(body);
 
       // Assign session ID on initialize

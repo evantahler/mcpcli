@@ -7,6 +7,7 @@
       "dependencies": {
         "@huggingface/transformers": "^3.8.1",
         "@modelcontextprotocol/sdk": "^1.27.1",
+        "@types/picomatch": "^4.0.2",
         "ajv": "^8.18.0",
         "ansis": "^4.2.0",
         "commander": "^14.0.3",
@@ -15,8 +16,8 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "@types/picomatch": "^4.0.2",
         "prettier": "^3.8.1",
+        "typescript": "^5",
       },
       "peerDependencies": {
         "typescript": "^5",

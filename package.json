@@ -1,6 +1,6 @@
 {
   "name": "@evantahler/mcpx",
-  "version": "0.18.2",
+  "version": "0.18.3",
   "description": "A command-line interface for MCP servers. curl for MCP.",
   "type": "module",
   "exports": {
@@ -23,7 +23,7 @@
     "dev": "bun run src/cli.ts",
     "test": "bun test",
     "test:e2e": "bun test test/integration/remote-server.test.ts",
-    "lint": "prettier --check .",
+    "lint": "prettier --check . && tsc --noEmit",
     "format": "prettier --write .",
     "build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpx"
   },
@@ -51,12 +51,13 @@
     "ansis": "^4.2.0",
     "commander": "^14.0.3",
     "nanospinner": "^1.2.2",
-    "picomatch": "^4.0.3"
+    "picomatch": "^4.0.3",
+    "@types/picomatch": "^4.0.2"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/picomatch": "^4.0.2",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"

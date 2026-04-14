@@ -5,7 +5,7 @@ export function createStdioTransport(config: StdioServerConfig): StdioClientTran
   return new StdioClientTransport({
     command: config.command,
     args: config.args,
-    env: config.env ? { ...process.env, ...config.env } : undefined,
+    env: config.env ? ({ ...process.env, ...config.env } as Record<string, string>) : undefined,
     cwd: config.cwd,
     stderr: "pipe",
   });

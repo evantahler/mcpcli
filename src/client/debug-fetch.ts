@@ -38,7 +38,7 @@ function log(line: string) {
 
 function logHeaders(
   prefix: string,
-  headers: HeadersInit | Headers | undefined,
+  headers: RequestInit["headers"],
   fmt: (s: string) => string,
   showSecrets: boolean,
 ) {
@@ -50,11 +50,11 @@ function logHeaders(
   if (headers instanceof Headers) {
     headers.forEach((value, key) => log(format(key, value)));
   } else if (Array.isArray(headers)) {
-    for (const [key, value] of headers) {
-      log(format(key, value));
+    for (const pair of headers) {
+      log(format(String(pair[0]), String(pair[1])));
     }
   } else {
-    for (const [key, value] of Object.entries(headers)) {
+    for (const [key, value] of Object.entries(headers as Record<string, string>)) {
       log(format(key, value));
     }
   }
