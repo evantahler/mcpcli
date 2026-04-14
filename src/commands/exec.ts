@@ -79,7 +79,7 @@ async function resolveExecArgs(
 		);
 	}
 
-	return { mode: "call-tool", server: matches[0]?.server, tool: toolName, argsStr: second };
+	return { mode: "call-tool", server: matches[0]!.server, tool: toolName, argsStr: second };
 }
 
 export function registerExecCommand(program: Command) {

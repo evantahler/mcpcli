@@ -69,7 +69,7 @@ describe("keywordSearch", () => {
 	test("results sorted by score descending", () => {
 		const results = keywordSearch("send", tools);
 		for (let i = 1; i < results.length; i++) {
-			expect(results[i]?.score).toBeLessThanOrEqual(results[i - 1]?.score);
+			expect(results[i]!.score).toBeLessThanOrEqual(results[i - 1]!.score);
 		}
 	});
 

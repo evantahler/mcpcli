@@ -14,7 +14,7 @@ import { openBrowser } from "./browser.ts";
 export class McpOAuthProvider implements OAuthClientProvider {
 	private serverName: string;
 	private configDir: string;
-	private auth: AuthFile;
+	auth: AuthFile;
 	private _codeVerifier?: string;
 	private _callbackPort = 0;
 
