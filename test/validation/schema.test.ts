@@ -99,6 +99,23 @@ describe("validateToolInput", () => {
 		expect(result.errors.length).toBe(2);
 	});
 
+	test("returns invalid when schema compilation fails", () => {
+		const tool = makeTool("bad_schema", {
+			type: "object",
+			properties: { x: { type: "string" } },
+			// Invalid: $ref with other keywords in strict AJV contexts can fail,
+			// but a more reliable way to trigger compile failure is an invalid type
+			patternProperties: { "^x": { type: "invalid_type_that_breaks" } },
+			additionalProperties: { $ref: "#/definitions/nonexistent" },
+		});
+		const result = validateToolInput("bad_schema_server", tool, { x: "hello" });
+		// Should not silently pass — must report as invalid
+		expect(result.valid).toBe(false);
+		expect(result.errors.length).toBeGreaterThan(0);
+		expect(result.errors[0]?.path).toBe("(schema)");
+		expect(result.errors[0]?.message).toContain("schema compilation failed");
+	});
+
 	test("caches compiled validators", () => {
 		const tool = makeTool("cached_tool", {
 			type: "object",

@@ -68,11 +68,22 @@ function logBody(body: string, fmt: (s: string) => string) {
 	}
 }
 
+const SENSITIVE_HEADERS = new Set([
+	"authorization",
+	"cookie",
+	"set-cookie",
+	"proxy-authorization",
+	"x-api-key",
+	"api-key",
+	"x-auth-token",
+	"x-token",
+	"token",
+]);
+
 export function maskSensitive(key: string, value: string): string {
-	const lower = key.toLowerCase();
-	if (lower === "authorization" || lower === "cookie" || lower === "set-cookie") {
-		if (value.length <= 12) return value;
-		return `${value.slice(0, 12)}...`;
+	if (SENSITIVE_HEADERS.has(key.toLowerCase())) {
+		if (value.length <= 6) return "***";
+		return `${value.slice(0, 4)}...`;
 	}
 	return value;
 }

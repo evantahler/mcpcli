@@ -619,20 +619,23 @@ export function renderMarkdownToAnsi(input: string): string {
 	return restored;
 }
 
+const MAX_NESTED_JSON_DEPTH = 10;
+
 /** Recursively parse JSON strings inside MCP content blocks */
-function parseNestedJson(value: unknown): unknown {
+function parseNestedJson(value: unknown, depth = 0): unknown {
+	if (depth > MAX_NESTED_JSON_DEPTH) return value;
 	if (typeof value === "string") {
 		try {
-			return parseNestedJson(JSON.parse(value));
+			return parseNestedJson(JSON.parse(value), depth + 1);
 		} catch {
 			return value;
 		}
 	}
 	if (Array.isArray(value)) {
-		return value.map(parseNestedJson);
+		return value.map((v) => parseNestedJson(v, depth + 1));
 	}
 	if (typeof value === "object" && value !== null) {
-		return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, parseNestedJson(v)]));
+		return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, parseNestedJson(v, depth + 1)]));
 	}
 	return value;
 }
