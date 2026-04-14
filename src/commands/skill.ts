@@ -1,112 +1,112 @@
 import type { Command } from "commander";
-import { resolve, dirname, join } from "path";
-import { readFile, mkdir, writeFile, access } from "fs/promises";
+import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
+import { dirname, join, resolve } from "path";
 
 interface SkillTarget {
-  label: string;
-  dir: string;
-  filename: string;
+	label: string;
+	dir: string;
+	filename: string;
 }
 
 export function registerSkillCommand(program: Command) {
-  const skill = program.command("skill").description("manage mcpx skills");
+	const skill = program.command("skill").description("manage mcpx skills");
 
-  skill
-    .command("install")
-    .description("install the mcpx skill for an AI agent")
-    .option("--claude", "install for Claude Code")
-    .option("--cursor", "install for Cursor")
-    .option("--global", "install to global location (e.g. ~/.claude/skills/)")
-    .option("--project", "install to project location (default)")
-    .option("-f, --force", "overwrite if file already exists")
-    .action(
-      async (options: {
-        claude?: boolean;
-        cursor?: boolean;
-        global?: boolean;
-        project?: boolean;
-        force?: boolean;
-      }) => {
-        if (!options.claude && !options.cursor) {
-          console.error("error: specify at least one agent target: --claude, --cursor");
-          process.exit(1);
-        }
+	skill
+		.command("install")
+		.description("install the mcpx skill for an AI agent")
+		.option("--claude", "install for Claude Code")
+		.option("--cursor", "install for Cursor")
+		.option("--global", "install to global location (e.g. ~/.claude/skills/)")
+		.option("--project", "install to project location (default)")
+		.option("-f, --force", "overwrite if file already exists")
+		.action(
+			async (options: {
+				claude?: boolean;
+				cursor?: boolean;
+				global?: boolean;
+				project?: boolean;
+				force?: boolean;
+			}) => {
+				if (!options.claude && !options.cursor) {
+					console.error("error: specify at least one agent target: --claude, --cursor");
+					process.exit(1);
+				}
 
-        const agents: {
-          name: string;
-          sourcePath: string;
-          globalDir: string;
-          projectDir: string;
-          filename: string;
-        }[] = [];
+				const agents: {
+					name: string;
+					sourcePath: string;
+					globalDir: string;
+					projectDir: string;
+					filename: string;
+				}[] = [];
 
-        if (options.claude) {
-          agents.push({
-            name: "Claude Code",
-            sourcePath: resolve(dirname(Bun.main), "..", ".claude", "skills", "mcpx.md"),
-            globalDir: join(homedir(), ".claude", "skills"),
-            projectDir: resolve(".claude", "skills"),
-            filename: "mcpx.md",
-          });
-        }
+				if (options.claude) {
+					agents.push({
+						name: "Claude Code",
+						sourcePath: resolve(dirname(Bun.main), "..", ".claude", "skills", "mcpx.md"),
+						globalDir: join(homedir(), ".claude", "skills"),
+						projectDir: resolve(".claude", "skills"),
+						filename: "mcpx.md",
+					});
+				}
 
-        if (options.cursor) {
-          agents.push({
-            name: "Cursor",
-            sourcePath: resolve(dirname(Bun.main), "..", ".cursor", "rules", "mcpx.mdc"),
-            globalDir: join(homedir(), ".cursor", "rules"),
-            projectDir: resolve(".cursor", "rules"),
-            filename: "mcpx.mdc",
-          });
-        }
+				if (options.cursor) {
+					agents.push({
+						name: "Cursor",
+						sourcePath: resolve(dirname(Bun.main), "..", ".cursor", "rules", "mcpx.mdc"),
+						globalDir: join(homedir(), ".cursor", "rules"),
+						projectDir: resolve(".cursor", "rules"),
+						filename: "mcpx.mdc",
+					});
+				}
 
-        for (const agent of agents) {
-          let content: string;
-          try {
-            content = await readFile(agent.sourcePath, "utf-8");
-          } catch {
-            console.error(`Could not read skill file: ${agent.sourcePath}`);
-            process.exit(1);
-          }
+				for (const agent of agents) {
+					let content: string;
+					try {
+						content = await readFile(agent.sourcePath, "utf-8");
+					} catch {
+						console.error(`Could not read skill file: ${agent.sourcePath}`);
+						process.exit(1);
+					}
 
-          // Determine targets — default to project if neither flag is set
-          const targets: SkillTarget[] = [];
+					// Determine targets — default to project if neither flag is set
+					const targets: SkillTarget[] = [];
 
-          if (options.global) {
-            targets.push({
-              label: "global",
-              dir: agent.globalDir,
-              filename: agent.filename,
-            });
-          }
-          if (options.project || !options.global) {
-            targets.push({
-              label: "project",
-              dir: agent.projectDir,
-              filename: agent.filename,
-            });
-          }
+					if (options.global) {
+						targets.push({
+							label: "global",
+							dir: agent.globalDir,
+							filename: agent.filename,
+						});
+					}
+					if (options.project || !options.global) {
+						targets.push({
+							label: "project",
+							dir: agent.projectDir,
+							filename: agent.filename,
+						});
+					}
 
-          for (const target of targets) {
-            const dest = join(target.dir, target.filename);
+					for (const target of targets) {
+						const dest = join(target.dir, target.filename);
 
-            // Check if file already exists
-            if (!options.force) {
-              try {
-                await access(dest);
-                console.error(`${dest} already exists (use --force to overwrite)`);
-                process.exit(1);
-              } catch {
-                // File doesn't exist — good
-              }
-            }
+						// Check if file already exists
+						if (!options.force) {
+							try {
+								await access(dest);
+								console.error(`${dest} already exists (use --force to overwrite)`);
+								process.exit(1);
+							} catch {
+								// File doesn't exist — good
+							}
+						}
 
-            await mkdir(target.dir, { recursive: true });
-            await writeFile(dest, content, "utf-8");
-            console.log(`Installed mcpx skill for ${agent.name} (${target.label}): ${dest}`);
-          }
-        }
-      },
-    );
+						await mkdir(target.dir, { recursive: true });
+						await writeFile(dest, content, "utf-8");
+						console.log(`Installed mcpx skill for ${agent.name} (${target.label}): ${dest}`);
+					}
+				}
+			},
+		);
 }

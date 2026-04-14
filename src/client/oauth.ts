@@ -1,240 +1,240 @@
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import {
-  auth,
-  discoverOAuthServerInfo,
-  refreshAuthorization,
+	auth,
+	discoverOAuthServerInfo,
+	refreshAuthorization,
 } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
-  OAuthClientMetadata,
-  OAuthClientInformationMixed,
-  OAuthTokens,
+	OAuthClientInformationMixed,
+	OAuthClientMetadata,
+	OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { AuthFile } from "../config/schemas.ts";
 import { saveAuth } from "../config/loader.ts";
+import type { AuthFile } from "../config/schemas.ts";
 import type { FormatOptions } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
 import { openBrowser } from "./browser.ts";
 
 export class McpOAuthProvider implements OAuthClientProvider {
-  private serverName: string;
-  private configDir: string;
-  private auth: AuthFile;
-  private _codeVerifier?: string;
-  private _callbackPort = 0;
+	private serverName: string;
+	private configDir: string;
+	private auth: AuthFile;
+	private _codeVerifier?: string;
+	private _callbackPort = 0;
 
-  constructor(opts: { serverName: string; configDir: string; auth: AuthFile }) {
-    this.serverName = opts.serverName;
-    this.configDir = opts.configDir;
-    this.auth = opts.auth;
-  }
+	constructor(opts: { serverName: string; configDir: string; auth: AuthFile }) {
+		this.serverName = opts.serverName;
+		this.configDir = opts.configDir;
+		this.auth = opts.auth;
+	}
 
-  get redirectUrl(): string {
-    return `http://127.0.0.1:${this._callbackPort}/callback`;
-  }
+	get redirectUrl(): string {
+		return `http://127.0.0.1:${this._callbackPort}/callback`;
+	}
 
-  get clientMetadata(): OAuthClientMetadata {
-    return {
-      redirect_uris: [`http://127.0.0.1:${this._callbackPort}/callback`],
-      grant_types: ["authorization_code", "refresh_token"],
-      response_types: ["code"],
-      client_name: "mcpx",
-      token_endpoint_auth_method: "none",
-    };
-  }
+	get clientMetadata(): OAuthClientMetadata {
+		return {
+			redirect_uris: [`http://127.0.0.1:${this._callbackPort}/callback`],
+			grant_types: ["authorization_code", "refresh_token"],
+			response_types: ["code"],
+			client_name: "mcpx",
+			token_endpoint_auth_method: "none",
+		};
+	}
 
-  clientInformation(): OAuthClientInformationMixed | undefined {
-    const entry = this.auth[this.serverName];
-    // During an active auth flow, return client_info even if incomplete.
-    // For normal usage (transport), the manager checks isComplete() separately.
-    return entry?.client_info;
-  }
+	clientInformation(): OAuthClientInformationMixed | undefined {
+		const entry = this.auth[this.serverName];
+		// During an active auth flow, return client_info even if incomplete.
+		// For normal usage (transport), the manager checks isComplete() separately.
+		return entry?.client_info;
+	}
 
-  async saveClientInformation(info: OAuthClientInformationMixed): Promise<void> {
-    if (!this.auth[this.serverName]) {
-      this.auth[this.serverName] = { tokens: {} as OAuthTokens };
-    }
-    this.auth[this.serverName]!.client_info = info;
-    await saveAuth(this.configDir, this.auth);
-  }
+	async saveClientInformation(info: OAuthClientInformationMixed): Promise<void> {
+		if (!this.auth[this.serverName]) {
+			this.auth[this.serverName] = { tokens: {} as OAuthTokens };
+		}
+		this.auth[this.serverName]!.client_info = info;
+		await saveAuth(this.configDir, this.auth);
+	}
 
-  tokens(): OAuthTokens | undefined {
-    return this.auth[this.serverName]?.tokens;
-  }
+	tokens(): OAuthTokens | undefined {
+		return this.auth[this.serverName]?.tokens;
+	}
 
-  async saveTokens(tokens: OAuthTokens): Promise<void> {
-    if (!this.auth[this.serverName]) {
-      this.auth[this.serverName] = { tokens };
-    } else {
-      this.auth[this.serverName]!.tokens = tokens;
-    }
+	async saveTokens(tokens: OAuthTokens): Promise<void> {
+		if (!this.auth[this.serverName]) {
+			this.auth[this.serverName] = { tokens };
+		} else {
+			this.auth[this.serverName]!.tokens = tokens;
+		}
 
-    // Compute expires_at from expires_in
-    if (tokens.expires_in) {
-      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
-      this.auth[this.serverName]!.expires_at = expiresAt.toISOString();
-    }
+		// Compute expires_at from expires_in
+		if (tokens.expires_in) {
+			const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+			this.auth[this.serverName]!.expires_at = expiresAt.toISOString();
+		}
 
-    // Mark auth as complete — tokens have been successfully obtained
-    this.auth[this.serverName]!.complete = true;
+		// Mark auth as complete — tokens have been successfully obtained
+		this.auth[this.serverName]!.complete = true;
 
-    await saveAuth(this.configDir, this.auth);
-  }
+		await saveAuth(this.configDir, this.auth);
+	}
 
-  async redirectToAuthorization(url: URL): Promise<void> {
-    const urlStr = url.toString();
-    logger.info(urlStr);
-    await openBrowser(urlStr);
-  }
+	async redirectToAuthorization(url: URL): Promise<void> {
+		const urlStr = url.toString();
+		logger.info(urlStr);
+		await openBrowser(urlStr);
+	}
 
-  async saveCodeVerifier(v: string): Promise<void> {
-    this._codeVerifier = v;
-  }
+	async saveCodeVerifier(v: string): Promise<void> {
+		this._codeVerifier = v;
+	}
 
-  codeVerifier(): string {
-    if (!this._codeVerifier) {
-      throw new Error("Code verifier not set");
-    }
-    return this._codeVerifier;
-  }
+	codeVerifier(): string {
+		if (!this._codeVerifier) {
+			throw new Error("Code verifier not set");
+		}
+		return this._codeVerifier;
+	}
 
-  async invalidateCredentials(
-    scope: "all" | "client" | "tokens" | "verifier" | "discovery",
-  ): Promise<void> {
-    const entry = this.auth[this.serverName];
-    if (!entry) return;
+	async invalidateCredentials(
+		scope: "all" | "client" | "tokens" | "verifier" | "discovery",
+	): Promise<void> {
+		const entry = this.auth[this.serverName];
+		if (!entry) return;
 
-    switch (scope) {
-      case "all":
-        delete this.auth[this.serverName];
-        break;
-      case "client":
-        delete entry.client_info;
-        break;
-      case "tokens":
-        delete this.auth[this.serverName];
-        // Re-create entry without tokens but keep client_info
-        if (entry.client_info) {
-          this.auth[this.serverName] = {
-            tokens: {} as OAuthTokens,
-            client_info: entry.client_info,
-          };
-        }
-        break;
-      case "verifier":
-        this._codeVerifier = undefined;
-        return; // No need to persist
-      case "discovery":
-        return; // Nothing to clear locally
-    }
+		switch (scope) {
+			case "all":
+				delete this.auth[this.serverName];
+				break;
+			case "client":
+				delete entry.client_info;
+				break;
+			case "tokens":
+				delete this.auth[this.serverName];
+				// Re-create entry without tokens but keep client_info
+				if (entry.client_info) {
+					this.auth[this.serverName] = {
+						tokens: {} as OAuthTokens,
+						client_info: entry.client_info,
+					};
+				}
+				break;
+			case "verifier":
+				this._codeVerifier = undefined;
+				return; // No need to persist
+			case "discovery":
+				return; // Nothing to clear locally
+		}
 
-    await saveAuth(this.configDir, this.auth);
-  }
+		await saveAuth(this.configDir, this.auth);
+	}
 
-  /** Whether the auth flow completed successfully (tokens were obtained) */
-  isComplete(): boolean {
-    return !!this.auth[this.serverName]?.complete;
-  }
+	/** Whether the auth flow completed successfully (tokens were obtained) */
+	isComplete(): boolean {
+		return !!this.auth[this.serverName]?.complete;
+	}
 
-  /** Clear any incomplete auth state from a previously cancelled flow */
-  async clearIncomplete(): Promise<void> {
-    const entry = this.auth[this.serverName];
-    if (entry && !entry.complete) {
-      delete this.auth[this.serverName];
-      await saveAuth(this.configDir, this.auth);
-    }
-  }
+	/** Clear any incomplete auth state from a previously cancelled flow */
+	async clearIncomplete(): Promise<void> {
+		const entry = this.auth[this.serverName];
+		if (entry && !entry.complete) {
+			delete this.auth[this.serverName];
+			await saveAuth(this.configDir, this.auth);
+		}
+	}
 
-  setCallbackPort(port: number): void {
-    this._callbackPort = port;
-  }
+	setCallbackPort(port: number): void {
+		this._callbackPort = port;
+	}
 
-  isExpired(): boolean {
-    const entry = this.auth[this.serverName];
-    if (!entry?.expires_at) return false;
-    return new Date(entry.expires_at) <= new Date();
-  }
+	isExpired(): boolean {
+		const entry = this.auth[this.serverName];
+		if (!entry?.expires_at) return false;
+		return new Date(entry.expires_at) <= new Date();
+	}
 
-  hasRefreshToken(): boolean {
-    const tokens = this.auth[this.serverName]?.tokens;
-    return !!tokens?.refresh_token;
-  }
+	hasRefreshToken(): boolean {
+		const tokens = this.auth[this.serverName]?.tokens;
+		return !!tokens?.refresh_token;
+	}
 
-  async refreshIfNeeded(serverUrl: string): Promise<void> {
-    if (!this.isExpired()) return;
+	async refreshIfNeeded(serverUrl: string): Promise<void> {
+		if (!this.isExpired()) return;
 
-    if (!this.hasRefreshToken()) {
-      throw new Error(
-        `Token expired for "${this.serverName}" and no refresh token available. Run: mcpx auth ${this.serverName}`,
-      );
-    }
+		if (!this.hasRefreshToken()) {
+			throw new Error(
+				`Token expired for "${this.serverName}" and no refresh token available. Run: mcpx auth ${this.serverName}`,
+			);
+		}
 
-    const clientInfo = this.clientInformation();
-    if (!clientInfo) {
-      throw new Error(
-        `No client information for "${this.serverName}". Run: mcpx auth ${this.serverName}`,
-      );
-    }
+		const clientInfo = this.clientInformation();
+		if (!clientInfo) {
+			throw new Error(
+				`No client information for "${this.serverName}". Run: mcpx auth ${this.serverName}`,
+			);
+		}
 
-    const tokens = await refreshAuthorization(serverUrl, {
-      clientInformation: clientInfo,
-      refreshToken: this.auth[this.serverName]!.tokens.refresh_token!,
-    });
+		const tokens = await refreshAuthorization(serverUrl, {
+			clientInformation: clientInfo,
+			refreshToken: this.auth[this.serverName]!.tokens.refresh_token!,
+		});
 
-    await this.saveTokens(tokens);
+		await this.saveTokens(tokens);
 
-    logger.info(`Token refreshed for "${this.serverName}"`);
-  }
+		logger.info(`Token refreshed for "${this.serverName}"`);
+	}
 }
 
 /** Start a local callback server to receive the OAuth authorization code */
 export function startCallbackServer(): {
-  server: ReturnType<typeof Bun.serve>;
-  authCodePromise: Promise<string>;
+	server: ReturnType<typeof Bun.serve>;
+	authCodePromise: Promise<string>;
 } {
-  let resolveCode: (code: string) => void;
-  let rejectCode: (err: Error) => void;
+	let resolveCode: (code: string) => void;
+	let rejectCode: (err: Error) => void;
 
-  const authCodePromise = new Promise<string>((resolve, reject) => {
-    resolveCode = resolve;
-    rejectCode = reject;
-  });
+	const authCodePromise = new Promise<string>((resolve, reject) => {
+		resolveCode = resolve;
+		rejectCode = reject;
+	});
 
-  const server = Bun.serve({
-    port: 0,
-    fetch(req) {
-      const url = new URL(req.url);
-      if (url.pathname !== "/callback") {
-        return new Response("Not found", { status: 404 });
-      }
+	const server = Bun.serve({
+		port: 0,
+		fetch(req) {
+			const url = new URL(req.url);
+			if (url.pathname !== "/callback") {
+				return new Response("Not found", { status: 404 });
+			}
 
-      const error = url.searchParams.get("error");
-      if (error) {
-        const desc = url.searchParams.get("error_description") || error;
-        rejectCode!(new Error(`OAuth error: ${desc}`));
-        return new Response(
-          "<html><body><h1>Authentication Failed</h1><p>You can close this window.</p></body></html>",
-          { headers: { "Content-Type": "text/html" } },
-        );
-      }
+			const error = url.searchParams.get("error");
+			if (error) {
+				const desc = url.searchParams.get("error_description") || error;
+				rejectCode!(new Error(`OAuth error: ${desc}`));
+				return new Response(
+					"<html><body><h1>Authentication Failed</h1><p>You can close this window.</p></body></html>",
+					{ headers: { "Content-Type": "text/html" } },
+				);
+			}
 
-      const code = url.searchParams.get("code");
-      if (!code) {
-        rejectCode!(new Error("No authorization code received"));
-        return new Response(
-          "<html><body><h1>Error</h1><p>No authorization code received.</p></body></html>",
-          { headers: { "Content-Type": "text/html" } },
-        );
-      }
+			const code = url.searchParams.get("code");
+			if (!code) {
+				rejectCode!(new Error("No authorization code received"));
+				return new Response(
+					"<html><body><h1>Error</h1><p>No authorization code received.</p></body></html>",
+					{ headers: { "Content-Type": "text/html" } },
+				);
+			}
 
-      resolveCode!(code);
-      return new Response(
-        "<html><body><h1>Authenticated!</h1><p>You can close this window.</p></body></html>",
-        { headers: { "Content-Type": "text/html" } },
-      );
-    },
-  });
+			resolveCode!(code);
+			return new Response(
+				"<html><body><h1>Authenticated!</h1><p>You can close this window.</p></body></html>",
+				{ headers: { "Content-Type": "text/html" } },
+			);
+		},
+	});
 
-  return { server, authCodePromise };
+	return { server, authCodePromise };
 }
 
 /** Resolve the canonical resource URL for an HTTP MCP server.
@@ -242,73 +242,73 @@ export function startCallbackServer(): {
  * that may differ from the URL provided by the user (e.g. hf.co → huggingface.co).
  * Returns the canonical URL if found, or the original URL otherwise. */
 export async function resolveResourceUrl(serverUrl: string): Promise<string> {
-  try {
-    const info = await discoverOAuthServerInfo(serverUrl);
-    const canonical = info.resourceMetadata?.resource;
-    if (canonical && canonical !== serverUrl) {
-      // Preserve the path/query/hash from the original URL — the canonical URL
-      // from OAuth resource metadata identifies the origin (scheme + host + port),
-      // not the endpoint path (e.g. /mcp).
-      const orig = new URL(serverUrl);
-      const canon = new URL(canonical);
-      canon.pathname = orig.pathname;
-      canon.search = orig.search;
-      canon.hash = orig.hash;
-      const merged = canon.toString();
-      return merged === serverUrl ? serverUrl : merged;
-    }
-  } catch {
-    // OAuth discovery not available — use original URL
-  }
-  return serverUrl;
+	try {
+		const info = await discoverOAuthServerInfo(serverUrl);
+		const canonical = info.resourceMetadata?.resource;
+		if (canonical && canonical !== serverUrl) {
+			// Preserve the path/query/hash from the original URL — the canonical URL
+			// from OAuth resource metadata identifies the origin (scheme + host + port),
+			// not the endpoint path (e.g. /mcp).
+			const orig = new URL(serverUrl);
+			const canon = new URL(canonical);
+			canon.pathname = orig.pathname;
+			canon.search = orig.search;
+			canon.hash = orig.hash;
+			const merged = canon.toString();
+			return merged === serverUrl ? serverUrl : merged;
+		}
+	} catch {
+		// OAuth discovery not available — use original URL
+	}
+	return serverUrl;
 }
 
 /** Probe for OAuth support and run the auth flow if the server supports it.
  * Returns true if auth ran, false if server doesn't support OAuth (silent skip). */
 export async function tryOAuthIfSupported(
-  serverName: string,
-  serverUrl: string,
-  configDir: string,
-  auth: AuthFile,
-  formatOptions: FormatOptions,
+	serverName: string,
+	serverUrl: string,
+	configDir: string,
+	auth: AuthFile,
+	formatOptions: FormatOptions,
 ): Promise<boolean> {
-  let oauthSupported: boolean;
-  try {
-    const info = await discoverOAuthServerInfo(serverUrl);
-    oauthSupported = info.authorizationServerMetadata !== undefined;
-  } catch {
-    return false;
-  }
+	let oauthSupported: boolean;
+	try {
+		const info = await discoverOAuthServerInfo(serverUrl);
+		oauthSupported = info.authorizationServerMetadata !== undefined;
+	} catch {
+		return false;
+	}
 
-  if (!oauthSupported) return false;
+	if (!oauthSupported) return false;
 
-  const provider = new McpOAuthProvider({ serverName, configDir, auth });
-  const spinner = logger.startSpinner(`Authenticating with "${serverName}"…`, formatOptions);
-  try {
-    await runOAuthFlow(serverUrl, provider);
-    spinner.success(`Authenticated with "${serverName}"`);
-    return true;
-  } catch (err) {
-    spinner.error(`Authentication failed: ${err instanceof Error ? err.message : err}`);
-    throw err;
-  }
+	const provider = new McpOAuthProvider({ serverName, configDir, auth });
+	const spinner = logger.startSpinner(`Authenticating with "${serverName}"…`, formatOptions);
+	try {
+		await runOAuthFlow(serverUrl, provider);
+		spinner.success(`Authenticated with "${serverName}"`);
+		return true;
+	} catch (err) {
+		spinner.error(`Authentication failed: ${err instanceof Error ? err.message : err}`);
+		throw err;
+	}
 }
 
 /** Run a full OAuth authorization flow for an HTTP MCP server */
 export async function runOAuthFlow(serverUrl: string, provider: McpOAuthProvider): Promise<void> {
-  // Clear any leftover state from a previously cancelled auth flow
-  await provider.clearIncomplete();
+	// Clear any leftover state from a previously cancelled auth flow
+	await provider.clearIncomplete();
 
-  const { server, authCodePromise } = startCallbackServer();
-  try {
-    provider.setCallbackPort(server.port!);
+	const { server, authCodePromise } = startCallbackServer();
+	try {
+		provider.setCallbackPort(server.port!);
 
-    const result = await auth(provider, { serverUrl });
-    if (result === "REDIRECT") {
-      const code = await authCodePromise;
-      await auth(provider, { serverUrl, authorizationCode: code });
-    }
-  } finally {
-    server.stop();
-  }
+		const result = await auth(provider, { serverUrl });
+		if (result === "REDIRECT") {
+			const code = await authCodePromise;
+			await auth(provider, { serverUrl, authorizationCode: code });
+		}
+	} finally {
+		server.stop();
+	}
 }

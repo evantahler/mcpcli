@@ -1,24 +1,24 @@
 import type { Command } from "commander";
-import { getContext, type AppContext } from "../context.ts";
+import { type AppContext, getContext } from "../context.ts";
 import { formatError } from "../output/formatter.ts";
 import { logger, type Spinner } from "../output/logger.ts";
 
 export interface CommandContext extends AppContext {
-  spinner: Spinner;
+	spinner: Spinner;
 }
 
 interface WithCommandOptions {
-  /** Spinner text shown during execution. If omitted, no spinner is started. */
-  spinnerText?: string;
-  /** Error message for spinner.error(). Defaults to "Failed". */
-  errorLabel?: string;
+	/** Spinner text shown during execution. If omitted, no spinner is started. */
+	spinnerText?: string;
+	/** Error message for spinner.error(). Defaults to "Failed". */
+	errorLabel?: string;
 }
 
 const noopSpinner: Spinner = {
-  update() {},
-  success() {},
-  error() {},
-  stop() {},
+	update() {},
+	success() {},
+	error() {},
+	stop() {},
 };
 
 /**
@@ -34,26 +34,26 @@ const noopSpinner: Spinner = {
  * manager.close() is always called in finally.
  */
 export function withCommand<TArgs extends unknown[]>(
-  program: Command,
-  options: WithCommandOptions,
-  handler: (ctx: CommandContext, ...args: TArgs) => Promise<void>,
+	program: Command,
+	options: WithCommandOptions,
+	handler: (ctx: CommandContext, ...args: TArgs) => Promise<void>,
 ): (...args: TArgs) => Promise<void> {
-  return async (...args: TArgs) => {
-    const appCtx = await getContext(program);
-    const { manager, formatOptions } = appCtx;
+	return async (...args: TArgs) => {
+		const appCtx = await getContext(program);
+		const { manager, formatOptions } = appCtx;
 
-    const spinner = options.spinnerText
-      ? logger.startSpinner(options.spinnerText, formatOptions)
-      : noopSpinner;
+		const spinner = options.spinnerText
+			? logger.startSpinner(options.spinnerText, formatOptions)
+			: noopSpinner;
 
-    try {
-      await handler({ ...appCtx, spinner }, ...args);
-    } catch (err) {
-      spinner.error(options.errorLabel ?? "Failed");
-      console.error(formatError(String(err), formatOptions));
-      process.exit(1);
-    } finally {
-      await manager.close();
-    }
-  };
+		try {
+			await handler({ ...appCtx, spinner }, ...args);
+		} catch (err) {
+			spinner.error(options.errorLabel ?? "Failed");
+			console.error(formatError(String(err), formatOptions));
+			process.exit(1);
+		} finally {
+			await manager.close();
+		}
+	};
 }

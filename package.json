@@ -1,65 +1,65 @@
 {
-  "name": "@evantahler/mcpx",
-  "version": "0.18.3",
-  "description": "A command-line interface for MCP servers. curl for MCP.",
-  "type": "module",
-  "exports": {
-    ".": "./src/sdk.ts",
-    "./cli": "./src/cli.ts"
-  },
-  "main": "./src/sdk.ts",
-  "types": "./src/sdk.ts",
-  "bin": {
-    "mcpx": "./src/cli.ts"
-  },
-  "files": [
-    "src",
-    ".claude",
-    ".cursor",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "dev": "bun run src/cli.ts",
-    "test": "bun test",
-    "test:e2e": "bun test test/integration/remote-server.test.ts",
-    "lint": "prettier --check . && tsc --noEmit",
-    "format": "prettier --write .",
-    "build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpx"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/evantahler/mcpx.git"
-  },
-  "keywords": [
-    "mcp",
-    "cli",
-    "model-context-protocol",
-    "ai",
-    "llm",
-    "tools"
-  ],
-  "author": "Evan Tahler",
-  "license": "MIT",
-  "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "ajv": "^8.18.0",
-    "ansis": "^4.2.0",
-    "commander": "^14.0.3",
-    "nanospinner": "^1.2.2",
-    "picomatch": "^4.0.3",
-    "@types/picomatch": "^4.0.2"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "prettier": "^3.8.1",
-    "typescript": "^5"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+	"name": "@evantahler/mcpx",
+	"version": "0.18.4",
+	"description": "A command-line interface for MCP servers. curl for MCP.",
+	"type": "module",
+	"exports": {
+		".": "./src/sdk.ts",
+		"./cli": "./src/cli.ts"
+	},
+	"main": "./src/sdk.ts",
+	"types": "./src/sdk.ts",
+	"bin": {
+		"mcpx": "./src/cli.ts"
+	},
+	"files": [
+		"src",
+		".claude",
+		".cursor",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"dev": "bun run src/cli.ts",
+		"test": "bun test",
+		"test:e2e": "bun test test/integration/remote-server.test.ts",
+		"lint": "biome ci . && tsc --noEmit",
+		"format": "biome check --write .",
+		"build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpx"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/evantahler/mcpx.git"
+	},
+	"keywords": [
+		"mcp",
+		"cli",
+		"model-context-protocol",
+		"ai",
+		"llm",
+		"tools"
+	],
+	"author": "Evan Tahler",
+	"license": "MIT",
+	"dependencies": {
+		"@huggingface/transformers": "^3.8.1",
+		"@modelcontextprotocol/sdk": "^1.27.1",
+		"ajv": "^8.18.0",
+		"ansis": "^4.2.0",
+		"commander": "^14.0.3",
+		"nanospinner": "^1.2.2",
+		"picomatch": "^4.0.3",
+		"@types/picomatch": "^4.0.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.11",
+		"@types/bun": "latest",
+		"typescript": "^5"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
 }

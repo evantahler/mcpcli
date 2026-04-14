@@ -10,19 +10,19 @@ import { isInteractive } from "./formatter.ts";
  *   non-interactive → JSON, interactive → formatted text.
  */
 export function formatOutput(
-  jsonData: unknown,
-  interactiveFn: () => string,
-  options: FormatOptions,
+	jsonData: unknown,
+	interactiveFn: () => string,
+	options: FormatOptions,
 ): string {
-  if (options.format) {
-    if (options.format === "json") {
-      return JSON.stringify(jsonData, null, 2);
-    }
-    // markdown uses the interactive formatter for non-exec commands
-    return interactiveFn();
-  }
-  if (!isInteractive(options)) {
-    return JSON.stringify(jsonData, null, 2);
-  }
-  return interactiveFn();
+	if (options.format) {
+		if (options.format === "json") {
+			return JSON.stringify(jsonData, null, 2);
+		}
+		// markdown uses the interactive formatter for non-exec commands
+		return interactiveFn();
+	}
+	if (!isInteractive(options)) {
+		return JSON.stringify(jsonData, null, 2);
+	}
+	return interactiveFn();
 }
