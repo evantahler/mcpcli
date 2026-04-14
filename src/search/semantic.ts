@@ -53,7 +53,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export async function semanticSearch(
   query: string,
   tools: IndexedTool[],
-  topK = DEFAULTS.SEARCH_TOP_K,
+  topK: number = DEFAULTS.SEARCH_TOP_K,
 ): Promise<SemanticMatch[]> {
   // Only search tools that have embeddings
   const withEmbeddings = tools.filter((t) => t.embedding.length > 0);

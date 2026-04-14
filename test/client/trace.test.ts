@@ -169,7 +169,7 @@ describe("wrapTransportWithTrace", () => {
     } as unknown as JSONRPCMessage);
 
     const lines = stderr.output.trim().split("\n");
-    const incomingLine = JSON.parse(lines[lines.length - 1]);
+    const incomingLine = JSON.parse(lines[lines.length - 1]!);
     expect(incomingLine.trace).toBe("incoming");
     expect(incomingLine.server).toBe("myserver");
     expect(incomingLine.request_method).toBe("ping");

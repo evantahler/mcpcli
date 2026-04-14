@@ -156,7 +156,7 @@ function buildStdioConfig(options: {
     config.cwd = options.cwd;
   }
 
-  return config as ServerConfig;
+  return config as unknown as ServerConfig;
 }
 
 function buildHttpConfig(options: { url?: string; header?: string[] }): ServerConfig {
@@ -175,5 +175,5 @@ function buildHttpConfig(options: { url?: string; header?: string[] }): ServerCo
     config.headers = headers;
   }
 
-  return config as ServerConfig;
+  return config as unknown as ServerConfig;
 }

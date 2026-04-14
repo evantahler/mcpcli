@@ -166,7 +166,7 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
         const maxName = Math.max(...overview.tools.map((t) => t.name.length));
         const termWidth = getTerminalWidth();
         for (let i = 0; i < overview.tools.length; i++) {
-          const t = overview.tools[i];
+          const t = overview.tools[i]!;
           if (i > 0) lines.push("");
           const name = `  ${bold(t.name.padEnd(maxName))}`;
           if (t.description) {
@@ -622,7 +622,7 @@ export function jsonToMarkdown(value: unknown, depth: number = 1, skipKey?: stri
 
 /** Render a markdown string to ANSI-styled terminal output using Bun's built-in renderer */
 export function renderMarkdownToAnsi(input: string): string {
-  const result = Bun.markdown.ansi(input);
+  const result = (Bun as any).markdown.ansi(input) as string;
   const restored = restoreUrlPlaceholders(result);
   resetUrlPlaceholders();
   return restored;

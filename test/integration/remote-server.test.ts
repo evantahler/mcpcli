@@ -46,7 +46,7 @@ beforeAll(async () => {
   });
 
   // Read the server URL from stdout (first line)
-  const reader = serverProc.stdout.getReader();
+  const reader = (serverProc.stdout as ReadableStream<Uint8Array>).getReader();
   const { value } = await reader.read();
   reader.releaseLock();
   const serverUrl = new TextDecoder().decode(value).trim();

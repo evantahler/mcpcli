@@ -94,7 +94,7 @@ describe("stdio MCP server integration", () => {
   });
 
   test("calls add tool with numeric arguments", async () => {
-    const result = await runAndParse<{ content: { type: string; text: string }[] }>(
+    const result = await runAndParse<{ content: { type: string; text: unknown }[] }>(
       "exec",
       "mock",
       "add",

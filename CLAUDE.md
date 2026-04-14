@@ -8,7 +8,7 @@ mcpx — A CLI for MCP servers. "curl for MCP."
 
 - `bun run dev` — Run in development mode
 - `bun test` — Run tests
-- `bun lint` — Check formatting (prettier)
+- `bun lint` — Check formatting and types
 - `bun format` — Auto-fix formatting
 - `bun run build` — Build single binary
 

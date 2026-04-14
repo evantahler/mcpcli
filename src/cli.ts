@@ -75,7 +75,7 @@ const knownCommands = new Set(program.commands.map((c) => c.name()));
 const cliArgs = process.argv.slice(2);
 let firstCommand: string | undefined;
 for (let i = 0; i < cliArgs.length; i++) {
-  const a = cliArgs[i];
+  const a = cliArgs[i]!;
   if (
     a === "-c" ||
     a === "--config" ||
