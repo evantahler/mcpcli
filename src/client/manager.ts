@@ -1,554 +1,521 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { ResponseMessage } from "@modelcontextprotocol/sdk/shared/responseMessage.js";
-import {
-  LoggingMessageNotificationSchema,
-  CallToolResultSchema,
-  ElicitRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type {
-  LoggingLevel,
-  ServerCapabilities,
-  CallToolResult,
-  Task,
-  GetTaskResult,
-  ListTasksResult,
-  CancelTaskResult,
+	CallToolResult,
+	CancelTaskResult,
+	GetTaskResult,
+	ListTasksResult,
+	LoggingLevel,
+	ServerCapabilities,
 } from "@modelcontextprotocol/sdk/types.js";
-import { handleElicitation } from "./elicitation.ts";
+import {
+	CallToolResultSchema,
+	ElicitRequestSchema,
+	LoggingMessageNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
-import type {
-  Tool,
-  Resource,
-  Prompt,
-  ServerConfig,
-  ServersFile,
-  AuthFile,
-} from "../config/schemas.ts";
-import { isStdioServer, isHttpServer } from "../config/schemas.ts";
-import { createStdioTransport } from "./stdio.ts";
-import { createHttpTransport } from "./http.ts";
-import { createSseTransport } from "./sse.ts";
-import { McpOAuthProvider } from "./oauth.ts";
+import type { AuthFile, Prompt, Resource, ServerConfig, ServersFile, Tool } from "../config/schemas.ts";
+import { isHttpServer, isStdioServer } from "../config/schemas.ts";
 import { logger } from "../output/logger.ts";
+import { handleElicitation } from "./elicitation.ts";
+import { createHttpTransport } from "./http.ts";
+import { McpOAuthProvider } from "./oauth.ts";
+import { createSseTransport } from "./sse.ts";
+import { createStdioTransport } from "./stdio.ts";
 import { wrapTransportWithTrace } from "./trace.ts";
 
 interface WithServer {
-  server: string;
+	server: string;
 }
 
 export interface ToolWithServer extends WithServer {
-  tool: Tool;
+	tool: Tool;
 }
 
 export interface ResourceWithServer extends WithServer {
-  resource: Resource;
+	resource: Resource;
 }
 
 export interface PromptWithServer extends WithServer {
-  prompt: Prompt;
+	prompt: Prompt;
 }
 
 export interface ServerInfo {
-  version?: { name: string; version: string };
-  capabilities?: ServerCapabilities;
-  instructions?: string;
+	version?: { name: string; version: string };
+	capabilities?: ServerCapabilities;
+	instructions?: string;
 }
 
 export interface ServerError {
-  server: string;
-  message: string;
+	server: string;
+	message: string;
 }
 
 export interface ServerManagerOptions {
-  servers: ServersFile;
-  configDir: string;
-  auth: AuthFile;
-  concurrency?: number;
-  verbose?: boolean;
-  showSecrets?: boolean;
-  timeout?: number; // ms, default 1_800_000 (30 min)
-  maxRetries?: number; // default 3
-  logLevel?: string; // MCP log level, default "warning"
-  json?: boolean; // JSON output mode (for trace formatting)
-  noInteractive?: boolean; // decline elicitation requests
+	servers: ServersFile;
+	configDir: string;
+	auth: AuthFile;
+	concurrency?: number;
+	verbose?: boolean;
+	showSecrets?: boolean;
+	timeout?: number; // ms, default 1_800_000 (30 min)
+	maxRetries?: number; // default 3
+	logLevel?: string; // MCP log level, default "warning"
+	json?: boolean; // JSON output mode (for trace formatting)
+	noInteractive?: boolean; // decline elicitation requests
 }
 
 export class ServerManager {
-  private clients = new Map<string, Client>();
-  private connecting = new Map<string, Promise<Client>>();
-  private transports = new Map<string, Transport>();
-  private oauthProviders = new Map<string, McpOAuthProvider>();
-  private servers: ServersFile;
-  private configDir: string;
-  private auth: AuthFile;
-  private concurrency: number;
-  private verbose: boolean;
-  private showSecrets: boolean;
-  private timeout: number;
-  private maxRetries: number;
-  private logLevel: string;
-  private json: boolean;
-  private noInteractive: boolean;
+	private clients = new Map<string, Client>();
+	private connecting = new Map<string, Promise<Client>>();
+	private transports = new Map<string, Transport>();
+	private oauthProviders = new Map<string, McpOAuthProvider>();
+	private servers: ServersFile;
+	private configDir: string;
+	private auth: AuthFile;
+	private concurrency: number;
+	private verbose: boolean;
+	private showSecrets: boolean;
+	private timeout: number;
+	private maxRetries: number;
+	private logLevel: string;
+	private json: boolean;
+	private noInteractive: boolean;
 
-  constructor(opts: ServerManagerOptions) {
-    this.servers = opts.servers;
-    this.configDir = opts.configDir;
-    this.auth = opts.auth;
-    this.concurrency = opts.concurrency ?? 5;
-    this.verbose = opts.verbose ?? false;
-    this.showSecrets = opts.showSecrets ?? false;
-    this.timeout = opts.timeout ?? 1_800_000;
-    this.maxRetries = opts.maxRetries ?? 3;
-    this.logLevel = opts.logLevel ?? "warning";
-    this.json = opts.json ?? false;
-    this.noInteractive = opts.noInteractive ?? false;
-  }
+	constructor(opts: ServerManagerOptions) {
+		this.servers = opts.servers;
+		this.configDir = opts.configDir;
+		this.auth = opts.auth;
+		this.concurrency = opts.concurrency ?? 5;
+		this.verbose = opts.verbose ?? false;
+		this.showSecrets = opts.showSecrets ?? false;
+		this.timeout = opts.timeout ?? 1_800_000;
+		this.maxRetries = opts.maxRetries ?? 3;
+		this.logLevel = opts.logLevel ?? "warning";
+		this.json = opts.json ?? false;
+		this.noInteractive = opts.noInteractive ?? false;
+	}
 
-  /** Get or create a connected client for a server */
-  async getClient(serverName: string): Promise<Client> {
-    const existing = this.clients.get(serverName);
-    if (existing) return existing;
+	/** Get or create a connected client for a server */
+	async getClient(serverName: string): Promise<Client> {
+		const existing = this.clients.get(serverName);
+		if (existing) return existing;
 
-    // If a connection is already in flight, wait for it instead of opening a second one
-    const inflight = this.connecting.get(serverName);
-    if (inflight) return inflight;
+		// If a connection is already in flight, wait for it instead of opening a second one
+		const inflight = this.connecting.get(serverName);
+		if (inflight) return inflight;
 
-    const config = this.servers.mcpServers[serverName];
-    if (!config) {
-      throw new Error(`Unknown server: "${serverName}"`);
-    }
+		const config = this.servers.mcpServers[serverName];
+		if (!config) {
+			throw new Error(`Unknown server: "${serverName}"`);
+		}
 
-    const connectPromise = (async () => {
-      // Auto-refresh expired OAuth tokens before connecting to HTTP servers.
-      // Only enforce auth if the server has a partial/incomplete auth entry —
-      // servers that don't require OAuth won't have an auth entry at all.
-      if (isHttpServer(config)) {
-        const hasAuthEntry = !!this.auth[serverName];
-        if (hasAuthEntry) {
-          const provider = this.getOrCreateOAuthProvider(serverName);
-          if (!provider.isComplete()) {
-            throw new Error(`Not authenticated with "${serverName}". Run: mcpx auth ${serverName}`);
-          }
-          try {
-            await provider.refreshIfNeeded(config.url);
-          } catch {
-            // If refresh fails, continue — the transport will send the existing token
-          }
-        }
-      }
+		const connectPromise = (async () => {
+			// Auto-refresh expired OAuth tokens before connecting to HTTP servers.
+			// Only enforce auth if the server has a partial/incomplete auth entry —
+			// servers that don't require OAuth won't have an auth entry at all.
+			if (isHttpServer(config)) {
+				const hasAuthEntry = !!this.auth[serverName];
+				if (hasAuthEntry) {
+					const provider = this.getOrCreateOAuthProvider(serverName);
+					if (!provider.isComplete()) {
+						throw new Error(`Not authenticated with "${serverName}". Run: mcpx auth ${serverName}`);
+					}
+					try {
+						await provider.refreshIfNeeded(config.url);
+					} catch {
+						// If refresh fails, continue — the transport will send the existing token
+					}
+				}
+			}
 
-      const rawTransport = this.createTransport(serverName, config);
-      const transport = this.verbose
-        ? wrapTransportWithTrace(rawTransport, { json: this.json, serverName })
-        : rawTransport;
-      this.transports.set(serverName, transport);
+			const rawTransport = this.createTransport(serverName, config);
+			const transport = this.verbose
+				? wrapTransportWithTrace(rawTransport, { json: this.json, serverName })
+				: rawTransport;
+			this.transports.set(serverName, transport);
 
-      let client = this.createClient();
-      try {
-        await this.withTimeout(client.connect(transport), `connect(${serverName})`);
-      } catch (err) {
-        // Auto-fallback: if no explicit transport was set on an HTTP server,
-        // retry with the legacy SSE transport
-        if (isHttpServer(config) && !config.transport) {
-          if (this.verbose) {
-            logger.writeRaw(`Streamable HTTP failed for "${serverName}", trying SSE…\n`);
-          }
-          try {
-            await transport.close?.();
-          } catch {
-            // ignore close errors
-          }
-          const provider = this.getOrCreateOAuthProvider(serverName);
-          const rawSseTransport = createSseTransport({
-            config,
-            authProvider: provider.isComplete() ? provider : undefined,
-            verbose: this.verbose,
-            showSecrets: this.showSecrets,
-          });
-          const sseTransport = this.verbose
-            ? wrapTransportWithTrace(rawSseTransport, { json: this.json, serverName })
-            : rawSseTransport;
-          this.transports.set(serverName, sseTransport);
-          client = this.createClient();
-          await this.withTimeout(client.connect(sseTransport), `connect-sse(${serverName})`);
-        } else {
-          throw err;
-        }
-      }
-      this.setupLogging(serverName, client);
-      this.clients.set(serverName, client);
-      this.connecting.delete(serverName);
+			let client = this.createClient();
+			try {
+				await this.withTimeout(client.connect(transport), `connect(${serverName})`);
+			} catch (err) {
+				// Auto-fallback: if no explicit transport was set on an HTTP server,
+				// retry with the legacy SSE transport
+				if (isHttpServer(config) && !config.transport) {
+					if (this.verbose) {
+						logger.writeRaw(`Streamable HTTP failed for "${serverName}", trying SSE…\n`);
+					}
+					try {
+						await transport.close?.();
+					} catch {
+						// ignore close errors
+					}
+					const provider = this.getOrCreateOAuthProvider(serverName);
+					const rawSseTransport = createSseTransport({
+						config,
+						authProvider: provider.isComplete() ? provider : undefined,
+						verbose: this.verbose,
+						showSecrets: this.showSecrets,
+					});
+					const sseTransport = this.verbose
+						? wrapTransportWithTrace(rawSseTransport, { json: this.json, serverName })
+						: rawSseTransport;
+					this.transports.set(serverName, sseTransport);
+					client = this.createClient();
+					await this.withTimeout(client.connect(sseTransport), `connect-sse(${serverName})`);
+				} else {
+					throw err;
+				}
+			}
+			this.setupLogging(serverName, client);
+			this.clients.set(serverName, client);
+			this.connecting.delete(serverName);
 
-      return client;
-    })().catch((err) => {
-      this.connecting.delete(serverName);
-      throw err;
-    });
+			return client;
+		})().catch((err) => {
+			this.connecting.delete(serverName);
+			throw err;
+		});
 
-    this.connecting.set(serverName, connectPromise);
-    return connectPromise;
-  }
+		this.connecting.set(serverName, connectPromise);
+		return connectPromise;
+	}
 
-  private getOrCreateOAuthProvider(serverName: string): McpOAuthProvider {
-    let provider = this.oauthProviders.get(serverName);
-    if (!provider) {
-      provider = new McpOAuthProvider({
-        serverName,
-        configDir: this.configDir,
-        auth: this.auth,
-      });
-      this.oauthProviders.set(serverName, provider);
-    }
-    return provider;
-  }
+	private getOrCreateOAuthProvider(serverName: string): McpOAuthProvider {
+		let provider = this.oauthProviders.get(serverName);
+		if (!provider) {
+			provider = new McpOAuthProvider({
+				serverName,
+				configDir: this.configDir,
+				auth: this.auth,
+			});
+			this.oauthProviders.set(serverName, provider);
+		}
+		return provider;
+	}
 
-  /** Create a Client with elicitation capabilities and handler registered */
-  private createClient(): Client {
-    const client = new Client(
-      { name: pkg.name, version: pkg.version },
-      { capabilities: { elicitation: { form: {}, url: {} } } },
-    );
-    client.setRequestHandler(ElicitRequestSchema, (request) =>
-      handleElicitation(request, {
-        noInteractive: this.noInteractive,
-        json: this.json,
-      }),
-    );
-    return client;
-  }
+	/** Create a Client with elicitation capabilities and handler registered */
+	private createClient(): Client {
+		const client = new Client(
+			{ name: pkg.name, version: pkg.version },
+			{ capabilities: { elicitation: { form: {}, url: {} } } },
+		);
+		client.setRequestHandler(ElicitRequestSchema, (request) =>
+			handleElicitation(request, {
+				noInteractive: this.noInteractive,
+				json: this.json,
+			}),
+		);
+		return client;
+	}
 
-  /** Subscribe to server log notifications and set the desired log level */
-  private setupLogging(serverName: string, client: Client): void {
-    client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
-      logger.logServerMessage(serverName, notification.params);
-    });
+	/** Subscribe to server log notifications and set the desired log level */
+	private setupLogging(serverName: string, client: Client): void {
+		client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
+			logger.logServerMessage(serverName, notification.params);
+		});
 
-    const capabilities = client.getServerCapabilities();
-    if (capabilities?.logging) {
-      client.setLoggingLevel(this.logLevel as LoggingLevel).catch(() => {
-        // Server may not support setLevel despite declaring logging capability
-      });
-    }
-  }
+		const capabilities = client.getServerCapabilities();
+		if (capabilities?.logging) {
+			client.setLoggingLevel(this.logLevel as LoggingLevel).catch(() => {
+				// Server may not support setLevel despite declaring logging capability
+			});
+		}
+	}
 
-  private createTransport(serverName: string, config: ServerConfig): Transport {
-    if (isStdioServer(config)) {
-      return createStdioTransport(config);
-    }
-    if (isHttpServer(config)) {
-      // Only pass the OAuth provider if the server already has tokens.
-      // Without tokens, passing the provider causes the SDK transport to
-      // auto-trigger the browser OAuth flow on 401, which fails because
-      // there's no callback server running. Users must run `mcpx auth <server>` first.
-      const provider = this.getOrCreateOAuthProvider(serverName);
-      const authProvider = provider.isComplete() ? provider : undefined;
+	private createTransport(serverName: string, config: ServerConfig): Transport {
+		if (isStdioServer(config)) {
+			return createStdioTransport(config);
+		}
+		if (isHttpServer(config)) {
+			// Only pass the OAuth provider if the server already has tokens.
+			// Without tokens, passing the provider causes the SDK transport to
+			// auto-trigger the browser OAuth flow on 401, which fails because
+			// there's no callback server running. Users must run `mcpx auth <server>` first.
+			const provider = this.getOrCreateOAuthProvider(serverName);
+			const authProvider = provider.isComplete() ? provider : undefined;
 
-      if (config.transport === "sse") {
-        return createSseTransport({
-          config,
-          authProvider,
-          verbose: this.verbose,
-          showSecrets: this.showSecrets,
-        });
-      }
-      // Default (including explicit "streamable-http") uses Streamable HTTP.
-      // When no transport is set, getClient() will auto-fallback to SSE on failure.
-      return createHttpTransport({
-        config,
-        authProvider,
-        verbose: this.verbose,
-        showSecrets: this.showSecrets,
-      });
-    }
-    throw new Error("Invalid server config");
-  }
+			if (config.transport === "sse") {
+				return createSseTransport({
+					config,
+					authProvider,
+					verbose: this.verbose,
+					showSecrets: this.showSecrets,
+				});
+			}
+			// Default (including explicit "streamable-http") uses Streamable HTTP.
+			// When no transport is set, getClient() will auto-fallback to SSE on failure.
+			return createHttpTransport({
+				config,
+				authProvider,
+				verbose: this.verbose,
+				showSecrets: this.showSecrets,
+			});
+		}
+		throw new Error("Invalid server config");
+	}
 
-  /** Process all servers in concurrent batches, collecting results and errors. */
-  private async gatherFromServers<T>(
-    fetchFn: (serverName: string) => Promise<T[]>,
-  ): Promise<{ items: T[]; errors: ServerError[] }> {
-    const serverNames = Object.keys(this.servers.mcpServers);
-    const items: T[] = [];
-    const errors: ServerError[] = [];
+	/** Process all servers in concurrent batches, collecting results and errors. */
+	private async gatherFromServers<T>(
+		fetchFn: (serverName: string) => Promise<T[]>,
+	): Promise<{ items: T[]; errors: ServerError[] }> {
+		const serverNames = Object.keys(this.servers.mcpServers);
+		const items: T[] = [];
+		const errors: ServerError[] = [];
 
-    for (let i = 0; i < serverNames.length; i += this.concurrency) {
-      const batch = serverNames.slice(i, i + this.concurrency);
-      const batchResults = await Promise.allSettled(batch.map((name) => fetchFn(name)));
+		for (let i = 0; i < serverNames.length; i += this.concurrency) {
+			const batch = serverNames.slice(i, i + this.concurrency);
+			const batchResults = await Promise.allSettled(batch.map((name) => fetchFn(name)));
 
-      for (let j = 0; j < batchResults.length; j++) {
-        const result = batchResults[j]!;
-        if (result.status === "fulfilled") {
-          items.push(...result.value);
-        } else {
-          const name = batch[j]!;
-          const message =
-            result.reason instanceof Error ? result.reason.message : String(result.reason);
-          errors.push({ server: name, message });
-        }
-      }
-    }
+			for (let j = 0; j < batchResults.length; j++) {
+				const result = batchResults[j]!;
+				if (result.status === "fulfilled") {
+					items.push(...result.value);
+				} else {
+					const name = batch[j]!;
+					const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+					errors.push({ server: name, message });
+				}
+			}
+		}
 
-    return { items, errors };
-  }
+		return { items, errors };
+	}
 
-  /** Race a promise against a timeout */
-  private withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
-    if (this.timeout <= 0) return promise;
-    let timer: ReturnType<typeof setTimeout>;
-    return Promise.race([
-      promise.finally(() => clearTimeout(timer)),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`${label}: timed out after ${this.timeout / 1000}s`)),
-          this.timeout,
-        );
-        timer.unref();
-      }),
-    ]);
-  }
+	/** Race a promise against a timeout */
+	private withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+		if (this.timeout <= 0) return promise;
+		let timer: ReturnType<typeof setTimeout>;
+		return Promise.race([
+			promise.finally(() => clearTimeout(timer)),
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new Error(`${label}: timed out after ${this.timeout / 1000}s`)), this.timeout);
+				timer.unref();
+			}),
+		]);
+	}
 
-  /** Retry a function up to maxRetries times, clearing cached client between attempts */
-  private async withRetry<T>(fn: () => Promise<T>, label: string, serverName?: string): Promise<T> {
-    let lastError: Error | undefined;
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      try {
-        return await fn();
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
-        if (attempt < this.maxRetries && serverName) {
-          // Clear cached client so next attempt reconnects fresh
-          try {
-            await this.clients.get(serverName)?.close();
-          } catch {
-            // ignore close errors
-          }
-          this.clients.delete(serverName);
-          this.connecting.delete(serverName);
-          this.transports.delete(serverName);
-        }
-      }
-    }
-    throw lastError;
-  }
+	/** Retry a function up to maxRetries times, clearing cached client between attempts */
+	private async withRetry<T>(fn: () => Promise<T>, _label: string, serverName?: string): Promise<T> {
+		let lastError: Error | undefined;
+		for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+			try {
+				return await fn();
+			} catch (err) {
+				lastError = err instanceof Error ? err : new Error(String(err));
+				if (attempt < this.maxRetries && serverName) {
+					// Clear cached client so next attempt reconnects fresh
+					try {
+						await this.clients.get(serverName)?.close();
+					} catch {
+						// ignore close errors
+					}
+					this.clients.delete(serverName);
+					this.connecting.delete(serverName);
+					this.transports.delete(serverName);
+				}
+			}
+		}
+		throw lastError;
+	}
 
-  /** Get client, call method with timeout, wrapped in retry logic */
-  private async callWithResilience<T>(
-    serverName: string,
-    label: string,
-    fn: (client: Client) => Promise<T>,
-  ): Promise<T> {
-    return this.withRetry(
-      async () => {
-        const client = await this.getClient(serverName);
-        return this.withTimeout(fn(client), label);
-      },
-      label,
-      serverName,
-    );
-  }
+	/** Get client, call method with timeout, wrapped in retry logic */
+	private async callWithResilience<T>(
+		serverName: string,
+		label: string,
+		fn: (client: Client) => Promise<T>,
+	): Promise<T> {
+		return this.withRetry(
+			async () => {
+				const client = await this.getClient(serverName);
+				return this.withTimeout(fn(client), label);
+			},
+			label,
+			serverName,
+		);
+	}
 
-  /** List tools for a single server, applying allowedTools/disabledTools filters */
-  async listTools(serverName: string): Promise<Tool[]> {
-    return this.callWithResilience(serverName, `listTools(${serverName})`, async (client) => {
-      const result = await client.listTools();
-      const config = this.servers.mcpServers[serverName]!;
-      return filterTools(result.tools, config.allowedTools, config.disabledTools);
-    });
-  }
+	/** List tools for a single server, applying allowedTools/disabledTools filters */
+	async listTools(serverName: string): Promise<Tool[]> {
+		return this.callWithResilience(serverName, `listTools(${serverName})`, async (client) => {
+			const result = await client.listTools();
+			const config = this.servers.mcpServers[serverName]!;
+			return filterTools(result.tools, config.allowedTools, config.disabledTools);
+		});
+	}
 
-  /** List tools across all configured servers */
-  async getAllTools(): Promise<{ tools: ToolWithServer[]; errors: ServerError[] }> {
-    const { items: tools, errors } = await this.gatherFromServers(async (name) => {
-      const serverTools = await this.listTools(name);
-      return serverTools.map((tool) => ({ server: name, tool }));
-    });
-    return { tools, errors };
-  }
+	/** List tools across all configured servers */
+	async getAllTools(): Promise<{ tools: ToolWithServer[]; errors: ServerError[] }> {
+		const { items: tools, errors } = await this.gatherFromServers(async (name) => {
+			const serverTools = await this.listTools(name);
+			return serverTools.map((tool) => ({ server: name, tool }));
+		});
+		return { tools, errors };
+	}
 
-  /** Call a tool on a specific server */
-  async callTool(
-    serverName: string,
-    toolName: string,
-    args: Record<string, unknown> = {},
-  ): Promise<unknown> {
-    return this.callWithResilience(serverName, `callTool(${serverName}/${toolName})`, (client) =>
-      client.callTool({ name: toolName, arguments: args }),
-    );
-  }
+	/** Call a tool on a specific server */
+	async callTool(serverName: string, toolName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+		return this.callWithResilience(serverName, `callTool(${serverName}/${toolName})`, (client) =>
+			client.callTool({ name: toolName, arguments: args }),
+		);
+	}
 
-  /** Get the schema for a specific tool */
-  async getToolSchema(serverName: string, toolName: string): Promise<Tool | undefined> {
-    const tools = await this.listTools(serverName);
-    return tools.find((t) => t.name === toolName);
-  }
+	/** Get the schema for a specific tool */
+	async getToolSchema(serverName: string, toolName: string): Promise<Tool | undefined> {
+		const tools = await this.listTools(serverName);
+		return tools.find((t) => t.name === toolName);
+	}
 
-  /** Get server info (version, capabilities, instructions) */
-  async getServerInfo(serverName: string): Promise<ServerInfo> {
-    const client = await this.getClient(serverName);
-    return {
-      version: client.getServerVersion() as ServerInfo["version"],
-      capabilities: client.getServerCapabilities(),
-      instructions: client.getInstructions(),
-    };
-  }
+	/** Get server info (version, capabilities, instructions) */
+	async getServerInfo(serverName: string): Promise<ServerInfo> {
+		const client = await this.getClient(serverName);
+		return {
+			version: client.getServerVersion() as ServerInfo["version"],
+			capabilities: client.getServerCapabilities(),
+			instructions: client.getInstructions(),
+		};
+	}
 
-  /** List resources for a single server */
-  async listResources(serverName: string): Promise<Resource[]> {
-    return this.callWithResilience(serverName, `listResources(${serverName})`, async (client) => {
-      const result = await client.listResources();
-      return result.resources;
-    });
-  }
+	/** List resources for a single server */
+	async listResources(serverName: string): Promise<Resource[]> {
+		return this.callWithResilience(serverName, `listResources(${serverName})`, async (client) => {
+			const result = await client.listResources();
+			return result.resources;
+		});
+	}
 
-  /** List resources across all configured servers (skips servers without resources capability) */
-  async getAllResources(): Promise<{ resources: ResourceWithServer[]; errors: ServerError[] }> {
-    const { items: resources, errors } = await this.gatherFromServers(async (name) => {
-      const client = await this.getClient(name);
-      if (!client.getServerCapabilities()?.resources) return [];
-      const serverResources = await this.listResources(name);
-      return serverResources.map((resource) => ({ server: name, resource }));
-    });
-    return { resources, errors };
-  }
+	/** List resources across all configured servers (skips servers without resources capability) */
+	async getAllResources(): Promise<{ resources: ResourceWithServer[]; errors: ServerError[] }> {
+		const { items: resources, errors } = await this.gatherFromServers(async (name) => {
+			const client = await this.getClient(name);
+			if (!client.getServerCapabilities()?.resources) return [];
+			const serverResources = await this.listResources(name);
+			return serverResources.map((resource) => ({ server: name, resource }));
+		});
+		return { resources, errors };
+	}
 
-  /** Read a specific resource by URI */
-  async readResource(serverName: string, uri: string): Promise<unknown> {
-    return this.callWithResilience(serverName, `readResource(${serverName}/${uri})`, (client) =>
-      client.readResource({ uri }),
-    );
-  }
+	/** Read a specific resource by URI */
+	async readResource(serverName: string, uri: string): Promise<unknown> {
+		return this.callWithResilience(serverName, `readResource(${serverName}/${uri})`, (client) =>
+			client.readResource({ uri }),
+		);
+	}
 
-  /** List prompts for a single server */
-  async listPrompts(serverName: string): Promise<Prompt[]> {
-    return this.callWithResilience(serverName, `listPrompts(${serverName})`, async (client) => {
-      const result = await client.listPrompts();
-      return result.prompts;
-    });
-  }
+	/** List prompts for a single server */
+	async listPrompts(serverName: string): Promise<Prompt[]> {
+		return this.callWithResilience(serverName, `listPrompts(${serverName})`, async (client) => {
+			const result = await client.listPrompts();
+			return result.prompts;
+		});
+	}
 
-  /** List prompts across all configured servers (skips servers without prompts capability) */
-  async getAllPrompts(): Promise<{ prompts: PromptWithServer[]; errors: ServerError[] }> {
-    const { items: prompts, errors } = await this.gatherFromServers(async (name) => {
-      const client = await this.getClient(name);
-      if (!client.getServerCapabilities()?.prompts) return [];
-      const serverPrompts = await this.listPrompts(name);
-      return serverPrompts.map((prompt) => ({ server: name, prompt }));
-    });
-    return { prompts, errors };
-  }
+	/** List prompts across all configured servers (skips servers without prompts capability) */
+	async getAllPrompts(): Promise<{ prompts: PromptWithServer[]; errors: ServerError[] }> {
+		const { items: prompts, errors } = await this.gatherFromServers(async (name) => {
+			const client = await this.getClient(name);
+			if (!client.getServerCapabilities()?.prompts) return [];
+			const serverPrompts = await this.listPrompts(name);
+			return serverPrompts.map((prompt) => ({ server: name, prompt }));
+		});
+		return { prompts, errors };
+	}
 
-  /** Get a specific prompt by name, optionally with arguments */
-  async getPrompt(
-    serverName: string,
-    name: string,
-    args?: Record<string, string>,
-  ): Promise<unknown> {
-    return this.callWithResilience(serverName, `getPrompt(${serverName}/${name})`, (client) =>
-      client.getPrompt({ name, arguments: args }),
-    );
-  }
+	/** Get a specific prompt by name, optionally with arguments */
+	async getPrompt(serverName: string, name: string, args?: Record<string, string>): Promise<unknown> {
+		return this.callWithResilience(serverName, `getPrompt(${serverName}/${name})`, (client) =>
+			client.getPrompt({ name, arguments: args }),
+		);
+	}
 
-  /** Check if a server supports task-augmented tool calls */
-  async serverSupportsTask(serverName: string): Promise<boolean> {
-    const client = await this.getClient(serverName);
-    const caps = client.getServerCapabilities() as Record<string, unknown> | undefined;
-    const tasks = caps?.tasks as Record<string, unknown> | undefined;
-    const requests = tasks?.requests as Record<string, unknown> | undefined;
-    const tools = requests?.tools as Record<string, unknown> | undefined;
-    return !!tools?.call;
-  }
+	/** Check if a server supports task-augmented tool calls */
+	async serverSupportsTask(serverName: string): Promise<boolean> {
+		const client = await this.getClient(serverName);
+		const caps = client.getServerCapabilities() as Record<string, unknown> | undefined;
+		const tasks = caps?.tasks as Record<string, unknown> | undefined;
+		const requests = tasks?.requests as Record<string, unknown> | undefined;
+		const tools = requests?.tools as Record<string, unknown> | undefined;
+		return !!tools?.call;
+	}
 
-  /** Call a tool with task-augmented streaming, yielding status updates */
-  async *callToolStream(
-    serverName: string,
-    toolName: string,
-    args: Record<string, unknown> = {},
-    taskOptions?: { ttl?: number; signal?: AbortSignal },
-  ): AsyncGenerator<ResponseMessage<CallToolResult>> {
-    const client = await this.getClient(serverName);
-    const stream = client.experimental.tasks.callToolStream(
-      { name: toolName, arguments: args },
-      CallToolResultSchema,
-      {
-        task: { ttl: taskOptions?.ttl },
-        signal: taskOptions?.signal,
-      },
-    );
-    yield* stream;
-  }
+	/** Call a tool with task-augmented streaming, yielding status updates */
+	async *callToolStream(
+		serverName: string,
+		toolName: string,
+		args: Record<string, unknown> = {},
+		taskOptions?: { ttl?: number; signal?: AbortSignal },
+	): AsyncGenerator<ResponseMessage<CallToolResult>> {
+		const client = await this.getClient(serverName);
+		const stream = client.experimental.tasks.callToolStream({ name: toolName, arguments: args }, CallToolResultSchema, {
+			task: { ttl: taskOptions?.ttl },
+			signal: taskOptions?.signal,
+		});
+		yield* stream;
+	}
 
-  /** Get the status of a task */
-  async getTask(serverName: string, taskId: string): Promise<GetTaskResult> {
-    const client = await this.getClient(serverName);
-    return this.withTimeout(
-      client.experimental.tasks.getTask(taskId),
-      `getTask(${serverName}/${taskId})`,
-    );
-  }
+	/** Get the status of a task */
+	async getTask(serverName: string, taskId: string): Promise<GetTaskResult> {
+		const client = await this.getClient(serverName);
+		return this.withTimeout(client.experimental.tasks.getTask(taskId), `getTask(${serverName}/${taskId})`);
+	}
 
-  /** Retrieve the result of a completed task */
-  async getTaskResult(serverName: string, taskId: string): Promise<CallToolResult> {
-    const client = await this.getClient(serverName);
-    return this.withTimeout(
-      client.experimental.tasks.getTaskResult(taskId, CallToolResultSchema),
-      `getTaskResult(${serverName}/${taskId})`,
-    ) as Promise<CallToolResult>;
-  }
+	/** Retrieve the result of a completed task */
+	async getTaskResult(serverName: string, taskId: string): Promise<CallToolResult> {
+		const client = await this.getClient(serverName);
+		return this.withTimeout(
+			client.experimental.tasks.getTaskResult(taskId, CallToolResultSchema),
+			`getTaskResult(${serverName}/${taskId})`,
+		) as Promise<CallToolResult>;
+	}
 
-  /** List tasks on a server */
-  async listTasks(serverName: string, cursor?: string): Promise<ListTasksResult> {
-    const client = await this.getClient(serverName);
-    return this.withTimeout(
-      client.experimental.tasks.listTasks(cursor),
-      `listTasks(${serverName})`,
-    );
-  }
+	/** List tasks on a server */
+	async listTasks(serverName: string, cursor?: string): Promise<ListTasksResult> {
+		const client = await this.getClient(serverName);
+		return this.withTimeout(client.experimental.tasks.listTasks(cursor), `listTasks(${serverName})`);
+	}
 
-  /** Cancel a running task */
-  async cancelTask(serverName: string, taskId: string): Promise<CancelTaskResult> {
-    const client = await this.getClient(serverName);
-    return this.withTimeout(
-      client.experimental.tasks.cancelTask(taskId),
-      `cancelTask(${serverName}/${taskId})`,
-    );
-  }
+	/** Cancel a running task */
+	async cancelTask(serverName: string, taskId: string): Promise<CancelTaskResult> {
+		const client = await this.getClient(serverName);
+		return this.withTimeout(client.experimental.tasks.cancelTask(taskId), `cancelTask(${serverName}/${taskId})`);
+	}
 
-  /** Get all server names */
-  getServerNames(): string[] {
-    return Object.keys(this.servers.mcpServers);
-  }
+	/** Get all server names */
+	getServerNames(): string[] {
+		return Object.keys(this.servers.mcpServers);
+	}
 
-  /** Disconnect all clients */
-  async close(): Promise<void> {
-    const closePromises = [...this.clients.entries()].map(async ([name, client]) => {
-      try {
-        await client.close();
-      } catch {
-        // Ignore close errors
-      }
-      this.clients.delete(name);
-      this.transports.delete(name);
-    });
-    await Promise.allSettled(closePromises);
-    this.connecting.clear();
-  }
+	/** Disconnect all clients */
+	async close(): Promise<void> {
+		const closePromises = [...this.clients.entries()].map(async ([name, client]) => {
+			try {
+				await client.close();
+			} catch {
+				// Ignore close errors
+			}
+			this.clients.delete(name);
+			this.transports.delete(name);
+		});
+		await Promise.allSettled(closePromises);
+		this.connecting.clear();
+	}
 }
 
 /** Apply allowedTools/disabledTools glob filters to a tool list */
 function filterTools(tools: Tool[], allowedTools?: string[], disabledTools?: string[]): Tool[] {
-  let filtered = tools;
+	let filtered = tools;
 
-  if (allowedTools && allowedTools.length > 0) {
-    const isAllowed = picomatch(allowedTools);
-    filtered = filtered.filter((t) => isAllowed(t.name));
-  }
+	if (allowedTools && allowedTools.length > 0) {
+		const isAllowed = picomatch(allowedTools);
+		filtered = filtered.filter((t) => isAllowed(t.name));
+	}
 
-  if (disabledTools && disabledTools.length > 0) {
-    const isDisabled = picomatch(disabledTools);
-    filtered = filtered.filter((t) => !isDisabled(t.name));
-  }
+	if (disabledTools && disabledTools.length > 0) {
+		const isDisabled = picomatch(disabledTools);
+		filtered = filtered.filter((t) => !isDisabled(t.name));
+	}
 
-  return filtered;
+	return filtered;
 }

@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec } from "node:child_process";
 
 /**
  * Open a URL in the default browser (macOS/Windows/Linux).
@@ -6,19 +6,19 @@ import { exec } from "child_process";
  * (e.g., headless servers, Docker containers).
  */
 export function openBrowser(url: string): Promise<void> {
-  const cmd =
-    process.platform === "darwin"
-      ? `open "${url}"`
-      : process.platform === "win32"
-        ? `start "${url}"`
-        : `xdg-open "${url}"`;
+	const cmd =
+		process.platform === "darwin"
+			? `open "${url}"`
+			: process.platform === "win32"
+				? `start "${url}"`
+				: `xdg-open "${url}"`;
 
-  return new Promise((resolve) => {
-    exec(cmd, (err) => {
-      if (err) {
-        process.stderr.write(`Could not open browser. Please visit:\n  ${url}\n`);
-      }
-      resolve();
-    });
-  });
+	return new Promise((resolve) => {
+		exec(cmd, (err) => {
+			if (err) {
+				process.stderr.write(`Could not open browser. Please visit:\n  ${url}\n`);
+			}
+			resolve();
+		});
+	});
 }

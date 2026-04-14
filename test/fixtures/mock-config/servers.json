@@ -1,8 +1,8 @@
 {
-  "mcpServers": {
-    "mock": {
-      "command": "bun",
-      "args": ["run", "test/fixtures/mock-server.ts"]
-    }
-  }
+	"mcpServers": {
+		"mock": {
+			"command": "bun",
+			"args": ["run", "test/fixtures/mock-server.ts"]
+		}
+	}
 }

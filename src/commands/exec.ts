@@ -1,241 +1,237 @@
 import type { Command } from "commander";
+import type { ServerManager } from "../client/manager.ts";
+import { DEFAULTS } from "../constants.ts";
 import { getContext } from "../context.ts";
+import { parseJsonArgs, readStdin } from "../lib/input.ts";
 import {
-  formatCallResult,
-  formatError,
-  formatServerTools,
-  formatTaskCreated,
-  formatValidationErrors,
+	formatCallResult,
+	formatError,
+	formatServerTools,
+	formatTaskCreated,
+	formatValidationErrors,
 } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
 import { validateToolInput } from "../validation/schema.ts";
-import { parseJsonArgs, readStdin } from "../lib/input.ts";
-import { DEFAULTS } from "../constants.ts";
-import type { ServerManager } from "../client/manager.ts";
 
 type ResolvedArgs =
-  | { mode: "list-tools"; server: string }
-  | { mode: "call-tool"; server: string; tool: string; argsStr: string | undefined };
+	| { mode: "list-tools"; server: string }
+	| { mode: "call-tool"; server: string; tool: string; argsStr: string | undefined };
 
 /**
  * Resolve the positional args into either list-tools or call-tool mode.
  * Supports both `exec <server> <tool> [args]` and `exec <tool> [args]`.
  */
 async function resolveExecArgs(
-  manager: ServerManager,
-  first: string,
-  second: string | undefined,
-  third: string | undefined,
+	manager: ServerManager,
+	first: string,
+	second: string | undefined,
+	third: string | undefined,
 ): Promise<ResolvedArgs> {
-  const serverNames = manager.getServerNames();
-  const isServer = serverNames.includes(first);
+	const serverNames = manager.getServerNames();
+	const isServer = serverNames.includes(first);
 
-  if (isServer) {
-    // Traditional form: exec <server> [tool] [args]
-    if (!second) {
-      return { mode: "list-tools", server: first };
-    }
+	if (isServer) {
+		// Traditional form: exec <server> [tool] [args]
+		if (!second) {
+			return { mode: "list-tools", server: first };
+		}
 
-    // Validate the tool exists on the specified server
-    const serverTools = await manager.listTools(first);
-    const toolExists = serverTools.some((t) => t.name === second);
+		// Validate the tool exists on the specified server
+		const serverTools = await manager.listTools(first);
+		const toolExists = serverTools.some((t) => t.name === second);
 
-    if (!toolExists) {
-      const { tools } = await manager.getAllTools();
-      const matches = tools.filter((t) => t.tool.name === second);
+		if (!toolExists) {
+			const { tools } = await manager.getAllTools();
+			const matches = tools.filter((t) => t.tool.name === second);
 
-      if (matches.length === 1) {
-        throw new Error(
-          `Tool "${second}" not found on server "${first}". Did you mean:\n  mcpx exec ${matches[0]!.server} ${second}`,
-        );
-      } else if (matches.length > 1) {
-        const servers = matches.map((m) => m.server).join(", ");
-        throw new Error(
-          `Tool "${second}" not found on server "${first}". Found on: ${servers}\nUsage: mcpx exec <server> ${second} [args]`,
-        );
-      } else {
-        throw new Error(
-          `Tool "${second}" not found on server "${first}". Run "mcpx search ${second}" to find similar tools.`,
-        );
-      }
-    }
+			if (matches.length === 1) {
+				throw new Error(
+					`Tool "${second}" not found on server "${first}". Did you mean:\n  mcpx exec ${matches[0]?.server} ${second}`,
+				);
+			} else if (matches.length > 1) {
+				const servers = matches.map((m) => m.server).join(", ");
+				throw new Error(
+					`Tool "${second}" not found on server "${first}". Found on: ${servers}\nUsage: mcpx exec <server> ${second} [args]`,
+				);
+			} else {
+				throw new Error(
+					`Tool "${second}" not found on server "${first}". Run "mcpx search ${second}" to find similar tools.`,
+				);
+			}
+		}
 
-    return { mode: "call-tool", server: first, tool: second, argsStr: third };
-  }
+		return { mode: "call-tool", server: first, tool: second, argsStr: third };
+	}
 
-  // Not a server name — treat first as a tool name
-  const toolName = first;
-  const { tools } = await manager.getAllTools();
-  const matches = tools.filter((t) => t.tool.name === toolName);
+	// Not a server name — treat first as a tool name
+	const toolName = first;
+	const { tools } = await manager.getAllTools();
+	const matches = tools.filter((t) => t.tool.name === toolName);
 
-  if (matches.length === 0) {
-    throw new Error(
-      `Unknown server or tool "${first}". Run "mcpx search ${first}" to find similar tools.`,
-    );
-  }
+	if (matches.length === 0) {
+		throw new Error(`Unknown server or tool "${first}". Run "mcpx search ${first}" to find similar tools.`);
+	}
 
-  if (matches.length > 1) {
-    const servers = matches.map((m) => m.server).join(", ");
-    throw new Error(
-      `Ambiguous tool "${toolName}" — found on multiple servers: ${servers}\nSpecify the server: mcpx exec <server> ${toolName} [args]`,
-    );
-  }
+	if (matches.length > 1) {
+		const servers = matches.map((m) => m.server).join(", ");
+		throw new Error(
+			`Ambiguous tool "${toolName}" — found on multiple servers: ${servers}\nSpecify the server: mcpx exec <server> ${toolName} [args]`,
+		);
+	}
 
-  return { mode: "call-tool", server: matches[0]!.server, tool: toolName, argsStr: second };
+	return { mode: "call-tool", server: matches[0]!.server, tool: toolName, argsStr: second };
 }
 
 export function registerExecCommand(program: Command) {
-  program
-    .command("exec <first> [second] [third]")
-    .description("execute a tool (server is optional if tool name is unambiguous)")
-    .option("-f, --file <path>", "read JSON args from a file")
-    .option("--no-wait", "return task handle immediately without waiting for completion")
-    .option("--ttl <ms>", "task TTL in milliseconds", String(DEFAULTS.TASK_TTL_MS))
-    .action(
-      async (
-        first: string,
-        second: string | undefined,
-        third: string | undefined,
-        options: { file?: string; wait: boolean; ttl: string },
-      ) => {
-        const { manager, formatOptions } = await getContext(program);
+	program
+		.command("exec <first> [second] [third]")
+		.description("execute a tool (server is optional if tool name is unambiguous)")
+		.option("-f, --file <path>", "read JSON args from a file")
+		.option("--no-wait", "return task handle immediately without waiting for completion")
+		.option("--ttl <ms>", "task TTL in milliseconds", String(DEFAULTS.TASK_TTL_MS))
+		.action(
+			async (
+				first: string,
+				second: string | undefined,
+				third: string | undefined,
+				options: { file?: string; wait: boolean; ttl: string },
+			) => {
+				const { manager, formatOptions } = await getContext(program);
 
-        let resolved: ResolvedArgs;
-        try {
-          resolved = await resolveExecArgs(manager, first, second, third);
-        } catch (err) {
-          console.error(formatError(String(err), formatOptions));
-          await manager.close();
-          process.exit(1);
-        }
+				let resolved: ResolvedArgs;
+				try {
+					resolved = await resolveExecArgs(manager, first, second, third);
+				} catch (err) {
+					console.error(formatError(String(err), formatOptions));
+					await manager.close();
+					process.exit(1);
+				}
 
-        if (resolved.mode === "list-tools") {
-          try {
-            const tools = await manager.listTools(resolved.server);
-            console.log(formatServerTools(resolved.server, tools, formatOptions));
-          } catch (err) {
-            console.error(formatError(String(err), formatOptions));
-            process.exit(1);
-          } finally {
-            await manager.close();
-          }
-          return;
-        }
+				if (resolved.mode === "list-tools") {
+					try {
+						const tools = await manager.listTools(resolved.server);
+						console.log(formatServerTools(resolved.server, tools, formatOptions));
+					} catch (err) {
+						console.error(formatError(String(err), formatOptions));
+						process.exit(1);
+					} finally {
+						await manager.close();
+					}
+					return;
+				}
 
-        const { server, tool, argsStr } = resolved;
+				const { server, tool, argsStr } = resolved;
 
-        try {
-          // Error if both --file and positional arg provided
-          if (options.file && argsStr) {
-            throw new Error("Cannot specify both --file and inline JSON args");
-          }
+				try {
+					// Error if both --file and positional arg provided
+					if (options.file && argsStr) {
+						throw new Error("Cannot specify both --file and inline JSON args");
+					}
 
-          // Parse args from: --file > positional arg > stdin > empty
-          let args: Record<string, unknown> = {};
+					// Parse args from: --file > positional arg > stdin > empty
+					let args: Record<string, unknown> = {};
 
-          if (options.file) {
-            const file = Bun.file(options.file);
-            if (!(await file.exists())) {
-              throw new Error(`File not found: ${options.file}`);
-            }
-            const content = await file.text();
-            args = parseJsonArgs(content);
-          } else if (argsStr) {
-            args = parseJsonArgs(argsStr);
-          } else if (!process.stdin.isTTY) {
-            // Read from stdin
-            const stdin = await readStdin();
-            if (stdin.trim()) {
-              args = parseJsonArgs(stdin);
-            }
-          }
+					if (options.file) {
+						const file = Bun.file(options.file);
+						if (!(await file.exists())) {
+							throw new Error(`File not found: ${options.file}`);
+						}
+						const content = await file.text();
+						args = parseJsonArgs(content);
+					} else if (argsStr) {
+						args = parseJsonArgs(argsStr);
+					} else if (!process.stdin.isTTY) {
+						// Read from stdin
+						const stdin = await readStdin();
+						if (stdin.trim()) {
+							args = parseJsonArgs(stdin);
+						}
+					}
 
-          // Validate args against tool inputSchema before calling
-          const toolSchema = await manager.getToolSchema(server, tool);
-          if (toolSchema) {
-            const validation = validateToolInput(server, toolSchema, args);
-            if (!validation.valid) {
-              console.error(formatValidationErrors(server, tool, validation.errors, formatOptions));
-              process.exit(1);
-            }
-          }
+					// Validate args against tool inputSchema before calling
+					const toolSchema = await manager.getToolSchema(server, tool);
+					if (toolSchema) {
+						const validation = validateToolInput(server, toolSchema, args);
+						if (!validation.valid) {
+							console.error(formatValidationErrors(server, tool, validation.errors, formatOptions));
+							process.exit(1);
+						}
+					}
 
-          // Check if tool supports task-augmented execution
-          const taskSupport = (toolSchema as Record<string, unknown> | undefined)?.execution as
-            | { taskSupport?: string }
-            | undefined;
-          const supportsTask = await manager.serverSupportsTask(server);
-          const useTask =
-            supportsTask &&
-            taskSupport?.taskSupport !== undefined &&
-            taskSupport.taskSupport !== "forbidden";
+					// Check if tool supports task-augmented execution
+					const taskSupport = (toolSchema as Record<string, unknown> | undefined)?.execution as
+						| { taskSupport?: string }
+						| undefined;
+					const supportsTask = await manager.serverSupportsTask(server);
+					const useTask =
+						supportsTask && taskSupport?.taskSupport !== undefined && taskSupport.taskSupport !== "forbidden";
 
-          if (useTask) {
-            const abortController = new AbortController();
-            let currentTaskId: string | undefined;
+					if (useTask) {
+						const abortController = new AbortController();
+						let currentTaskId: string | undefined;
 
-            // Graceful Ctrl+C: cancel the task before exiting
-            const sigintHandler = async () => {
-              abortController.abort();
-              if (currentTaskId) {
-                try {
-                  await manager.cancelTask(server, currentTaskId);
-                } catch {
-                  // best effort
-                }
-              }
-              await manager.close();
-              process.exit(130);
-            };
-            process.on("SIGINT", sigintHandler);
+						// Graceful Ctrl+C: cancel the task before exiting
+						const sigintHandler = async () => {
+							abortController.abort();
+							if (currentTaskId) {
+								try {
+									await manager.cancelTask(server, currentTaskId);
+								} catch {
+									// best effort
+								}
+							}
+							await manager.close();
+							process.exit(130);
+						};
+						process.on("SIGINT", sigintHandler);
 
-            const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
-            try {
-              const stream = manager.callToolStream(server, tool, args, {
-                ttl: parseInt(options.ttl, 10),
-                signal: abortController.signal,
-              });
+						const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
+						try {
+							const stream = manager.callToolStream(server, tool, args, {
+								ttl: parseInt(options.ttl, 10),
+								signal: abortController.signal,
+							});
 
-              for await (const message of stream) {
-                switch (message.type) {
-                  case "taskCreated":
-                    currentTaskId = message.task.taskId;
-                    if (!options.wait) {
-                      // --no-wait: output the task handle and exit
-                      spinner.stop();
-                      console.log(formatTaskCreated(message.task, formatOptions));
-                      return;
-                    }
-                    spinner.update(`Task ${message.task.taskId} (${message.task.status})...`);
-                    break;
-                  case "taskStatus":
-                    spinner.update(`Task ${message.task.taskId} (${message.task.status})...`);
-                    break;
-                  case "result":
-                    spinner.stop();
-                    console.log(formatCallResult(message.result, formatOptions));
-                    return;
-                  case "error":
-                    spinner.error("Task failed");
-                    throw message.error;
-                }
-              }
-            } finally {
-              process.removeListener("SIGINT", sigintHandler);
-            }
-          } else {
-            // Standard synchronous tool call
-            const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
-            const result = await manager.callTool(server, tool, args);
-            spinner.stop();
-            console.log(formatCallResult(result, formatOptions));
-          }
-        } catch (err) {
-          console.error(formatError(String(err), formatOptions));
-          process.exit(1);
-        } finally {
-          await manager.close();
-        }
-      },
-    );
+							for await (const message of stream) {
+								switch (message.type) {
+									case "taskCreated":
+										currentTaskId = message.task.taskId;
+										if (!options.wait) {
+											// --no-wait: output the task handle and exit
+											spinner.stop();
+											console.log(formatTaskCreated(message.task, formatOptions));
+											return;
+										}
+										spinner.update(`Task ${message.task.taskId} (${message.task.status})...`);
+										break;
+									case "taskStatus":
+										spinner.update(`Task ${message.task.taskId} (${message.task.status})...`);
+										break;
+									case "result":
+										spinner.stop();
+										console.log(formatCallResult(message.result, formatOptions));
+										return;
+									case "error":
+										spinner.error("Task failed");
+										throw message.error;
+								}
+							}
+						} finally {
+							process.removeListener("SIGINT", sigintHandler);
+						}
+					} else {
+						// Standard synchronous tool call
+						const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
+						const result = await manager.callTool(server, tool, args);
+						spinner.stop();
+						console.log(formatCallResult(result, formatOptions));
+					}
+				} catch (err) {
+					console.error(formatError(String(err), formatOptions));
+					process.exit(1);
+				} finally {
+					await manager.close();
+				}
+			},
+		);
 }

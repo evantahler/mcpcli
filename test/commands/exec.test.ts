@@ -1,284 +1,274 @@
-import { describe, test, expect, afterAll } from "bun:test";
-import { join } from "path";
-import { mkdtempSync, writeFileSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { run, runWithStdin, runMultiServer, CLI, CONFIG } from "../helpers/run.ts";
+import { afterAll, describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { CLI, CONFIG, run, runMultiServer, runWithStdin } from "../helpers/run.ts";
 
 const tempDir = mkdtempSync(join(tmpdir(), "mcpx-test-"));
 afterAll(() => rmSync(tempDir, { recursive: true, force: true }));
 
 describe("mcpx exec", () => {
-  test("calls a tool with inline JSON args", async () => {
-    const proc = run("exec", "mock", "echo", '{"message": "hello world"}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("calls a tool with inline JSON args", async () => {
+		const proc = run("exec", "mock", "echo", '{"message": "hello world"}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("hello world");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("hello world");
+	});
 
-  test("calls add tool", async () => {
-    const proc = run("exec", "mock", "add", '{"a": 10, "b": 20}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("calls add tool", async () => {
+		const proc = run("exec", "mock", "add", '{"a": 10, "b": 20}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe(30);
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe(30);
+	});
 
-  test("reads args from stdin", async () => {
-    const proc = runWithStdin('{"message": "from stdin"}', "exec", "mock", "echo");
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("reads args from stdin", async () => {
+		const proc = runWithStdin('{"message": "from stdin"}', "exec", "mock", "echo");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("from stdin");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("from stdin");
+	});
 
-  test("reads args piped from a file via stdin", async () => {
-    const filePath = join(tempDir, "pipe-args.json");
-    writeFileSync(filePath, '{"message": "piped from file"}');
-    const proc = Bun.spawn(
-      ["bash", "-c", `cat ${filePath} | bun run ${CLI} -c ${CONFIG} exec mock echo`],
-      {
-        stdout: "pipe",
-        stderr: "pipe",
-        cwd: join(import.meta.dir, "../.."),
-      },
-    );
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("reads args piped from a file via stdin", async () => {
+		const filePath = join(tempDir, "pipe-args.json");
+		writeFileSync(filePath, '{"message": "piped from file"}');
+		const proc = Bun.spawn(["bash", "-c", `cat ${filePath} | bun run ${CLI} -c ${CONFIG} exec mock echo`], {
+			stdout: "pipe",
+			stderr: "pipe",
+			cwd: join(import.meta.dir, "../.."),
+		});
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("piped from file");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("piped from file");
+	});
 
-  test("calls a tool with no args (no {} required)", async () => {
-    const proc = run("exec", "mock", "noop");
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("calls a tool with no args (no {} required)", async () => {
+		const proc = run("exec", "mock", "noop");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("ok");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("ok");
+	});
 
-  test("errors on invalid JSON", async () => {
-    const proc = run("exec", "mock", "echo", "not json");
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Invalid JSON");
-  });
+	test("errors on invalid JSON", async () => {
+		const proc = run("exec", "mock", "echo", "not json");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Invalid JSON");
+	});
 
-  test("errors on unknown server", async () => {
-    const proc = run("exec", "nonexistent", "tool", "{}");
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Unknown server");
-  });
+	test("errors on unknown server", async () => {
+		const proc = run("exec", "nonexistent", "tool", "{}");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Unknown server");
+	});
 
-  test("validates missing required field", async () => {
-    const proc = run("exec", "mock", "echo", "{}");
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("message");
-  });
+	test("validates missing required field", async () => {
+		const proc = run("exec", "mock", "echo", "{}");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("message");
+	});
 
-  test("validates wrong type", async () => {
-    const proc = run("exec", "mock", "add", '{"a": "not a number", "b": 1}');
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("number");
-  });
+	test("validates wrong type", async () => {
+		const proc = run("exec", "mock", "add", '{"a": "not a number", "b": 1}');
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("number");
+	});
 
-  test("passes validation with correct args", async () => {
-    const proc = run("exec", "mock", "echo", '{"message": "valid"}');
-    const exitCode = await proc.exited;
-    expect(exitCode).toBe(0);
-  });
+	test("passes validation with correct args", async () => {
+		const proc = run("exec", "mock", "echo", '{"message": "valid"}');
+		const exitCode = await proc.exited;
+		expect(exitCode).toBe(0);
+	});
 
-  test("reads args from --file", async () => {
-    const filePath = join(tempDir, "args.json");
-    writeFileSync(filePath, '{"message": "from file"}');
-    const proc = run("exec", "mock", "echo", "-f", filePath);
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("reads args from --file", async () => {
+		const filePath = join(tempDir, "args.json");
+		writeFileSync(filePath, '{"message": "from file"}');
+		const proc = run("exec", "mock", "echo", "-f", filePath);
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("from file");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("from file");
+	});
 
-  test("errors when both --file and inline args provided", async () => {
-    const filePath = join(tempDir, "args2.json");
-    writeFileSync(filePath, '{"message": "from file"}');
-    const proc = run("exec", "mock", "echo", '{"message": "inline"}', "-f", filePath);
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Cannot specify both --file and inline JSON args");
-  });
+	test("errors when both --file and inline args provided", async () => {
+		const filePath = join(tempDir, "args2.json");
+		writeFileSync(filePath, '{"message": "from file"}');
+		const proc = run("exec", "mock", "echo", '{"message": "inline"}', "-f", filePath);
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Cannot specify both --file and inline JSON args");
+	});
 
-  test("errors when --file path does not exist", async () => {
-    const proc = run("exec", "mock", "echo", "-f", "/tmp/nonexistent-mcpx-test.json");
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("File not found");
-  });
+	test("errors when --file path does not exist", async () => {
+		const proc = run("exec", "mock", "echo", "-f", "/tmp/nonexistent-mcpx-test.json");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("File not found");
+	});
 
-  test("--format markdown renders text through markdown formatter", async () => {
-    const proc = run(
-      "--format",
-      "markdown",
-      "exec",
-      "mock",
-      "echo",
-      '{"message": "**bold** text"}',
-    );
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
-    // Should contain the text content (possibly with ANSI formatting)
-    expect(stdout).toContain("bold");
-    expect(stdout).toContain("text");
-  });
+	test("--format markdown renders text through markdown formatter", async () => {
+		const proc = run("--format", "markdown", "exec", "mock", "echo", '{"message": "**bold** text"}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
+		// Should contain the text content (possibly with ANSI formatting)
+		expect(stdout).toContain("bold");
+		expect(stdout).toContain("text");
+	});
 
-  test("--format json matches default piped behavior", async () => {
-    const defaultProc = run("exec", "mock", "echo", '{"message": "test"}');
-    const jsonProc = run("--format", "json", "exec", "mock", "echo", '{"message": "test"}');
-    const [defaultExit, jsonExit] = await Promise.all([defaultProc.exited, jsonProc.exited]);
-    const defaultStdout = await new Response(defaultProc.stdout).text();
-    const jsonStdout = await new Response(jsonProc.stdout).text();
-    expect(defaultExit).toBe(0);
-    expect(jsonExit).toBe(0);
-    expect(jsonStdout.trim()).toBe(defaultStdout.trim());
-  });
+	test("--format json matches default piped behavior", async () => {
+		const defaultProc = run("exec", "mock", "echo", '{"message": "test"}');
+		const jsonProc = run("--format", "json", "exec", "mock", "echo", '{"message": "test"}');
+		const [defaultExit, jsonExit] = await Promise.all([defaultProc.exited, jsonProc.exited]);
+		const defaultStdout = await new Response(defaultProc.stdout).text();
+		const jsonStdout = await new Response(jsonProc.stdout).text();
+		expect(defaultExit).toBe(0);
+		expect(jsonExit).toBe(0);
+		expect(jsonStdout.trim()).toBe(defaultStdout.trim());
+	});
 
-  test("invalid --format value exits with error", async () => {
-    const proc = run("--format", "csv", "exec", "mock", "echo", '{"message": "test"}');
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Invalid format");
-  });
+	test("invalid --format value exits with error", async () => {
+		const proc = run("--format", "csv", "exec", "mock", "echo", '{"message": "test"}');
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Invalid format");
+	});
 
-  test("--no-interactive declines elicitation requests", async () => {
-    const proc = run("--no-interactive", "exec", "mock", "confirm_action", '{"action": "deploy"}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("--no-interactive declines elicitation requests", async () => {
+		const proc = run("--no-interactive", "exec", "mock", "confirm_action", '{"action": "deploy"}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toContain("declined");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toContain("declined");
+	});
 });
 
 describe("mcpx exec (server-optional)", () => {
-  test("resolves tool without server when unambiguous", async () => {
-    const proc = run("exec", "echo", '{"message": "no server"}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("resolves tool without server when unambiguous", async () => {
+		const proc = run("exec", "echo", '{"message": "no server"}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("no server");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("no server");
+	});
 
-  test("resolves add tool without server", async () => {
-    const proc = run("exec", "add", '{"a": 3, "b": 7}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("resolves add tool without server", async () => {
+		const proc = run("exec", "add", '{"a": 3, "b": 7}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe(10);
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe(10);
+	});
 
-  test("errors on unknown tool name", async () => {
-    const proc = run("exec", "nonexistent_tool");
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Unknown server or tool");
-    expect(stderr).toContain("mcpx search");
-  });
+	test("errors on unknown tool name", async () => {
+		const proc = run("exec", "nonexistent_tool");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Unknown server or tool");
+		expect(stderr).toContain("mcpx search");
+	});
 
-  test("backwards compat: server + tool still works", async () => {
-    const proc = run("exec", "mock", "echo", '{"message": "compat"}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("backwards compat: server + tool still works", async () => {
+		const proc = run("exec", "mock", "echo", '{"message": "compat"}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("compat");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("compat");
+	});
 
-  test("backwards compat: server-only lists tools", async () => {
-    const proc = run("exec", "mock");
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("echo");
-    expect(stdout).toContain("add");
-  });
+	test("backwards compat: server-only lists tools", async () => {
+		const proc = run("exec", "mock");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
+		expect(stdout).toContain("echo");
+		expect(stdout).toContain("add");
+	});
 });
 
 describe("mcpx exec (multi-server disambiguation)", () => {
-  test("errors on ambiguous tool across servers", async () => {
-    const proc = runMultiServer("exec", "echo", '{"message": "hi"}');
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Ambiguous tool");
-    expect(stderr).toContain("mock");
-    expect(stderr).toContain("mock2");
-  });
+	test("errors on ambiguous tool across servers", async () => {
+		const proc = runMultiServer("exec", "echo", '{"message": "hi"}');
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Ambiguous tool");
+		expect(stderr).toContain("mock");
+		expect(stderr).toContain("mock2");
+	});
 
-  test("resolves unique tool across servers", async () => {
-    const proc = runMultiServer("exec", "multiply", '{"a": 4, "b": 5}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("resolves unique tool across servers", async () => {
+		const proc = runMultiServer("exec", "multiply", '{"a": 4, "b": 5}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe(20);
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe(20);
+	});
 
-  test("errors when tool not found on specified server, suggests correct server", async () => {
-    // multiply only exists on mock2, not mock
-    const proc = runMultiServer("exec", "mock", "multiply", '{"a": 2, "b": 3}');
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("not found on server");
-    expect(stderr).toContain("mock2");
-  });
+	test("errors when tool not found on specified server, suggests correct server", async () => {
+		// multiply only exists on mock2, not mock
+		const proc = runMultiServer("exec", "mock", "multiply", '{"a": 2, "b": 3}');
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("not found on server");
+		expect(stderr).toContain("mock2");
+	});
 
-  test("errors when tool not found on any server with explicit server", async () => {
-    const proc = run("exec", "mock", "nonexistent_tool");
-    const exitCode = await proc.exited;
-    const stderr = await new Response(proc.stderr).text();
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("not found on server");
-    expect(stderr).toContain("mcpx search");
-  });
+	test("errors when tool not found on any server with explicit server", async () => {
+		const proc = run("exec", "mock", "nonexistent_tool");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("not found on server");
+		expect(stderr).toContain("mcpx search");
+	});
 
-  test("server + tool still works with multi-server config", async () => {
-    const proc = runMultiServer("exec", "mock", "echo", '{"message": "explicit"}');
-    const exitCode = await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    expect(exitCode).toBe(0);
+	test("server + tool still works with multi-server config", async () => {
+		const proc = runMultiServer("exec", "mock", "echo", '{"message": "explicit"}');
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
 
-    const result = JSON.parse(stdout);
-    expect(result.content[0].text).toBe("explicit");
-  });
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("explicit");
+	});
 });
