@@ -138,20 +138,24 @@ Server log messages (`notifications/message`) are displayed on stderr with level
 Add and remove servers from the CLI — no manual JSON editing required.
 
 ```bash
-# Add a stdio server
+# Add a stdio server (anything after `--` is passed to the command verbatim)
+mcpx add filesystem --command npx -- -y @modelcontextprotocol/server-filesystem /tmp
+
+# Equivalent forms: repeatable --args, or a single comma-separated --args
+mcpx add filesystem --command npx --args -y --args @modelcontextprotocol/server-filesystem --args /tmp
 mcpx add filesystem --command npx --args "-y,@modelcontextprotocol/server-filesystem,/tmp"
 
 # Add an HTTP server with headers
 mcpx add my-api --url https://api.example.com/mcp --header "Authorization:Bearer tok123"
 
-# Add with tool filtering
-mcpx add github --url https://mcp.github.com --allowed-tools "search_*,get_*"
+# Add with tool filtering (repeatable, or comma-separated)
+mcpx add github --url https://mcp.github.com --allowed-tools "search_*" --allowed-tools "get_*"
 
 # Add a legacy SSE server (explicit transport)
 mcpx add legacy-api --url https://api.example.com/sse --transport sse
 
-# Add with environment variables
-mcpx add my-server --command node --args "server.js" --env "API_KEY=sk-123,DEBUG=true"
+# Add with environment variables (repeatable, or comma-separated)
+mcpx add my-server --command node --args server.js --env API_KEY=sk-123 --env DEBUG=true
 
 # Overwrite an existing server
 mcpx add filesystem --command echo --force
@@ -168,20 +172,20 @@ mcpx remove my-api --dry-run
 
 **`add` options:**
 
-| Flag                       | Purpose                                |
-| -------------------------- | -------------------------------------- |
-| `--command <cmd>`          | Command to run (stdio server)          |
-| `--args <a1,a2,...>`       | Comma-separated arguments              |
-| `--env <KEY=VAL,...>`      | Comma-separated environment variables  |
-| `--cwd <dir>`              | Working directory for the command      |
-| `--url <url>`              | Server URL (HTTP server)               |
-| `--header <Key:Value>`     | HTTP header (repeatable)               |
-| `--transport <type>`       | Transport: `sse` or `streamable-http`  |
-| `--allowed-tools <t1,t2>`  | Comma-separated allowed tool patterns  |
-| `--disabled-tools <t1,t2>` | Comma-separated disabled tool patterns |
-| `-f, --force`              | Overwrite if server already exists     |
-| `--no-auth`                | Skip automatic OAuth after adding      |
-| `--no-index`               | Skip rebuilding the search index       |
+| Flag                       | Purpose                                                                |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `--command <cmd>`          | Command to run (stdio server)                                          |
+| `--args <arg>`             | Argument for the command. Repeatable, or comma-separated. Tokens after `--` are also appended (stdio only). |
+| `--env <KEY=VAL>`          | Environment variable. Repeatable, or comma-separated.                  |
+| `--cwd <dir>`              | Working directory for the command                                      |
+| `--url <url>`              | Server URL (HTTP server)                                               |
+| `--header <Key:Value>`     | HTTP header. Repeatable.                                               |
+| `--transport <type>`       | Transport: `sse` or `streamable-http`                                  |
+| `--allowed-tools <pat>`    | Allowed tool pattern. Repeatable, or comma-separated.                  |
+| `--disabled-tools <pat>`   | Disabled tool pattern. Repeatable, or comma-separated.                 |
+| `-f, --force`              | Overwrite if server already exists                                     |
+| `--no-auth`                | Skip automatic OAuth after adding                                      |
+| `--no-index`               | Skip rebuilding the search index                                       |
 
 **`remove` options:**
 

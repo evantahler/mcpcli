@@ -119,6 +119,129 @@ describe("mcpx add", () => {
 		expect(servers.mcpServers.filtered.disabledTools).toEqual(["delete"]);
 	});
 
+	test("passes args after -- to the stdio command", async () => {
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"playwright",
+			"--command",
+			"bunx",
+			"--no-index",
+			"--",
+			"@playwright/mcp@latest",
+			"--allowed-origins=*",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(servers.mcpServers.playwright).toEqual({
+			command: "bunx",
+			args: ["@playwright/mcp@latest", "--allowed-origins=*"],
+		});
+	});
+
+	test("accepts repeatable --args", async () => {
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"repeat",
+			"--command",
+			"echo",
+			"--args",
+			"hello",
+			"--args",
+			"world",
+			"--no-index",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(servers.mcpServers.repeat.args).toEqual(["hello", "world"]);
+	});
+
+	test("merges --args flags with -- passthrough", async () => {
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"mixed",
+			"--command",
+			"bunx",
+			"--args",
+			"@playwright/mcp@latest",
+			"--no-index",
+			"--",
+			"--allowed-origins=*",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(servers.mcpServers.mixed.args).toEqual(["@playwright/mcp@latest", "--allowed-origins=*"]);
+	});
+
+	test("accepts repeatable --env", async () => {
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"envs",
+			"--command",
+			"echo",
+			"--env",
+			"KEY=val",
+			"--env",
+			"FOO=bar",
+			"--no-index",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(servers.mcpServers.envs.env).toEqual({ KEY: "val", FOO: "bar" });
+	});
+
+	test("accepts repeatable --allowed-tools and --disabled-tools", async () => {
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"filtered2",
+			"--command",
+			"echo",
+			"--allowed-tools",
+			"read",
+			"--allowed-tools",
+			"write",
+			"--disabled-tools",
+			"delete",
+			"--disabled-tools",
+			"drop",
+			"--no-index",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(servers.mcpServers.filtered2.allowedTools).toEqual(["read", "write"]);
+		expect(servers.mcpServers.filtered2.disabledTools).toEqual(["delete", "drop"]);
+	});
+
+	test("rejects -- passthrough on http servers", async () => {
+		const { exitCode, stderr } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"bad-http",
+			"--url",
+			"https://example.com",
+			"--no-index",
+			"--",
+			"oops",
+		]);
+		expect(exitCode).not.toBe(0);
+		expect(stderr).toContain("only apply to stdio");
+	});
+
 	test("errors if server already exists without --force", async () => {
 		await run(["-c", tmpDir, "add", "dupe", "--command", "echo", "--no-index"]);
 		const { exitCode, stderr } = await run(["-c", tmpDir, "add", "dupe", "--command", "cat", "--no-index"]);

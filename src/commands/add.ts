@@ -6,33 +6,34 @@ import { runIndex } from "./index.ts";
 
 export function registerAddCommand(program: Command) {
 	program
-		.command("add <name>")
+		.command("add <name> [passthroughArgs...]")
 		.description("add an MCP server to your config")
 		.option("--command <cmd>", "command to run (stdio server)")
-		.option("--args <args>", "comma-separated arguments for the command")
-		.option("--env <vars>", "comma-separated KEY=VAL environment variables")
+		.option("--args <arg>", "argument for the command (repeatable, comma-separated, or pass after --)", collect, [])
+		.option("--env <KEY=VAL>", "environment variable (repeatable or comma-separated)", collect, [])
 		.option("--cwd <dir>", "working directory for the command")
 		.option("--url <url>", "server URL (HTTP server)")
 		.option("--header <h>", "header in Key:Value format (repeatable)", collect, [])
 		.option("--transport <type>", 'transport for HTTP servers: "sse" or "streamable-http"')
-		.option("--allowed-tools <tools>", "comma-separated list of allowed tools")
-		.option("--disabled-tools <tools>", "comma-separated list of disabled tools")
+		.option("--allowed-tools <pattern>", "allowed tool pattern (repeatable or comma-separated)", collect, [])
+		.option("--disabled-tools <pattern>", "disabled tool pattern (repeatable or comma-separated)", collect, [])
 		.option("-f, --force", "overwrite if server already exists")
 		.option("--no-auth", "skip automatic OAuth authentication after adding an HTTP server")
 		.option("--no-index", "skip rebuilding the search index after adding")
 		.action(
 			async (
 				name: string,
+				passthroughArgs: string[],
 				options: {
 					command?: string;
-					args?: string;
-					env?: string;
+					args: string[];
+					env: string[];
 					cwd?: string;
 					url?: string;
-					header?: string[];
+					header: string[];
 					transport?: string;
-					allowedTools?: string;
-					disabledTools?: string;
+					allowedTools: string[];
+					disabledTools: string[];
 					force?: boolean;
 					auth?: boolean;
 					index?: boolean;
@@ -49,6 +50,10 @@ export function registerAddCommand(program: Command) {
 					console.error("Cannot specify both --command and --url");
 					process.exit(1);
 				}
+				if (!hasCommand && passthroughArgs.length > 0) {
+					console.error("Positional arguments after -- only apply to stdio servers (--command)");
+					process.exit(1);
+				}
 
 				const configFlag = program.opts().config;
 				const { configDir, servers } = await loadRawServers(configFlag);
@@ -61,7 +66,7 @@ export function registerAddCommand(program: Command) {
 				let config: ServerConfig;
 
 				if (hasCommand) {
-					config = buildStdioConfig(options);
+					config = buildStdioConfig(options, passthroughArgs);
 				} else {
 					config = buildHttpConfig(options);
 				}
@@ -74,12 +79,13 @@ export function registerAddCommand(program: Command) {
 					(config as { transport: string }).transport = options.transport;
 				}
 
-				// Common options
-				if (options.allowedTools) {
-					config.allowedTools = options.allowedTools.split(",").map((t) => t.trim());
+				const allowedTools = splitCommaList(options.allowedTools);
+				if (allowedTools.length > 0) {
+					config.allowedTools = allowedTools;
 				}
-				if (options.disabledTools) {
-					config.disabledTools = options.disabledTools.split(",").map((t) => t.trim());
+				const disabledTools = splitCommaList(options.disabledTools);
+				if (disabledTools.length > 0) {
+					config.disabledTools = disabledTools;
 				}
 
 				// For HTTP servers, resolve the canonical resource URL before saving.
@@ -127,16 +133,26 @@ function collect(value: string, previous: string[]): string[] {
 	return previous.concat([value]);
 }
 
-function buildStdioConfig(options: { command?: string; args?: string; env?: string; cwd?: string }): ServerConfig {
+// Flatten a list of repeated CLI values, splitting each on commas and trimming.
+// Supports both `--flag a --flag b` and `--flag "a,b"` forms.
+function splitCommaList(values: string[]): string[] {
+	return values.flatMap((v) => v.split(",").map((s) => s.trim())).filter((s) => s.length > 0);
+}
+
+function buildStdioConfig(
+	options: { command?: string; args: string[]; env: string[]; cwd?: string },
+	passthroughArgs: string[],
+): ServerConfig {
 	const config: Record<string, unknown> = { command: options.command! };
 
-	if (options.args) {
-		config.args = options.args.split(",").map((a) => a.trim());
+	const args = [...splitCommaList(options.args), ...passthroughArgs];
+	if (args.length > 0) {
+		config.args = args;
 	}
 
-	if (options.env) {
+	if (options.env.length > 0) {
 		const env: Record<string, string> = {};
-		for (const pair of options.env.split(",")) {
+		for (const pair of splitCommaList(options.env)) {
 			const eqIdx = pair.indexOf("=");
 			if (eqIdx === -1) {
 				console.error(`Invalid env format "${pair}", expected KEY=VAL`);
@@ -154,10 +170,10 @@ function buildStdioConfig(options: { command?: string; args?: string; env?: stri
 	return config as unknown as ServerConfig;
 }
 
-function buildHttpConfig(options: { url?: string; header?: string[] }): ServerConfig {
+function buildHttpConfig(options: { url?: string; header: string[] }): ServerConfig {
 	const config: Record<string, unknown> = { url: options.url! };
 
-	if (options.header && options.header.length > 0) {
+	if (options.header.length > 0) {
 		const headers: Record<string, string> = {};
 		for (const h of options.header) {
 			const colonIdx = h.indexOf(":");
