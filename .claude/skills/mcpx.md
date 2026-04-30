@@ -199,20 +199,20 @@ mcpx deauth <server>           # remove stored auth
 
 ## `add` options
 
-| Flag                       | Purpose                                |
-| -------------------------- | -------------------------------------- |
-| `--command <cmd>`          | Command to run (stdio server)          |
-| `--args <a1,a2,...>`       | Comma-separated arguments              |
-| `--env <KEY=VAL,...>`      | Comma-separated environment variables  |
-| `--cwd <dir>`              | Working directory for the command      |
-| `--url <url>`              | Server URL (HTTP server)               |
-| `--header <Key:Value>`     | HTTP header (repeatable)               |
-| `--transport <type>`       | Transport: `sse` or `streamable-http`  |
-| `--allowed-tools <t1,t2>`  | Comma-separated allowed tool patterns  |
-| `--disabled-tools <t1,t2>` | Comma-separated disabled tool patterns |
-| `-f, --force`              | Overwrite if server already exists     |
-| `--no-auth`                | Skip automatic OAuth after adding      |
-| `--no-index`               | Skip rebuilding the search index       |
+| Flag                     | Purpose                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `--command <cmd>`        | Command to run (stdio server)                                                                               |
+| `--args <arg>`           | Argument for the command. Repeatable, or comma-separated. Tokens after `--` are also appended (stdio only). |
+| `--env <KEY=VAL>`        | Environment variable. Repeatable, or comma-separated.                                                       |
+| `--cwd <dir>`            | Working directory for the command                                                                           |
+| `--url <url>`            | Server URL (HTTP server)                                                                                    |
+| `--header <Key:Value>`   | HTTP header. Repeatable.                                                                                    |
+| `--transport <type>`     | Transport: `sse` or `streamable-http`                                                                       |
+| `--allowed-tools <pat>`  | Allowed tool pattern. Repeatable, or comma-separated.                                                       |
+| `--disabled-tools <pat>` | Disabled tool pattern. Repeatable, or comma-separated.                                                      |
+| `-f, --force`            | Overwrite if server already exists                                                                          |
+| `--no-auth`              | Skip automatic OAuth after adding                                                                           |
+| `--no-index`             | Skip rebuilding the search index                                                                            |
 
 ## `remove` options
 
