@@ -35,11 +35,6 @@ describe("generateEmbedding", () => {
 	test("produces a 384-dim normalized vector from the real model", async () => {
 		const vec = await generateEmbedding("send an email via gmail");
 		expect(Array.isArray(vec)).toBe(true);
-		// A length of 4 here means transformers.js loaded but the native ONNX
-		// runtime binary is missing, so the pipeline returned dummy fallback
-		// data. Cause: onnxruntime-node's postinstall script didn't run.
-		// `bun install --frozen-lockfile` skips lifecycle scripts even for
-		// packages in `trustedDependencies` — install without that flag.
 		expect(vec.length).toBe(384);
 		expect(vec.every((n) => Number.isFinite(n))).toBe(true);
 
