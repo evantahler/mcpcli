@@ -1,6 +1,6 @@
 {
 	"name": "@evantahler/mcpx",
-	"version": "0.18.7",
+	"version": "0.19.0",
 	"description": "A command-line interface for MCP servers. curl for MCP.",
 	"type": "module",
 	"exports": {
@@ -45,21 +45,21 @@
 	"author": "Evan Tahler",
 	"license": "MIT",
 	"dependencies": {
-		"@huggingface/transformers": "^3.8.1",
-		"@modelcontextprotocol/sdk": "^1.27.1",
-		"ajv": "^8.18.0",
+		"@huggingface/transformers": "^4.2.0",
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"ajv": "^8.20.0",
 		"ansis": "^4.2.0",
 		"commander": "^14.0.3",
 		"nanospinner": "^1.2.2",
-		"picomatch": "^4.0.3",
-		"@types/picomatch": "^4.0.2"
+		"picomatch": "^4.0.4",
+		"@types/picomatch": "^4.0.3"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.11",
+		"@biomejs/biome": "^2.4.14",
 		"@types/bun": "latest",
-		"typescript": "^5"
+		"typescript": "^6"
 	},
 	"peerDependencies": {
-		"typescript": "^5"
+		"typescript": "^6"
 	}
 }
