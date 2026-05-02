@@ -34,5 +34,11 @@ jobs:
   complete:
     runs-on: ubuntu-latest
     needs: [test, test-upgrade]
+    if: always()
     steps:
+      - name: Fail if any required job failed or was skipped
+        if: ${{ needs.test.result != 'success' || needs.test-upgrade.result != 'success' }}
+        run: |
+          echo "test=${{ needs.test.result }} test-upgrade=${{ needs.test-upgrade.result }}"
+          exit 1
       - run: echo "All checks passed"
