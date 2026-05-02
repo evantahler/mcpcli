@@ -13,7 +13,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun lint
       - run: bun test
 
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - name: Test upgrade pathways
         run: bash test/e2e/test-upgrade.sh
 
