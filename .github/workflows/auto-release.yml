@@ -92,8 +92,10 @@ jobs:
         include:
           - target: bun-darwin-arm64
             artifact: mcpx-darwin-arm64
-          - target: bun-darwin-x64
-            artifact: mcpx-darwin-x64
+          # Intel Mac (darwin/x64) is no longer supported: onnxruntime-node
+          # 1.24.3 (pulled in by @huggingface/transformers v4) dropped its
+          # darwin/x64 native binding. Drop the target rather than pin to an
+          # older, less-secure transformers release.
           - target: bun-linux-arm64
             artifact: mcpx-linux-arm64
           - target: bun-linux-x64
