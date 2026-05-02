@@ -61,10 +61,5 @@
 	},
 	"peerDependencies": {
 		"typescript": "^6"
-	},
-	"trustedDependencies": [
-		"onnxruntime-node",
-		"protobufjs",
-		"sharp"
-	]
+	}
 }
