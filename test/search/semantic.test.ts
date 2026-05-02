@@ -33,7 +33,26 @@ describe("cosineSimilarity", () => {
 
 describe("generateEmbedding", () => {
 	test("produces a 384-dim normalized vector from the real model", async () => {
+		const { pipeline } = await import("@huggingface/transformers");
+		const extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+			dtype: "fp32",
+		});
+		const rawOutput = await extractor("send an email via gmail", {
+			pooling: "mean",
+			normalize: true,
+		});
+		console.log("[diag] output ctor:", rawOutput?.constructor?.name);
+		console.log("[diag] output keys:", Object.keys(rawOutput ?? {}));
+		console.log("[diag] output.dims:", JSON.stringify((rawOutput as { dims?: unknown })?.dims));
+		console.log(
+			"[diag] output.data type:",
+			(rawOutput as { data?: { constructor?: { name?: string } } })?.data?.constructor?.name,
+		);
+		console.log("[diag] output.data length:", (rawOutput as { data?: { length?: number } })?.data?.length);
+
 		const vec = await generateEmbedding("send an email via gmail");
+		console.log("[diag] vec.length=", vec.length);
+		console.log("[diag] vec first 8=", JSON.stringify(vec.slice(0, 8)));
 		expect(Array.isArray(vec)).toBe(true);
 		expect(vec.length).toBe(384);
 		expect(vec.every((n) => Number.isFinite(n))).toBe(true);
