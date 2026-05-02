@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { join } from "node:path";
 import type { SearchIndex, ServersFile } from "../../src/sdk.ts";
 import { McpxClient } from "../../src/sdk.ts";
+import * as semanticModule from "../../src/search/semantic.ts";
 
 const MOCK_SERVER = join(import.meta.dir, "../fixtures/mock-server.ts");
 
@@ -22,6 +23,10 @@ describe("McpxClient", () => {
 
 	afterEach(async () => {
 		if (client) await client.close();
+		// `mock.restore()` does not undo `mock.module()` — module mocks persist
+		// across test files. Re-mock with the real module so subsequent test
+		// files (e.g. test/search/semantic.test.ts) see the real implementation.
+		mock.module("../../src/search/semantic.ts", () => semanticModule);
 	});
 
 	// ---------------------------------------------------------------------------

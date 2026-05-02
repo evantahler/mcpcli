@@ -14,19 +14,6 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
-      - name: Run onnxruntime-node postinstall
-        # Bun on CI does not run lifecycle scripts even for packages listed in
-        # `trustedDependencies`, so the native ONNX runtime binary never
-        # downloads. Without it, @huggingface/transformers silently falls back
-        # to a degraded path that returns dummy data and breaks the embedding
-        # tests. Invoke the postinstall script directly to download the binary.
-        run: node node_modules/onnxruntime-node/script/install.js
-      - name: Verify ONNX runtime native binary present
-        run: |
-          if ! find node_modules/onnxruntime-node -type f \( -name 'libonnxruntime*.so*' -o -name 'libonnxruntime*.dylib' -o -name 'onnxruntime*.dll' \) | grep -q .; then
-            echo "::error::ONNX runtime native binary missing — onnxruntime-node postinstall failed."
-            exit 1
-          fi
       - run: bun lint
       - run: bun test
 
@@ -41,19 +28,6 @@ jobs:
         with:
           node-version: "22"
       - run: bun install
-      - name: Run onnxruntime-node postinstall
-        # Bun on CI does not run lifecycle scripts even for packages listed in
-        # `trustedDependencies`, so the native ONNX runtime binary never
-        # downloads. Without it, @huggingface/transformers silently falls back
-        # to a degraded path that returns dummy data and breaks the embedding
-        # tests. Invoke the postinstall script directly to download the binary.
-        run: node node_modules/onnxruntime-node/script/install.js
-      - name: Verify ONNX runtime native binary present
-        run: |
-          if ! find node_modules/onnxruntime-node -type f \( -name 'libonnxruntime*.so*' -o -name 'libonnxruntime*.dylib' -o -name 'onnxruntime*.dll' \) | grep -q .; then
-            echo "::error::ONNX runtime native binary missing — onnxruntime-node postinstall failed."
-            exit 1
-          fi
       - name: Test upgrade pathways
         run: bash test/e2e/test-upgrade.sh
 
