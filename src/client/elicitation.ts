@@ -331,21 +331,70 @@ async function handleUrlJson(params: ElicitRequestURLParams): Promise<ElicitResu
 }
 
 async function handleUrlInteractive(params: ElicitRequestURLParams): Promise<ElicitResult> {
-	const rl = createInterface({ input: process.stdin, output: process.stderr });
-	const question = (prompt: string): Promise<string> => new Promise((resolve) => rl.question(prompt, resolve));
+	printUrlElicitation(params);
 
-	try {
-		printUrlElicitation(params);
-
-		const answer = await question(`  Open in browser? [y/n]: `);
-		if (["y", "yes"].includes(answer.toLowerCase())) {
-			await openBrowser(params.url);
-			return { action: "accept" };
-		}
-		return { action: "decline" };
-	} finally {
-		rl.close();
+	const yes = await promptYesNo(`  Open in browser? [y/n]: `);
+	if (yes) {
+		await openBrowser(params.url);
+		return { action: "accept" };
 	}
+	return { action: "decline" };
+}
+
+/**
+ * Prompt for a yes/no answer.
+ * On a TTY, accepts a single keypress (y/Y/n/N/Enter/Esc) without requiring Enter.
+ * Off a TTY, falls back to line-buffered input so piped tests still work.
+ */
+function promptYesNo(prompt: string): Promise<boolean> {
+	process.stderr.write(prompt);
+	const stdin = process.stdin;
+
+	if (!stdin.isTTY) {
+		return new Promise((resolve) => {
+			const rl = createInterface({ input: stdin });
+			rl.once("line", (line) => {
+				rl.close();
+				const ch = line.trim().toLowerCase();
+				resolve(ch === "y" || ch === "yes");
+			});
+			rl.once("close", () => resolve(false));
+		});
+	}
+
+	return new Promise((resolve) => {
+		stdin.setRawMode(true);
+		stdin.resume();
+
+		const cleanup = () => {
+			stdin.removeListener("data", onData);
+			stdin.setRawMode(false);
+			stdin.pause();
+		};
+
+		const onData = (data: Buffer) => {
+			const key = data.toString();
+			// Ctrl+C
+			if (key === "\u0003") {
+				cleanup();
+				process.stderr.write("\n");
+				process.exit(130);
+			}
+			const ch = key.toLowerCase();
+			if (ch === "y") {
+				cleanup();
+				process.stderr.write("y\n");
+				resolve(true);
+			} else if (ch === "n" || key === "\u001b") {
+				cleanup();
+				process.stderr.write("n\n");
+				resolve(false);
+			}
+			// Ignore other keys
+		};
+
+		stdin.on("data", onData);
+	});
 }
 
 // ---------------------------------------------------------------------------
