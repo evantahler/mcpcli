@@ -13,6 +13,7 @@ import {
 	CallToolResultSchema,
 	ElicitRequestSchema,
 	LoggingMessageNotificationSchema,
+	UrlElicitationRequiredError,
 } from "@modelcontextprotocol/sdk/types.js";
 import picomatch from "picomatch";
 import pkg from "../../package.json";
@@ -305,6 +306,8 @@ export class ServerManager {
 				return await fn();
 			} catch (err) {
 				lastError = err instanceof Error ? err : new Error(String(err));
+				// Don't retry auth challenges — the user needs to authorize first
+				if (err instanceof UrlElicitationRequiredError) throw lastError;
 				if (attempt < this.maxRetries && serverName) {
 					// Clear cached client so next attempt reconnects fresh
 					try {

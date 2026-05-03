@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { ElicitRequest } from "@modelcontextprotocol/sdk/types.js";
-import { type ElicitationOptions, handleElicitation } from "../../src/client/elicitation.ts";
+import type { ElicitRequest, ElicitRequestURLParams } from "@modelcontextprotocol/sdk/types.js";
+import { type ElicitationOptions, handleElicitation, handleUrlElicitation } from "../../src/client/elicitation.ts";
 
 function makeFormRequest(overrides: Record<string, unknown> = {}): ElicitRequest {
 	return {
@@ -46,6 +46,19 @@ describe("handleElicitation", () => {
 	test("noInteractive returns decline for URL mode", async () => {
 		const options: ElicitationOptions = { noInteractive: true, json: false };
 		const result = await handleElicitation(makeUrlRequest(), options);
+		expect(result.action).toBe("decline");
+	});
+});
+
+describe("handleUrlElicitation (direct, used for URL elicitation errors)", () => {
+	test("noInteractive declines without prompting", async () => {
+		const params: ElicitRequestURLParams = {
+			mode: "url",
+			message: "Please authenticate",
+			url: "https://example.com/auth",
+			elicitationId: "elicit-123",
+		};
+		const result = await handleUrlElicitation(params, { noInteractive: true, json: false });
 		expect(result.action).toBe("decline");
 	});
 });

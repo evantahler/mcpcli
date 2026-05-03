@@ -282,14 +282,33 @@ async function promptMultiSelect(
 // URL mode
 // ---------------------------------------------------------------------------
 
-async function handleUrlElicitation(
+export async function handleUrlElicitation(
 	params: ElicitRequestURLParams,
 	options: ElicitationOptions,
 ): Promise<ElicitResult> {
 	if (options.json) {
 		return handleUrlJson(params);
 	}
+	if (options.noInteractive) {
+		printUrlElicitation(params);
+		return { action: "decline" };
+	}
 	return handleUrlInteractive(params);
+}
+
+function printUrlElicitation(params: ElicitRequestURLParams): void {
+	const domain = (() => {
+		try {
+			return new URL(params.url).hostname;
+		} catch {
+			return "unknown";
+		}
+	})();
+
+	process.stderr.write(`\n${ansis.bold("Server requests URL interaction:")}\n`);
+	process.stderr.write(`  ${params.message}\n`);
+	process.stderr.write(`  ${ansis.yellow("Domain:")} ${domain}\n`);
+	process.stderr.write(`  ${ansis.yellow("URL:")} ${params.url}\n`);
 }
 
 async function handleUrlJson(params: ElicitRequestURLParams): Promise<ElicitResult> {
@@ -316,18 +335,7 @@ async function handleUrlInteractive(params: ElicitRequestURLParams): Promise<Eli
 	const question = (prompt: string): Promise<string> => new Promise((resolve) => rl.question(prompt, resolve));
 
 	try {
-		const domain = (() => {
-			try {
-				return new URL(params.url).hostname;
-			} catch {
-				return "unknown";
-			}
-		})();
-
-		process.stderr.write(`\n${ansis.bold("Server requests URL interaction:")}\n`);
-		process.stderr.write(`  ${params.message}\n`);
-		process.stderr.write(`  ${ansis.yellow("Domain:")} ${domain}\n`);
-		process.stderr.write(`  ${ansis.yellow("URL:")} ${params.url}\n`);
+		printUrlElicitation(params);
 
 		const answer = await question(`  Open in browser? [y/n]: `);
 		if (["y", "yes"].includes(answer.toLowerCase())) {
