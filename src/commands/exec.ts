@@ -4,7 +4,7 @@ import { handleUrlElicitation } from "../client/elicitation.ts";
 import type { ServerManager } from "../client/manager.ts";
 import { DEFAULTS } from "../constants.ts";
 import { getContext } from "../context.ts";
-import { parseJsonArgs, readStdin } from "../lib/input.ts";
+import { parseJsonArgs, parseShellArgs, readStdin } from "../lib/input.ts";
 import {
 	formatCallResult,
 	formatError,
@@ -17,17 +17,25 @@ import { validateToolInput } from "../validation/schema.ts";
 
 type ResolvedArgs =
 	| { mode: "list-tools"; server: string }
-	| { mode: "call-tool"; server: string; tool: string; argsStr: string | undefined };
+	| {
+			mode: "call-tool";
+			server: string;
+			tool: string;
+			rest: string[];
+	  };
 
 /**
  * Resolve the positional args into either list-tools or call-tool mode.
  * Supports both `exec <server> <tool> [args]` and `exec <tool> [args]`.
+ *
+ * `rest` is whatever positional tokens remain after `<server> <tool>`. It may contain
+ * a single inline JSON string, or shell-flag tokens (after `--`), or be empty.
  */
 async function resolveExecArgs(
 	manager: ServerManager,
 	first: string,
 	second: string | undefined,
-	third: string | undefined,
+	rest: string[],
 ): Promise<ResolvedArgs> {
 	const serverNames = manager.getServerNames();
 	const isServer = serverNames.includes(first);
@@ -62,10 +70,10 @@ async function resolveExecArgs(
 			}
 		}
 
-		return { mode: "call-tool", server: first, tool: second, argsStr: third };
+		return { mode: "call-tool", server: first, tool: second, rest };
 	}
 
-	// Not a server name — treat first as a tool name
+	// Not a server name — treat first as a tool name; `second` is the start of `rest`.
 	const toolName = first;
 	const { tools } = await manager.getAllTools();
 	const matches = tools.filter((t) => t.tool.name === toolName);
@@ -81,28 +89,32 @@ async function resolveExecArgs(
 		);
 	}
 
-	return { mode: "call-tool", server: matches[0]!.server, tool: toolName, argsStr: second };
+	const fullRest = second === undefined ? rest : [second, ...rest];
+	return { mode: "call-tool", server: matches[0]!.server, tool: toolName, rest: fullRest };
 }
 
 export function registerExecCommand(program: Command) {
 	program
-		.command("exec <first> [second] [third]")
-		.description("execute a tool (server is optional if tool name is unambiguous)")
+		.command("exec <server> [tool] [args...]")
+		.description(
+			"execute a tool. server may be omitted if the tool name is unambiguous: `mcpx exec <tool> [args...]`. " +
+				"args may be a single JSON object string, or shell flags after `--` (e.g. `-- --field value`).",
+		)
 		.option("-f, --file <path>", "read JSON args from a file")
 		.option("--no-wait", "return task handle immediately without waiting for completion")
 		.option("--ttl <ms>", "task TTL in milliseconds", String(DEFAULTS.TASK_TTL_MS))
 		.action(
 			async (
-				first: string,
-				second: string | undefined,
-				third: string | undefined,
+				serverOrTool: string,
+				toolOrFirstArg: string | undefined,
+				trailing: string[],
 				options: { file?: string; wait: boolean; ttl: string },
 			) => {
 				const { manager, formatOptions, noInteractive } = await getContext(program);
 
 				let resolved: ResolvedArgs;
 				try {
-					resolved = await resolveExecArgs(manager, first, second, third);
+					resolved = await resolveExecArgs(manager, serverOrTool, toolOrFirstArg, trailing);
 				} catch (err) {
 					console.error(formatError(String(err), formatOptions));
 					await manager.close();
@@ -122,15 +134,32 @@ export function registerExecCommand(program: Command) {
 					return;
 				}
 
-				const { server, tool, argsStr } = resolved;
+				const { server, tool, rest } = resolved;
 
 				try {
-					// Error if both --file and positional arg provided
+					// Classify the trailing positional tokens. If the first one starts with `--`
+					// it's the shell-flag form; otherwise, treat a single token as inline JSON.
+					const isShellFlagForm = rest.length > 0 && rest[0]!.startsWith("--");
+					const argsStr = !isShellFlagForm && rest.length === 1 ? rest[0] : undefined;
+					const shellTokens = isShellFlagForm ? rest : [];
+
+					// More than one positional token without `--` flag prefix is ambiguous.
+					if (!isShellFlagForm && rest.length > 1) {
+						throw new Error("Cannot mix inline JSON args with shell flags — use one form");
+					}
+
+					// Conflict checks
 					if (options.file && argsStr) {
 						throw new Error("Cannot specify both --file and inline JSON args");
 					}
+					if (shellTokens.length > 0 && options.file) {
+						throw new Error("Cannot mix `--` shell flags with --file");
+					}
 
-					// Parse args from: --file > positional arg > stdin > empty
+					// Fetch the tool schema once, up front, so shell-flag parsing can use it for type coercion.
+					const toolSchema = await manager.getToolSchema(server, tool);
+
+					// Parse args from: --file > inline JSON positional > shell flags after `--` > stdin > empty
 					let args: Record<string, unknown> = {};
 
 					if (options.file) {
@@ -142,6 +171,8 @@ export function registerExecCommand(program: Command) {
 						args = parseJsonArgs(content);
 					} else if (argsStr) {
 						args = parseJsonArgs(argsStr);
+					} else if (shellTokens.length > 0) {
+						args = parseShellArgs(shellTokens, toolSchema?.inputSchema);
 					} else if (!process.stdin.isTTY) {
 						// Read from stdin
 						const stdin = await readStdin();
@@ -151,7 +182,6 @@ export function registerExecCommand(program: Command) {
 					}
 
 					// Validate args against tool inputSchema before calling
-					const toolSchema = await manager.getToolSchema(server, tool);
 					if (toolSchema) {
 						const validation = validateToolInput(server, toolSchema, args);
 						if (!validation.valid) {

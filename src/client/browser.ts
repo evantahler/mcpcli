@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { logger } from "../output/logger.ts";
 
 /**
  * Open a URL in the default browser (macOS/Windows/Linux).
@@ -12,11 +13,11 @@ export function openBrowser(url: string): Promise<void> {
 	try {
 		const parsed = new URL(url);
 		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-			process.stderr.write(`Refusing to open non-HTTP URL: ${url}\n`);
+			logger.error(`Refusing to open non-HTTP URL: ${url}`);
 			return Promise.resolve();
 		}
 	} catch {
-		process.stderr.write(`Invalid URL: ${url}\n`);
+		logger.error(`Invalid URL: ${url}`);
 		return Promise.resolve();
 	}
 
@@ -37,7 +38,7 @@ export function openBrowser(url: string): Promise<void> {
 	return new Promise((resolve) => {
 		execFile(cmd, args, (err) => {
 			if (err) {
-				process.stderr.write(`Could not open browser. Please visit:\n  ${url}\n`);
+				logger.warn(`Could not open browser. Please visit:\n  ${url}`);
 			}
 			resolve();
 		});

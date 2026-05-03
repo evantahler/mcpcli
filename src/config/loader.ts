@@ -1,6 +1,7 @@
 import { chmod } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { DEFAULT_CONFIG_DIR, ENV } from "../constants.ts";
+import { logger } from "../output/logger.ts";
 import { interpolateEnv } from "./env.ts";
 import {
 	type AuthFile,
@@ -64,7 +65,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<Confi
 		const cwd = process.cwd();
 		if (await hasServersFile(cwd)) {
 			configDir = cwd;
-			process.stderr.write(`Note: using servers.json from current directory (${cwd})\n`);
+			logger.info(`Note: using servers.json from current directory (${cwd})`);
 		}
 	}
 
