@@ -124,6 +124,80 @@ describe("mcpx exec", () => {
 		expect(stderr).toContain("Cannot specify both --file and inline JSON args");
 	});
 
+	test("calls a tool with shell flags after --", async () => {
+		const proc = run("exec", "mock", "echo", "--", "--message", "shell flag");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
+
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("shell flag");
+	});
+
+	test("calls a tool with shell flags using --key=value form", async () => {
+		const proc = run("exec", "mock", "echo", "--", "--message=hi there");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
+
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("hi there");
+	});
+
+	test("coerces numeric shell flags via schema", async () => {
+		const proc = run("exec", "mock", "add", "--", "--a", "10", "--b", "20");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
+
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe(30);
+	});
+
+	test("rejects non-numeric value for numeric field", async () => {
+		const proc = run("exec", "mock", "add", "--", "--a", "notanumber", "--b", "1");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("expected number");
+	});
+
+	test("errors when shell flags combined with --file", async () => {
+		const filePath = join(tempDir, "args-conflict.json");
+		writeFileSync(filePath, '{"message": "from file"}');
+		const proc = run("exec", "mock", "echo", "-f", filePath, "--", "--message", "from flag");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Cannot mix `--` shell flags with --file");
+	});
+
+	test("errors when shell flags combined with inline JSON", async () => {
+		const proc = run("exec", "mock", "echo", '{"message": "json"}', "--", "--message", "flag");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Cannot mix inline JSON args with shell flags");
+	});
+
+	test("bare positional after -- falls through to JSON parse", async () => {
+		const proc = run("exec", "mock", "echo", "--", "loose");
+		const exitCode = await proc.exited;
+		const stderr = await new Response(proc.stderr).text();
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("Invalid JSON");
+	});
+
+	test("server-optional form with shell flags", async () => {
+		const proc = run("exec", "echo", "--", "--message", "no server");
+		const exitCode = await proc.exited;
+		const stdout = await new Response(proc.stdout).text();
+		expect(exitCode).toBe(0);
+
+		const result = JSON.parse(stdout);
+		expect(result.content[0].text).toBe("no server");
+	});
+
 	test("errors when --file path does not exist", async () => {
 		const proc = run("exec", "mock", "echo", "-f", "/tmp/nonexistent-mcpx-test.json");
 		const exitCode = await proc.exited;

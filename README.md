@@ -45,11 +45,15 @@ mcpx info github
 # Inspect a specific tool
 mcpx info github search_repositories
 
-# Execute a tool
+# Execute a tool (JSON args)
 mcpx exec github search_repositories '{"query": "mcp server"}'
+
+# Execute a tool with shell-style flags (anything after `--` is parsed against the tool's input schema)
+mcpx exec github search_repositories -- --query "mcp server"
 
 # Execute a tool without specifying the server (auto-resolved)
 mcpx exec search_repositories '{"query": "mcp server"}'
+mcpx exec search_repositories -- --query "mcp server"
 
 # Search tools — combines keyword and semantic matching
 mcpx search "post a ticket to linear"
@@ -80,6 +84,7 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx index -i`                        | Show index status                                      |
 | `mcpx exec <server> <tool> [json]`     | Validate inputs locally, then execute tool             |
 | `mcpx exec <tool> [json]`              | Execute tool (server auto-resolved if unambiguous)     |
+| `mcpx exec <server> <tool> -- --k=v`   | Shell-flag args (typed via the tool's input schema)    |
 | `mcpx exec <server> <tool> -f file`    | Read tool args from a JSON file                        |
 | `mcpx exec <server>`                   | List available tools for a server                      |
 | `mcpx auth <server>`                   | Authenticate with an HTTP MCP server (OAuth)           |
@@ -505,6 +510,31 @@ Validation covers:
 
 If a tool's `inputSchema` is unavailable (some servers don't provide one), execution proceeds without local validation.
 
+### Shell-flag args
+
+Anything after a `--` separator is parsed as shell flags using the tool's input schema for type coercion. This is handy for interactive use — you don't need to remember JSON quoting rules.
+
+```bash
+# JSON form
+mcpx exec github create_issue '{"owner":"evantahler","repo":"mcpx","title":"bug"}'
+
+# Equivalent shell-flag form
+mcpx exec github create_issue -- --owner evantahler --repo mcpx --title bug
+
+# --field=value also works
+mcpx exec github create_issue -- --owner=evantahler --repo=mcpx --title=bug
+
+# Booleans
+mcpx exec my-server flagit -- --enabled         # true
+mcpx exec my-server flagit -- --no-enabled      # false
+
+# Arrays — repeatable flag or comma-split
+mcpx exec my-server tag -- --label bug --label todo
+mcpx exec my-server tag -- --label bug,todo
+```
+
+Type coercion follows the field's `type` in the input schema (`string`, `integer`, `number`, `boolean`, `array`). Nested objects must use the JSON form. Combining `--` shell flags with inline JSON args, `--file`, or stdin is rejected.
+
 ## Shell Output & Piping
 
 Output is human-friendly by default, JSON when piped:
@@ -635,6 +665,7 @@ To discover tools:
 To execute tools:
   mcpx exec <tool> '<json args>'              # server auto-resolved
   mcpx exec <server> <tool> '<json args>'     # explicit server
+  mcpx exec <server> <tool> -- --k=v          # shell-flag args (typed via schema)
   mcpx exec <server> <tool> -f params.json
 
 Always search before executing — don't assume tool names.
