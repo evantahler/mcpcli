@@ -21,6 +21,7 @@ import { registerServersCommand } from "./commands/servers.ts";
 import { registerSkillCommand } from "./commands/skill.ts";
 import { registerTaskCommand } from "./commands/task.ts";
 import { registerUpgradeCommand } from "./commands/upgrade.ts";
+import { logger } from "./output/logger.ts";
 import { maybeCheckForUpdate } from "./update/background.ts";
 
 program
@@ -96,5 +97,5 @@ program.parse();
 // Print update notice after command output completes
 process.on("beforeExit", async () => {
 	const notice = await updateNotice;
-	if (notice) process.stderr.write(notice);
+	if (notice) logger.writeRaw(notice);
 });
