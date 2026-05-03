@@ -363,16 +363,25 @@ function formatCallResultAsMarkdown(result: unknown): string {
 			mimeType?: string;
 			uri?: string;
 		}>;
+		structuredContent?: unknown;
+		_meta?: unknown;
 		isError?: boolean;
 	};
 
-	if (!r.content || !Array.isArray(r.content) || r.content.length === 0) {
+	const hasContent = Array.isArray(r.content) && r.content.length > 0;
+	const hasStructured = r.structuredContent !== undefined && r.structuredContent !== null;
+	const hasMeta =
+		r._meta !== undefined &&
+		r._meta !== null &&
+		!(typeof r._meta === "object" && Object.keys(r._meta as object).length === 0);
+
+	if (!hasContent && !hasStructured && !hasMeta) {
 		return renderMarkdownToAnsi(jsonToMarkdown(result));
 	}
 
 	const parts: string[] = [];
 
-	for (const block of r.content) {
+	for (const block of r.content ?? []) {
 		switch (block.type) {
 			case "text":
 				if (block.text !== undefined) {
@@ -390,13 +399,29 @@ function formatCallResultAsMarkdown(result: unknown): string {
 					`[image: ${block.mimeType ?? "unknown type"}, ${block.data ? Math.ceil((block.data.length * 3) / 4) : 0} bytes]`,
 				);
 				break;
+			case "audio":
+				parts.push(
+					`[audio: ${block.mimeType ?? "unknown type"}, ${block.data ? Math.ceil((block.data.length * 3) / 4) : 0} bytes]`,
+				);
+				break;
 			case "resource":
 				parts.push(`[resource: ${block.uri ?? "unknown"}]`);
 				break;
+			case "resource_link":
+				parts.push(`[resource_link: ${block.uri ?? "unknown"}]`);
+				break;
 			default:
-				parts.push(`[${block.type}]`);
+				parts.push(`[${block.type}]\n\n\`\`\`json\n${JSON.stringify(block, null, 2)}\n\`\`\``);
 				break;
 		}
+	}
+
+	if (hasStructured) {
+		parts.push(`**Structured Content:**\n\n${jsonToMarkdown(r.structuredContent)}`);
+	}
+
+	if (hasMeta) {
+		parts.push(`**Meta:**\n\n${jsonToMarkdown(r._meta)}`);
 	}
 
 	let output = parts.join("\n\n");

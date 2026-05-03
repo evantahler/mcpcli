@@ -10,6 +10,7 @@ export interface AppContext {
 	config: Config;
 	manager: ServerManager;
 	formatOptions: FormatOptions;
+	noInteractive: boolean;
 }
 
 /** Build the app context from the root commander program options */
@@ -67,5 +68,5 @@ export async function getContext(program: Command): Promise<AppContext> {
 
 	logger.configure(formatOptions);
 
-	return { config, manager, formatOptions };
+	return { config, manager, formatOptions, noInteractive };
 }

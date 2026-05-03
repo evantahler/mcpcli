@@ -213,6 +213,76 @@ describe("jsonToMarkdown", () => {
 	});
 });
 
+describe("formatCallResult markdown surfaces all response fields", () => {
+	const opts = { format: "markdown" as const };
+
+	test("renders resource_link blocks with URI visible", () => {
+		const result = {
+			content: [{ type: "resource_link", uri: "https://example.com/auth?token=abc" }],
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped).toContain("https://example.com/auth?token=abc");
+	});
+
+	test("renders audio blocks with mime type and size", () => {
+		const result = {
+			content: [{ type: "audio", mimeType: "audio/mp3", data: "AAAA" }],
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped).toContain("audio/mp3");
+		expect(stripped).toContain("audio");
+	});
+
+	test("surfaces structuredContent when present", () => {
+		const result = {
+			content: [{ type: "text", text: "summary" }],
+			structuredContent: { authorization_url: "https://auth.example.com/oauth" },
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped).toContain("summary");
+		expect(stripped).toContain("https://auth.example.com/oauth");
+	});
+
+	test("surfaces _meta when present", () => {
+		const result = {
+			content: [{ type: "text", text: "ok" }],
+			_meta: { request_id: "req_123" },
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped).toContain("req_123");
+	});
+
+	test("skips empty _meta", () => {
+		const result = {
+			content: [{ type: "text", text: "ok" }],
+			_meta: {},
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped).not.toContain("Meta");
+	});
+
+	test("renders unknown block types as JSON instead of swallowing them", () => {
+		const result = {
+			content: [{ type: "weird_future_type", custom_field: "important_value" }],
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped).toContain("weird_future_type");
+		expect(stripped).toContain("important_value");
+	});
+
+	test("preserves error prefix and surfaces structuredContent for error responses", () => {
+		const result = {
+			content: [{ type: "text", text: "Auth failed" }],
+			structuredContent: { authorize_url: "https://auth.example.com/x" },
+			isError: true,
+		};
+		const stripped = ansis.strip(formatCallResult(result, opts));
+		expect(stripped.toLowerCase()).toContain("error");
+		expect(stripped).toContain("Auth failed");
+		expect(stripped).toContain("https://auth.example.com/x");
+	});
+});
+
 describe("formatCallResult with format: json (explicit)", () => {
 	test("behaves identically to default", () => {
 		const result = {

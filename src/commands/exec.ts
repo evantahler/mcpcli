@@ -1,4 +1,6 @@
+import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
 import type { Command } from "commander";
+import { handleUrlElicitation } from "../client/elicitation.ts";
 import type { ServerManager } from "../client/manager.ts";
 import { DEFAULTS } from "../constants.ts";
 import { getContext } from "../context.ts";
@@ -108,7 +110,7 @@ export function registerExecCommand(program: Command) {
 				trailing: string[],
 				options: { file?: string; wait: boolean; ttl: string },
 			) => {
-				const { manager, formatOptions } = await getContext(program);
+				const { manager, formatOptions, noInteractive } = await getContext(program);
 
 				let resolved: ResolvedArgs;
 				try {
@@ -252,11 +254,22 @@ export function registerExecCommand(program: Command) {
 					} else {
 						// Standard synchronous tool call
 						const spinner = logger.startSpinner(`Executing ${server}/${tool}...`, formatOptions);
-						const result = await manager.callTool(server, tool, args);
-						spinner.stop();
+						let result: unknown;
+						try {
+							result = await manager.callTool(server, tool, args);
+						} finally {
+							spinner.stop();
+						}
 						console.log(formatCallResult(result, formatOptions));
 					}
 				} catch (err) {
+					if (err instanceof UrlElicitationRequiredError) {
+						const elicitOptions = { noInteractive, json: !!formatOptions.json };
+						for (const elicitation of err.elicitations) {
+							await handleUrlElicitation(elicitation, elicitOptions);
+						}
+						process.exit(1);
+					}
 					console.error(formatError(String(err), formatOptions));
 					process.exit(1);
 				} finally {

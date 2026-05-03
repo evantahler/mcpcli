@@ -283,14 +283,33 @@ async function promptMultiSelect(
 // URL mode
 // ---------------------------------------------------------------------------
 
-async function handleUrlElicitation(
+export async function handleUrlElicitation(
 	params: ElicitRequestURLParams,
 	options: ElicitationOptions,
 ): Promise<ElicitResult> {
 	if (options.json) {
 		return handleUrlJson(params);
 	}
+	if (options.noInteractive) {
+		printUrlElicitation(params);
+		return { action: "decline" };
+	}
 	return handleUrlInteractive(params);
+}
+
+function printUrlElicitation(params: ElicitRequestURLParams): void {
+	const domain = (() => {
+		try {
+			return new URL(params.url).hostname;
+		} catch {
+			return "unknown";
+		}
+	})();
+
+	logger.writeRaw(`\n${ansis.bold("Server requests URL interaction:")}\n`);
+	logger.writeRaw(`  ${params.message}\n`);
+	logger.writeRaw(`  ${ansis.yellow("Domain:")} ${domain}\n`);
+	logger.writeRaw(`  ${ansis.yellow("URL:")} ${params.url}\n`);
 }
 
 async function handleUrlJson(params: ElicitRequestURLParams): Promise<ElicitResult> {
@@ -313,32 +332,70 @@ async function handleUrlJson(params: ElicitRequestURLParams): Promise<ElicitResu
 }
 
 async function handleUrlInteractive(params: ElicitRequestURLParams): Promise<ElicitResult> {
-	const rl = createInterface({ input: process.stdin, output: process.stderr });
-	const question = (prompt: string): Promise<string> => new Promise((resolve) => rl.question(prompt, resolve));
+	printUrlElicitation(params);
 
-	try {
-		const domain = (() => {
-			try {
-				return new URL(params.url).hostname;
-			} catch {
-				return "unknown";
-			}
-		})();
-
-		logger.writeRaw(`\n${ansis.bold("Server requests URL interaction:")}\n`);
-		logger.writeRaw(`  ${params.message}\n`);
-		logger.writeRaw(`  ${ansis.yellow("Domain:")} ${domain}\n`);
-		logger.writeRaw(`  ${ansis.yellow("URL:")} ${params.url}\n`);
-
-		const answer = await question(`  Open in browser? [y/n]: `);
-		if (["y", "yes"].includes(answer.toLowerCase())) {
-			await openBrowser(params.url);
-			return { action: "accept" };
-		}
-		return { action: "decline" };
-	} finally {
-		rl.close();
+	const yes = await promptYesNo(`  Open in browser? [y/n]: `);
+	if (yes) {
+		await openBrowser(params.url);
+		return { action: "accept" };
 	}
+	return { action: "decline" };
+}
+
+/**
+ * Prompt for a yes/no answer.
+ * On a TTY, accepts a single keypress (y/Y/n/N/Enter/Esc) without requiring Enter.
+ * Off a TTY, falls back to line-buffered input so piped tests still work.
+ */
+function promptYesNo(prompt: string): Promise<boolean> {
+	logger.writeRaw(prompt);
+	const stdin = process.stdin;
+
+	if (!stdin.isTTY) {
+		return new Promise((resolve) => {
+			const rl = createInterface({ input: stdin });
+			rl.once("line", (line) => {
+				rl.close();
+				const ch = line.trim().toLowerCase();
+				resolve(ch === "y" || ch === "yes");
+			});
+			rl.once("close", () => resolve(false));
+		});
+	}
+
+	return new Promise((resolve) => {
+		stdin.setRawMode(true);
+		stdin.resume();
+
+		const cleanup = () => {
+			stdin.removeListener("data", onData);
+			stdin.setRawMode(false);
+			stdin.pause();
+		};
+
+		const onData = (data: Buffer) => {
+			const key = data.toString();
+			// Ctrl+C
+			if (key === "\u0003") {
+				cleanup();
+				logger.writeRaw("\n");
+				process.exit(130);
+			}
+			const ch = key.toLowerCase();
+			if (ch === "y") {
+				cleanup();
+				logger.writeRaw("y\n");
+				resolve(true);
+			} else if (ch === "n" || key === "\u001b") {
+				cleanup();
+				logger.writeRaw("n\n");
+				resolve(false);
+			}
+			// Ignore other keys
+		};
+
+		stdin.on("data", onData);
+	});
 }
 
 // ---------------------------------------------------------------------------
