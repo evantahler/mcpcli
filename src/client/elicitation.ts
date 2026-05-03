@@ -7,6 +7,7 @@ import type {
 	PrimitiveSchemaDefinition,
 } from "@modelcontextprotocol/sdk/types.js";
 import ansis from "ansis";
+import { logger } from "../output/logger.ts";
 import { validateElicitationResponse } from "../validation/schema.ts";
 import { openBrowser } from "./browser.ts";
 
@@ -74,7 +75,7 @@ async function handleFormInteractive(params: ElicitRequestFormParams): Promise<E
 	const question = (prompt: string): Promise<string> => new Promise((resolve) => rl.question(prompt, resolve));
 
 	try {
-		process.stderr.write(`\n${ansis.bold("Server requests input:")} ${params.message}\n`);
+		logger.writeRaw(`\n${ansis.bold("Server requests input:")} ${params.message}\n`);
 
 		const schema = params.requestedSchema;
 		const properties = schema.properties ?? {};
@@ -86,7 +87,7 @@ async function handleFormInteractive(params: ElicitRequestFormParams): Promise<E
 			const value = await promptField(key, fieldSchema, isRequired, question);
 			if (value === undefined) {
 				if (isRequired) {
-					process.stderr.write(ansis.yellow("Cancelled.\n"));
+					logger.writeRaw(ansis.yellow("Cancelled.\n"));
 					return { action: "cancel" };
 				}
 				continue;
@@ -98,7 +99,7 @@ async function handleFormInteractive(params: ElicitRequestFormParams): Promise<E
 		const validation = validateElicitationResponse(schema as unknown as Record<string, unknown>, content);
 		if (!validation.valid) {
 			const msgs = validation.errors.map((e) => `  ${e.path}: ${e.message}`).join("\n");
-			process.stderr.write(ansis.red(`Validation failed:\n${msgs}\n`));
+			logger.writeRaw(ansis.red(`Validation failed:\n${msgs}\n`));
 			return { action: "cancel" };
 		}
 
@@ -121,7 +122,7 @@ async function promptField(
 
 	// Show description if present
 	if (desc) {
-		process.stderr.write(ansis.dim(`  ${desc}\n`));
+		logger.writeRaw(ansis.dim(`  ${desc}\n`));
 	}
 
 	// Enum (single-select)
@@ -178,7 +179,7 @@ async function promptNumber(
 	if (!answer) return undefined;
 	const num = Number(answer);
 	if (Number.isNaN(num)) {
-		process.stderr.write(ansis.red(`  Invalid number: ${answer}\n`));
+		logger.writeRaw(ansis.red(`  Invalid number: ${answer}\n`));
 		return undefined;
 	}
 	return num;
@@ -206,10 +207,10 @@ async function promptEnum(
 ): Promise<string | undefined> {
 	const values = (schema as { enum: string[] }).enum;
 	const def = (schema as { default?: string }).default;
-	process.stderr.write(`  ${marker}${label}:\n`);
+	logger.writeRaw(`  ${marker}${label}:\n`);
 	values.forEach((v, i) => {
 		const defMark = v === def ? ansis.dim(" (default)") : "";
-		process.stderr.write(`    [${i + 1}] ${v}${defMark}\n`);
+		logger.writeRaw(`    [${i + 1}] ${v}${defMark}\n`);
 	});
 	const answer = await question("  > ");
 	if (!answer && def !== undefined) return def;
@@ -228,10 +229,10 @@ async function promptOneOfEnum(
 ): Promise<string | undefined> {
 	const options = (schema as { oneOf: { const: string; title: string }[] }).oneOf;
 	const def = (schema as { default?: string }).default;
-	process.stderr.write(`  ${marker}${label}:\n`);
+	logger.writeRaw(`  ${marker}${label}:\n`);
 	options.forEach((opt, i) => {
 		const defMark = opt.const === def ? ansis.dim(" (default)") : "";
-		process.stderr.write(`    [${i + 1}] ${opt.title} (${opt.const})${defMark}\n`);
+		logger.writeRaw(`    [${i + 1}] ${opt.title} (${opt.const})${defMark}\n`);
 	});
 	const answer = await question("  > ");
 	if (!answer && def !== undefined) return def;
@@ -264,10 +265,10 @@ async function promptMultiSelect(
 		return undefined;
 	}
 
-	process.stderr.write(`  ${marker}${label} (select multiple, comma-separated):\n`);
+	logger.writeRaw(`  ${marker}${label} (select multiple, comma-separated):\n`);
 	values.forEach((v, i) => {
 		const display = titles ? `${titles[i]} (${v})` : v;
-		process.stderr.write(`    [${i + 1}] ${display}\n`);
+		logger.writeRaw(`    [${i + 1}] ${display}\n`);
 	});
 	const answer = await question("  > ");
 	if (!answer && def !== undefined) return def;
@@ -324,10 +325,10 @@ async function handleUrlInteractive(params: ElicitRequestURLParams): Promise<Eli
 			}
 		})();
 
-		process.stderr.write(`\n${ansis.bold("Server requests URL interaction:")}\n`);
-		process.stderr.write(`  ${params.message}\n`);
-		process.stderr.write(`  ${ansis.yellow("Domain:")} ${domain}\n`);
-		process.stderr.write(`  ${ansis.yellow("URL:")} ${params.url}\n`);
+		logger.writeRaw(`\n${ansis.bold("Server requests URL interaction:")}\n`);
+		logger.writeRaw(`  ${params.message}\n`);
+		logger.writeRaw(`  ${ansis.yellow("Domain:")} ${domain}\n`);
+		logger.writeRaw(`  ${ansis.yellow("URL:")} ${params.url}\n`);
 
 		const answer = await question(`  Open in browser? [y/n]: `);
 		if (["y", "yes"].includes(answer.toLowerCase())) {
