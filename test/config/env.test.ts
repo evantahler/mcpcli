@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { interpolateEnv, interpolateEnvString } from "../../src/config/env.ts";
 
 describe("interpolateEnvString", () => {
@@ -31,7 +31,13 @@ describe("interpolateEnvString", () => {
 
 	test("warns and returns empty on missing var in non-strict mode", () => {
 		process.env.MCP_STRICT_ENV = "false";
-		expect(interpolateEnvString("prefix-${DOES_NOT_EXIST}-suffix")).toBe("prefix--suffix");
+		const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			expect(interpolateEnvString("prefix-${DOES_NOT_EXIST}-suffix")).toBe("prefix--suffix");
+			expect(warnSpy).toHaveBeenCalled();
+		} finally {
+			warnSpy.mockRestore();
+		}
 	});
 });
 

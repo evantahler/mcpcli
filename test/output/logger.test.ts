@@ -15,6 +15,7 @@ describe("logger", () => {
 	afterEach(() => {
 		stderrSpy.mockRestore();
 		Object.defineProperty(process.stderr, "isTTY", { value: origIsTTY, writable: true });
+		logger.configure({});
 	});
 
 	test("info() writes dim text to stderr", () => {
