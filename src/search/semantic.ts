@@ -54,6 +54,8 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 
 	// WASM device defaults to q8 quantization, which gives near-identical
 	// embedding quality at ~25% the model size (≈22 MB vs ≈86 MB for fp32).
+	// Both CI and `bun run build` apply the transformers patch first, so
+	// wasm is the only supported device in this codepath.
 	const extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
 		device: "wasm",
 		dtype: "q8",

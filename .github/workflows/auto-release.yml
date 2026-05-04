@@ -61,6 +61,7 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - run: bash scripts/apply-transformers-patch.sh
       - run: bun lint
       - run: bun test
 
