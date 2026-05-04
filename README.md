@@ -92,7 +92,7 @@ mcpx search -n 5 "manage pull requests"
 | `mcpx auth <server> -r`                | Force token refresh                                    |
 | `mcpx deauth <server>`                 | Remove stored authentication for a server              |
 | `mcpx add <name> --command <cmd>`      | Add a stdio MCP server to your config                  |
-| `mcpx add <name> --url <url>`          | Add an HTTP MCP server to your config                  |
+| `mcpx add [name] --url <url>`          | Add an HTTP MCP server (name derived from URL if omitted) |
 | `mcpx remove <name>`                   | Remove an MCP server from your config                  |
 | `mcpx ping`                            | Check connectivity to all configured servers           |
 | `mcpx ping <server> [server2...]`      | Check connectivity to specific server(s)               |
@@ -152,6 +152,11 @@ mcpx add filesystem --command npx --args "-y,@modelcontextprotocol/server-filesy
 
 # Add an HTTP server with headers
 mcpx add my-api --url https://api.example.com/mcp --header "Authorization:Bearer tok123"
+
+# When --url is used, the name is optional — derived from the URL's last path
+# segment (or hostname if there is none). The example below stores the server
+# under the name "evan-coding".
+mcpx add --url https://api.arcade.dev/mcp/evan-coding
 
 # Add with tool filtering (repeatable, or comma-separated)
 mcpx add github --url https://mcp.github.com --allowed-tools "search_*" --allowed-tools "get_*"

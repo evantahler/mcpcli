@@ -162,8 +162,8 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx deauth <server>`                | Remove stored authentication      |
 | `mcpx ping`                           | Check connectivity to all servers |
 | `mcpx ping <server> [server2...]`     | Check specific server(s)          |
-| `mcpx add <name> --command <cmd>`     | Add a stdio MCP server            |
-| `mcpx add <name> --url <url>`         | Add an HTTP MCP server            |
+| `mcpx add <name> --command <cmd>`     | Add a stdio MCP server                              |
+| `mcpx add [name] --url <url>`         | Add an HTTP MCP server (name derived from URL if omitted) |
 | `mcpx remove <name>`                  | Remove an MCP server              |
 | `mcpx skill install --claude`         | Install mcpx skill for Claude     |
 | `mcpx skill install --cursor`         | Install mcpx rule for Cursor      |

@@ -2,12 +2,13 @@ import type { Command } from "commander";
 import { resolveResourceUrl, tryOAuthIfSupported } from "../client/oauth.ts";
 import { loadRawAuth, loadRawServers, saveServers } from "../config/loader.ts";
 import type { ServerConfig } from "../config/schemas.ts";
+import { logger } from "../output/logger.ts";
 import { runIndex } from "./index.ts";
 
 export function registerAddCommand(program: Command) {
 	program
-		.command("add <name> [passthroughArgs...]")
-		.description("add an MCP server to your config")
+		.command("add [name] [passthroughArgs...]")
+		.description("add an MCP server to your config (name derived from URL when omitted with --url)")
 		.option("--command <cmd>", "command to run (stdio server)")
 		.option("--args <arg>", "argument for the command (repeatable, comma-separated, or pass after --)", collect, [])
 		.option("--env <KEY=VAL>", "environment variable (repeatable or comma-separated)", collect, [])
@@ -22,7 +23,7 @@ export function registerAddCommand(program: Command) {
 		.option("--no-index", "skip rebuilding the search index after adding")
 		.action(
 			async (
-				name: string,
+				name: string | undefined,
 				passthroughArgs: string[],
 				options: {
 					command?: string;
@@ -53,6 +54,23 @@ export function registerAddCommand(program: Command) {
 				if (!hasCommand && passthroughArgs.length > 0) {
 					console.error("Positional arguments after -- only apply to stdio servers (--command)");
 					process.exit(1);
+				}
+
+				if (!name) {
+					if (hasUrl) {
+						const derived = deriveNameFromUrl(options.url!);
+						if (!derived) {
+							console.error(`Could not derive a server name from URL "${options.url}". Pass an explicit name.`);
+							process.exit(1);
+						}
+						name = derived;
+						logger.warn(
+							`Using derived server name "${name}". Pass an explicit name to override: mcpx add <name> --url ${options.url}`,
+						);
+					} else {
+						console.error("A server name is required when using --command. Usage: mcpx add <name> --command <cmd>");
+						process.exit(1);
+					}
 				}
 
 				const configFlag = program.opts().config;
@@ -131,6 +149,48 @@ export function registerAddCommand(program: Command) {
 
 function collect(value: string, previous: string[]): string[] {
 	return previous.concat([value]);
+}
+
+function sanitizeName(s: string): string {
+	return s
+		.toLowerCase()
+		.replace(/[^a-z0-9_-]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
+// Generic path segments that don't make good server names on their own
+// (e.g. https://mcp.linear.app/mcp should derive "linear", not "mcp").
+const GENERIC_SEGMENTS = new Set(["mcp", "api", "sse", "v1", "v2", "v3", "rpc"]);
+
+// Derive a server name from a URL. Strategy:
+//   1. Walk path segments from last to first; return the first non-generic one.
+//   2. Otherwise fall back to the second-to-last hostname label
+//      (e.g. "mcp.linear.app" → "linear", "api.arcade.dev" → "arcade").
+//   3. Otherwise fall back to the full hostname.
+export function deriveNameFromUrl(rawUrl: string): string | null {
+	let parsed: URL;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		return null;
+	}
+
+	const segments = parsed.pathname.split("/").filter((s) => s.length > 0);
+	for (let i = segments.length - 1; i >= 0; i--) {
+		const candidate = sanitizeName(segments[i]!);
+		if (candidate.length > 1 && !GENERIC_SEGMENTS.has(candidate)) {
+			return candidate;
+		}
+	}
+
+	const hostnameParts = parsed.hostname.split(".").filter((s) => s.length > 0);
+	if (hostnameParts.length >= 2) {
+		const secondToLast = sanitizeName(hostnameParts[hostnameParts.length - 2]!);
+		if (secondToLast.length > 0) return secondToLast;
+	}
+
+	const fullHost = sanitizeName(parsed.hostname);
+	return fullHost.length > 0 ? fullHost : null;
 }
 
 // Flatten a list of repeated CLI values, splitting each on commas and trimming.
