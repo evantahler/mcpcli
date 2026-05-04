@@ -1,13 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import wasmMjsPath from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs" with {
-	type: "file",
-};
-import wasmBinPath from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm" with {
-	type: "file",
-};
 import type { IndexedTool } from "../config/schemas.ts";
 import { DEFAULTS, EMBEDDING_MODEL } from "../constants.ts";
+import { logger } from "../output/logger.ts";
 import type { BaseMatch } from "./types.ts";
 
 export type SemanticMatch = BaseMatch;
@@ -21,23 +16,32 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 
 	const transformers = await import("@huggingface/transformers");
 
-	// transformers.js is patched (see patches/@huggingface%2Ftransformers@4.2.0.patch) to
-	// force the WASM backend instead of onnxruntime-node — the native bindings can't be
-	// bundled into the Bun --compile single binary. Pin the WASM loader to the local
-	// onnxruntime-web copy so the .wasm ships inside the binary (the model weights still
-	// download from HF on first use and cache on disk, same as before this change).
+	// transformers.js is patched (see patches/@huggingface%2Ftransformers@4.2.0.patch,
+	// applied by `bun run scripts/apply-transformers-patch.sh` during prebuild) to
+	// force the WASM backend instead of onnxruntime-node — the native bindings can't
+	// be bundled into the Bun --compile single binary.
 	const ortWasm = transformers.env.backends.onnx?.wasm;
 	if (ortWasm) {
-		// Bun's `with { type: "file" }` returns absolute filesystem paths; the
-		// transformers WASM loader passes them through `fetch()`, which requires
-		// a URL scheme. Convert paths to `file://` URLs.
-		const toFileUrl = (p: string) => (p.startsWith("file://") ? p : `file://${p}`);
-		ortWasm.wasmPaths = {
-			mjs: toFileUrl(wasmMjsPath),
-			wasm: toFileUrl(wasmBinPath),
-		};
 		ortWasm.numThreads = 1;
 		ortWasm.proxy = false;
+
+		// For the compiled binary, embed the onnxruntime-web .wasm/.mjs files via
+		// Bun's `with { type: "file" }` and point the loader at them. The dynamic
+		// import is wrapped in a try because the asset paths only resolve in the
+		// local repo / compiled binary; for npm/bun-installed mcpx the deps are
+		// hoisted to a different layout, the import throws, and transformers.js
+		// loads WASM via its default mechanism (which works because node_modules
+		// is reachable in that environment).
+		try {
+			const { wasmMjsPath, wasmBinPath } = await import("./onnx-wasm-paths.ts");
+			const toFileUrl = (p: string) => (p.startsWith("file://") ? p : `file://${p}`);
+			ortWasm.wasmPaths = {
+				mjs: toFileUrl(wasmMjsPath),
+				wasm: toFileUrl(wasmBinPath),
+			};
+		} catch (err) {
+			logger.debug(`Bundled onnxruntime-web assets not found, using default loader: ${err}`);
+		}
 	}
 
 	// Inside a `bun build --compile` binary, `import.meta.url` resolves under the
