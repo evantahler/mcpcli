@@ -16,10 +16,14 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 
 	const transformers = await import("@huggingface/transformers");
 
-	// transformers.js is patched (see patches/@huggingface%2Ftransformers@4.2.0.patch,
-	// applied by `bun run scripts/apply-transformers-patch.sh` during prebuild) to
-	// force the WASM backend instead of onnxruntime-node — the native bindings can't
-	// be bundled into the Bun --compile single binary.
+	// In the `bun --compile` binary and during local dev/CI, transformers is
+	// patched (patches/@huggingface%2Ftransformers@4.2.0.patch, applied by
+	// scripts/apply-transformers-patch.sh) so the only supported device is
+	// `wasm` via onnxruntime-web — native bindings can't be bundled into the
+	// single binary. For npm-installed mcpx the package is unpatched and `wasm`
+	// is rejected; we try `wasm` first and fall back to `cpu` (onnxruntime-node
+	// native bindings, which the user already has from npm) on the
+	// "Unsupported device" error.
 	const ortWasm = transformers.env.backends.onnx?.wasm;
 	if (ortWasm) {
 		ortWasm.numThreads = 1;
@@ -52,14 +56,23 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 	transformers.env.cacheDir = userCacheDir;
 	transformers.env.localModelPath = join(userCacheDir, "models");
 
-	// WASM device defaults to q8 quantization, which gives near-identical
-	// embedding quality at ~25% the model size (≈22 MB vs ≈86 MB for fp32).
-	// Both CI and `bun run build` apply the transformers patch first, so
-	// wasm is the only supported device in this codepath.
-	const extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
-		device: "wasm",
-		dtype: "q8",
-	});
+	// q8 quantization gives near-identical embedding quality at ~25% the model
+	// size (≈22 MB vs ≈86 MB for fp32). See onnx setup comment above for why
+	// we try `wasm` first and fall back to `cpu`.
+	let extractor: Awaited<ReturnType<typeof transformers.pipeline>>;
+	try {
+		extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
+			device: "wasm",
+			dtype: "q8",
+		});
+	} catch (err) {
+		if (!String((err as Error)?.message ?? "").includes("Unsupported device")) throw err;
+		logger.debug("WASM backend unavailable; falling back to cpu (onnxruntime-node)");
+		extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
+			device: "cpu",
+			dtype: "q8",
+		});
+	}
 
 	pipelineInstance = async (text: string): Promise<Float32Array> => {
 		const output = await extractor(text, { pooling: "mean", normalize: true });
