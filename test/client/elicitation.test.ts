@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, type Mock, spyOn, test } from "bun:test";
 import type { ElicitRequest, ElicitRequestURLParams } from "@modelcontextprotocol/sdk/types.js";
 import { type ElicitationOptions, handleElicitation, handleUrlElicitation } from "../../src/client/elicitation.ts";
 
@@ -51,6 +51,16 @@ describe("handleElicitation", () => {
 });
 
 describe("handleUrlElicitation (direct, used for URL elicitation errors)", () => {
+	let stderrSpy: Mock<typeof process.stderr.write>;
+
+	beforeEach(() => {
+		stderrSpy = spyOn(process.stderr, "write").mockReturnValue(true);
+	});
+
+	afterEach(() => {
+		stderrSpy.mockRestore();
+	});
+
 	test("noInteractive declines without prompting", async () => {
 		const params: ElicitRequestURLParams = {
 			mode: "url",
