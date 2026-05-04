@@ -88,7 +88,7 @@ index 13b1a748272d03aa062950ff585c1a2277ba96c9..9863c46653618091593b6428a8c16622
  // NOTE: Import order matters here. We need to import `onnxruntime-node` before `onnxruntime-web`.
  // In either case, we select the default export if it exists, otherwise we use the named export.
 -import * as ONNX_NODE from 'onnxruntime-node';
-+// PATCHED (botholomew): the static `import 'onnxruntime-node'` segfaults under Bun
++// PATCHED (mcpx): the static `import 'onnxruntime-node'` segfaults under Bun
 +// (oven-sh/bun#26081). We never want the native bindings — `onnxruntime-web` (WASM) runs
 +// fine on Bun + Node + browsers. The IS_NODE_ENV branch below is rerouted to ONNX_WEB.
 +const ONNX_NODE = undefined;
@@ -127,7 +127,7 @@ index 13b1a748272d03aa062950ff585c1a2277ba96c9..9863c46653618091593b6428a8c16622
 -    supportedDevices.push('webgpu');
 -    supportedDevices.push('cpu');
 -    defaultDevices = ['cpu'];
-+    // PATCHED (botholomew): force the WASM backend in node-like envs to avoid
++    // PATCHED (mcpx): force the WASM backend in node-like envs to avoid
 +    // loading onnxruntime-node native bindings (segfaults under Bun).
 +    ONNX = ONNX_WEB;
 +    supportedDevices.push('wasm');
