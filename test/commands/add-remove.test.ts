@@ -348,6 +348,63 @@ describe("mcpx add", () => {
 		expect(exitCode).not.toBe(0);
 		expect(stderr).toContain("Cannot specify both");
 	});
+
+	test("derives name from URL path segment when name omitted", async () => {
+		// logger.warn is suppressed when stderr is not a TTY (i.e. in tests),
+		// so we don't assert on the warning text — just on the resulting config.
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"--url",
+			"https://api.arcade.dev/mcp/evan-coding",
+			"--no-auth",
+			"--no-index",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(Object.keys(servers.mcpServers)).toEqual(["evan-coding"]);
+		expect(servers.mcpServers["evan-coding"]).toEqual({
+			url: "https://api.arcade.dev/mcp/evan-coding",
+		});
+	});
+
+	test("derives name from hostname when URL has no path", async () => {
+		const { exitCode } = await run(["-c", tmpDir, "add", "--url", "https://example.com/", "--no-auth", "--no-index"]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(Object.keys(servers.mcpServers)).toEqual(["example"]);
+		expect(servers.mcpServers.example).toEqual({
+			url: "https://example.com/",
+		});
+	});
+
+	test("derives name from hostname when path segment is generic (e.g. /mcp)", async () => {
+		const { exitCode } = await run([
+			"-c",
+			tmpDir,
+			"add",
+			"--url",
+			"https://mcp.linear.app/mcp",
+			"--no-auth",
+			"--no-index",
+		]);
+		expect(exitCode).toBe(0);
+
+		const servers = await Bun.file(join(tmpDir, "servers.json")).json();
+		expect(Object.keys(servers.mcpServers)).toEqual(["linear"]);
+		expect(servers.mcpServers.linear).toEqual({
+			url: "https://mcp.linear.app/mcp",
+		});
+	});
+
+	test("errors if name omitted with --command", async () => {
+		const { exitCode, stderr } = await run(["-c", tmpDir, "add", "--command", "echo", "--no-index"]);
+		expect(exitCode).not.toBe(0);
+		expect(stderr).toContain("server name is required when using --command");
+	});
 });
 
 describe("mcpx remove", () => {
