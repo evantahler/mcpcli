@@ -279,7 +279,7 @@ Contains every discovered tool with metadata for semantic search. Built and upda
 {
   "version": 1,
   "indexed_at": "2026-03-03T10:00:00Z",
-  "embedding_model": "Xenova/all-MiniLM-L6-v2",
+  "embedding_model": "Xenova/bge-small-en-v1.5",
   "tools": [
     {
       "server": "linear",
@@ -300,7 +300,7 @@ Each tool gets:
 - **keywords** — terms extracted by splitting the tool name on `_`, `-`, and camelCase boundaries
 - **embedding** — 384-dim vector for cosine similarity search
 
-Scenarios and keywords are extracted heuristically from tool names and descriptions. Embeddings are generated in-process using `Xenova/all-MiniLM-L6-v2` (~23MB ONNX model, downloaded on first run). No API keys needed.
+Scenarios and keywords are extracted heuristically from tool names and descriptions. Embeddings are generated in-process using `Xenova/bge-small-en-v1.5` (~33MB ONNX model, downloaded on first run). No API keys needed.
 
 ## Config Resolution Order
 
@@ -825,7 +825,7 @@ bun lint
 | MCP Client  | `@modelcontextprotocol/sdk`                           |
 | CLI Parsing | `commander`                                           |
 | Validation  | `ajv` (JSON Schema)                                   |
-| Embeddings  | `@huggingface/transformers` (Xenova/all-MiniLM-L6-v2) |
+| Embeddings  | `@huggingface/transformers` (Xenova/bge-small-en-v1.5) |
 
 ## Inspiration
 

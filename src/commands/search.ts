@@ -1,10 +1,10 @@
 import type { Command } from "commander";
-import { DEFAULTS } from "../constants.ts";
+import { DEFAULTS, EMBEDDING_MODEL } from "../constants.ts";
 import { getContext } from "../context.ts";
 import { formatError, formatSearchResults } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
 import { search } from "../search/index.ts";
-import { getStaleServers } from "../search/staleness.ts";
+import { getStaleServers, isEmbeddingModelStale } from "../search/staleness.ts";
 
 export function registerSearchCommand(program: Command) {
 	program
@@ -16,6 +16,13 @@ export function registerSearchCommand(program: Command) {
 		.action(async (terms: string[], options: { keyword?: boolean; query?: boolean; limit: string }) => {
 			const query = terms.join(" ");
 			const { config, formatOptions } = await getContext(program);
+
+			if (isEmbeddingModelStale(config.searchIndex)) {
+				logger.warn(
+					`Index was built with embedding model "${config.searchIndex.embedding_model}", but mcpx now uses "${EMBEDDING_MODEL.REPO}". Run: mcpx index`,
+				);
+				config.searchIndex.tools = [];
+			}
 
 			if (config.searchIndex.tools.length === 0) {
 				console.error(formatError("No search index found. Run: mcpx index", formatOptions));

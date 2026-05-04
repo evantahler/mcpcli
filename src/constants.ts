@@ -29,6 +29,6 @@ export const DEFAULTS = {
 
 /** Hugging Face repo + revision used for the bundled embedding model. */
 export const EMBEDDING_MODEL = {
-	REPO: "Xenova/all-MiniLM-L6-v2",
+	REPO: "Xenova/bge-small-en-v1.5",
 	REVISION: "main",
 } as const;
