@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import wasmMjsPath from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs" with {
 	type: "file",
 };
@@ -9,23 +8,7 @@ import wasmBinPath from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-t
 };
 import type { IndexedTool } from "../config/schemas.ts";
 import { DEFAULTS, EMBEDDING_MODEL } from "../constants.ts";
-import { EMBEDDED_MODEL_FILES } from "./embedded-model.ts";
 import type { BaseMatch } from "./types.ts";
-
-// Copy bundled model files into the user's cache dir on first run. Once present,
-// transformers' default FileCache picks them up — no network fetch required.
-// We use readFileSync + writeFileSync (rather than copyFileSync) because in a
-// `bun build --compile` binary the source paths live under the `/$bunfs`
-// virtual filesystem; `copyFileSync` can't bridge that boundary, but readFile
-// can.
-function installEmbeddedModel(cacheDir: string): void {
-	for (const { asset, relPath } of EMBEDDED_MODEL_FILES) {
-		const dest = join(cacheDir, EMBEDDING_MODEL.REPO, relPath);
-		if (existsSync(dest)) continue;
-		mkdirSync(dirname(dest), { recursive: true });
-		writeFileSync(dest, readFileSync(asset));
-	}
-}
 
 export type SemanticMatch = BaseMatch;
 
@@ -41,7 +24,8 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 	// transformers.js is patched (see patches/@huggingface%2Ftransformers@4.2.0.patch) to
 	// force the WASM backend instead of onnxruntime-node — the native bindings can't be
 	// bundled into the Bun --compile single binary. Pin the WASM loader to the local
-	// onnxruntime-web copy so embeddings work offline and the .wasm ships inside the binary.
+	// onnxruntime-web copy so the .wasm ships inside the binary (the model weights still
+	// download from HF on first use and cache on disk, same as before this change).
 	const ortWasm = transformers.env.backends.onnx?.wasm;
 	if (ortWasm) {
 		// Bun's `with { type: "file" }` returns absolute filesystem paths; the
@@ -58,12 +42,11 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 
 	// Inside a `bun build --compile` binary, `import.meta.url` resolves under the
 	// read-only `/$bunfs` virtual filesystem, so transformers' default cacheDir
-	// becomes unwritable. Redirect cache to the user's home and seed it with the
-	// embedded model files so the first run works offline.
+	// becomes unwritable. Redirect cache to the user's home so model downloads
+	// (and any future cached files) land somewhere we can write to.
 	const userCacheDir = join(homedir(), ".cache", "mcpx", "transformers");
 	transformers.env.cacheDir = userCacheDir;
 	transformers.env.localModelPath = join(userCacheDir, "models");
-	installEmbeddedModel(userCacheDir);
 
 	// WASM device defaults to q8 quantization, which gives near-identical
 	// embedding quality at ~25% the model size (≈22 MB vs ≈86 MB for fp32).

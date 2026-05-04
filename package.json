@@ -25,8 +25,6 @@
 		"test:e2e": "bun test test/integration/remote-server.test.ts",
 		"lint": "biome ci . && tsc --noEmit",
 		"format": "biome check --write .",
-		"fetch-model": "bun run scripts/fetch-embedding-model.ts",
-		"prebuild": "bun run scripts/fetch-embedding-model.ts",
 		"build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpx"
 	},
 	"publishConfig": {
