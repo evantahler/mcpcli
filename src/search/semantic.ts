@@ -1,5 +1,8 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { IndexedTool } from "../config/schemas.ts";
-import { DEFAULTS } from "../constants.ts";
+import { DEFAULTS, EMBEDDING_MODEL } from "../constants.ts";
+import { logger } from "../output/logger.ts";
 import type { BaseMatch } from "./types.ts";
 
 export type SemanticMatch = BaseMatch;
@@ -11,9 +14,51 @@ let pipelineInstance: ((text: string) => Promise<Float32Array>) | null = null;
 async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 	if (pipelineInstance) return pipelineInstance;
 
-	const { pipeline } = await import("@huggingface/transformers");
-	const extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
-		dtype: "fp32",
+	const transformers = await import("@huggingface/transformers");
+
+	// transformers.js is patched (see patches/@huggingface%2Ftransformers@4.2.0.patch,
+	// applied by `bun run scripts/apply-transformers-patch.sh` during prebuild) to
+	// force the WASM backend instead of onnxruntime-node — the native bindings can't
+	// be bundled into the Bun --compile single binary.
+	const ortWasm = transformers.env.backends.onnx?.wasm;
+	if (ortWasm) {
+		ortWasm.numThreads = 1;
+		ortWasm.proxy = false;
+
+		// For the compiled binary, embed the onnxruntime-web .wasm/.mjs files via
+		// Bun's `with { type: "file" }` and point the loader at them. The dynamic
+		// import is wrapped in a try because the asset paths only resolve in the
+		// local repo / compiled binary; for npm/bun-installed mcpx the deps are
+		// hoisted to a different layout, the import throws, and transformers.js
+		// loads WASM via its default mechanism (which works because node_modules
+		// is reachable in that environment).
+		try {
+			const { wasmMjsPath, wasmBinPath } = await import("./onnx-wasm-paths.ts");
+			const toFileUrl = (p: string) => (p.startsWith("file://") ? p : `file://${p}`);
+			ortWasm.wasmPaths = {
+				mjs: toFileUrl(wasmMjsPath),
+				wasm: toFileUrl(wasmBinPath),
+			};
+		} catch (err) {
+			logger.debug(`Bundled onnxruntime-web assets not found, using default loader: ${err}`);
+		}
+	}
+
+	// Inside a `bun build --compile` binary, `import.meta.url` resolves under the
+	// read-only `/$bunfs` virtual filesystem, so transformers' default cacheDir
+	// becomes unwritable. Redirect cache to the user's home so model downloads
+	// (and any future cached files) land somewhere we can write to.
+	const userCacheDir = join(homedir(), ".cache", "mcpx", "transformers");
+	transformers.env.cacheDir = userCacheDir;
+	transformers.env.localModelPath = join(userCacheDir, "models");
+
+	// WASM device defaults to q8 quantization, which gives near-identical
+	// embedding quality at ~25% the model size (≈22 MB vs ≈86 MB for fp32).
+	// Both CI and `bun run build` apply the transformers patch first, so
+	// wasm is the only supported device in this codepath.
+	const extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
+		device: "wasm",
+		dtype: "q8",
 	});
 
 	pipelineInstance = async (text: string): Promise<Float32Array> => {

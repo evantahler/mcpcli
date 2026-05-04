@@ -26,3 +26,9 @@ export const DEFAULTS = {
 	UPDATE_CHECK_INTERVAL_MS: 24 * 60 * 60 * 1000,
 	UPDATE_CHECK_TIMEOUT_MS: 5_000,
 } as const;
+
+/** Hugging Face repo + revision used for the bundled embedding model. */
+export const EMBEDDING_MODEL = {
+	REPO: "Xenova/all-MiniLM-L6-v2",
+	REVISION: "main",
+} as const;

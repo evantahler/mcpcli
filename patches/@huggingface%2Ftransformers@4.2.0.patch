@@ -1,0 +1,137 @@
+diff --git a/dist/transformers.node.mjs b/dist/transformers.node.mjs
+index bacb354fe1b898d4c535a39f5ef1ba5c6a463d75..0ab58f60460236259f9eba88447313f8661cc0ca 100644
+--- a/dist/transformers.node.mjs
++++ b/dist/transformers.node.mjs
+@@ -7542,7 +7542,10 @@ var uint16_to_float32 = /* @__PURE__ */ (function() {
+ })();
+ 
+ // src/backends/onnx.js
+-import * as ONNX_NODE from "onnxruntime-node";
++// PATCHED (mcpx): static `import 'onnxruntime-node'` makes Bun --compile bundle
++// the native binding which then fails to dlopen libonnxruntime at runtime.
++// We never want the native bindings — onnxruntime-web (WASM) runs fine.
++var ONNX_NODE = void 0;
+ 
+ // ../../node_modules/.pnpm/onnxruntime-web@1.26.0-dev.20260416-b7804b056c/node_modules/onnxruntime-web/dist/ort.webgpu.bundle.min.mjs
+ var ort_webgpu_bundle_min_exports = {};
+@@ -11551,23 +11554,12 @@ var ORT_SYMBOL = /* @__PURE__ */ Symbol.for("onnxruntime");
+ if (ORT_SYMBOL in globalThis) {
+   ONNX = globalThis[ORT_SYMBOL];
+ } else if (apis.IS_NODE_ENV) {
+-  ONNX = ONNX_NODE;
+-  switch (process.platform) {
+-    case "win32":
+-      supportedDevices.push("dml");
+-      break;
+-    case "linux":
+-      if (process.arch === "x64") {
+-        supportedDevices.push("cuda");
+-      }
+-      break;
+-    case "darwin":
+-      supportedDevices.push("coreml");
+-      break;
+-  }
+-  supportedDevices.push("webgpu");
+-  supportedDevices.push("cpu");
+-  defaultDevices = ["cpu"];
++  // PATCHED (mcpx): force the WASM backend in node-like envs so onnxruntime-node
++  // native bindings are never loaded (they can't be bundled into the Bun
++  // --compile single binary).
++  ONNX = ort_webgpu_bundle_min_exports;
++  supportedDevices.push("wasm");
++  defaultDevices = ["wasm"];
+ } else {
+   ONNX = ort_webgpu_bundle_min_exports;
+   if (apis.IS_WEBNN_AVAILABLE) {
+@@ -17738,7 +17730,14 @@ var CohereAsrProcessor = class extends Processor {
+ };
+ 
+ // src/utils/image.js
+-import sharp from "sharp";
++// PATCHED (mcpx): sharp has native bindings that can't be bundled into a
++// Bun --compile binary. We don't need image processing for text embeddings;
++// stub sharp with a function that throws lazily if image processing is ever
++// actually invoked. Truthy so the `else if (sharp)` branch below initializes
++// loadImageFunction normally.
++var sharp = function sharpStub() {
++  throw new Error("Image processing (sharp) is not available in this build.");
++};
+ var createCanvasFunction;
+ var ImageDataClass;
+ var loadImageFunction;
+@@ -22328,11 +22327,16 @@ function getExternalDataChunkNames(fullName, numChunks) {
+ async function getCoreModelFile(pretrained_model_name_or_path, fileName, options, suffix) {
+   const baseName = `${fileName}${suffix}.onnx`;
+   const fullPath = `${options.subfolder ?? ""}/${baseName}`;
+-  return await getModelFile(pretrained_model_name_or_path, fullPath, true, options, apis.IS_NODE_ENV);
++  // PATCHED (mcpx): always return the model bytes (buffer) instead of a path.
++  // Our patched onnxruntime backend is the bundled webgpu/web build, which
++  // can't read paths via node:fs and would try to `fetch()` a bare path,
++  // failing with `ERR_INVALID_URL`. Returning the buffer skips the fetch.
++  return await getModelFile(pretrained_model_name_or_path, fullPath, true, options, false);
+ }
+ async function getModelDataFiles(pretrained_model_name_or_path, fileName, suffix, options, use_external_data_format, session_options = {}) {
+   const baseName = `${fileName}${suffix}.onnx`;
+-  const return_path = apis.IS_NODE_ENV;
++  // PATCHED (mcpx): see getCoreModelFile patch above — return buffers, not paths.
++  const return_path = false;
+   let externalDataPromises = [];
+   const num_chunks = resolveExternalDataFormat(use_external_data_format, baseName, fileName);
+   if (num_chunks > 0) {
+diff --git a/src/backends/onnx.js b/src/backends/onnx.js
+index 13b1a748272d03aa062950ff585c1a2277ba96c9..9863c46653618091593b6428a8c16622186318d6 100644
+--- a/src/backends/onnx.js
++++ b/src/backends/onnx.js
+@@ -20,7 +20,10 @@ import { env, apis, LogLevel } from '../env.js';
+ 
+ // NOTE: Import order matters here. We need to import `onnxruntime-node` before `onnxruntime-web`.
+ // In either case, we select the default export if it exists, otherwise we use the named export.
+-import * as ONNX_NODE from 'onnxruntime-node';
++// PATCHED (botholomew): the static `import 'onnxruntime-node'` segfaults under Bun
++// (oven-sh/bun#26081). We never want the native bindings — `onnxruntime-web` (WASM) runs
++// fine on Bun + Node + browsers. The IS_NODE_ENV branch below is rerouted to ONNX_WEB.
++const ONNX_NODE = undefined;
+ import * as ONNX_WEB from 'onnxruntime-web/webgpu';
+ import { loadWasmBinary, loadWasmFactory } from './utils/cacheWasm.js';
+ import { isBlobURL, toAbsoluteURL } from '../utils/hub/utils.js';
+@@ -106,34 +109,11 @@ if (ORT_SYMBOL in globalThis) {
+     // If the JS runtime exposes their own ONNX runtime, use it
+     ONNX = globalThis[ORT_SYMBOL];
+ } else if (apis.IS_NODE_ENV) {
+-    ONNX = ONNX_NODE;
+-
+-    // Updated as of ONNX Runtime 1.23.0-dev.20250612-70f14d7670
+-    // The following table lists the supported versions of ONNX Runtime Node.js binding provided with pre-built binaries.
+-    // | EPs/Platforms         | Windows x64        | Windows arm64      | Linux x64          | Linux arm64        | MacOS x64          | MacOS arm64        |
+-    // | --------------------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
+-    // | CPU                   | ✔️                  | ✔️                  | ✔️                  | ✔️                  | ✔️                  | ✔️                  |
+-    // | WebGPU (experimental) | ✔️                  | ✔️                  | ✔️                  | ❌                  | ✔️                  | ✔️                  |
+-    // | DirectML              | ✔️                  | ✔️                  | ❌                  | ❌                  | ❌                  | ❌                  |
+-    // | CUDA                  | ❌                  | ❌                  | ✔️ (CUDA v12)       | ❌                  | ❌                  | ❌                  |
+-    // | CoreML                | ❌                  | ❌                  | ❌                  | ❌                  | ✔️                  | ✔️                  |
+-    switch (process.platform) {
+-        case 'win32': // Windows x64 and Windows arm64
+-            supportedDevices.push('dml');
+-            break;
+-        case 'linux': // Linux x64 and Linux arm64
+-            if (process.arch === 'x64') {
+-                supportedDevices.push('cuda');
+-            }
+-            break;
+-        case 'darwin': // MacOS x64 and MacOS arm64
+-            supportedDevices.push('coreml');
+-            break;
+-    }
+-
+-    supportedDevices.push('webgpu');
+-    supportedDevices.push('cpu');
+-    defaultDevices = ['cpu'];
++    // PATCHED (botholomew): force the WASM backend in node-like envs to avoid
++    // loading onnxruntime-node native bindings (segfaults under Bun).
++    ONNX = ONNX_WEB;
++    supportedDevices.push('wasm');
++    defaultDevices = ['wasm'];
+ } else {
+     ONNX = ONNX_WEB;
+ 
