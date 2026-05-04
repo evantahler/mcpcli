@@ -16,6 +16,7 @@
 		"src",
 		".claude",
 		".cursor",
+		"patches",
 		"README.md",
 		"LICENSE"
 	],
