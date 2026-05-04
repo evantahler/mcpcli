@@ -1,5 +1,6 @@
 import type { ServerManager, ToolWithServer } from "../client/manager.ts";
 import type { IndexedTool, SearchIndex } from "../config/schemas.ts";
+import { EMBEDDING_MODEL } from "../constants.ts";
 import { logger } from "../output/logger.ts";
 import { generateEmbedding } from "./semantic.ts";
 
@@ -86,7 +87,7 @@ export async function buildSearchIndex(
 	return {
 		version: 1,
 		indexed_at: new Date().toISOString(),
-		embedding_model: "Xenova/all-MiniLM-L6-v2",
+		embedding_model: EMBEDDING_MODEL.REPO,
 		tools: indexed,
 	};
 }

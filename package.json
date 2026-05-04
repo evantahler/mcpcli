@@ -25,6 +25,8 @@
 		"test:e2e": "bun test test/integration/remote-server.test.ts",
 		"lint": "biome ci . && tsc --noEmit",
 		"format": "biome check --write .",
+		"fetch-model": "bun run scripts/fetch-embedding-model.ts",
+		"prebuild": "bun run scripts/fetch-embedding-model.ts",
 		"build": "bun build --compile --minify --sourcemap ./src/cli.ts --outfile dist/mcpx"
 	},
 	"publishConfig": {
@@ -51,8 +53,12 @@
 		"ansis": "^4.2.0",
 		"commander": "^14.0.3",
 		"nanospinner": "^1.2.2",
+		"onnxruntime-web": "1.26.0-dev.20260416-b7804b056c",
 		"picomatch": "^4.0.4",
 		"@types/picomatch": "^4.0.3"
+	},
+	"patchedDependencies": {
+		"@huggingface/transformers@4.2.0": "patches/@huggingface%2Ftransformers@4.2.0.patch"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.14",
