@@ -116,6 +116,95 @@ describe("validateToolInput", () => {
 		expect(result.errors[0]?.message).toContain("schema compilation failed");
 	});
 
+	describe("array-with-sibling-enum normalization (issue #87)", () => {
+		const orderByEnum = ["createdTime", "createdTime desc", "viewedByMeTime", "viewedByMeTime desc"];
+
+		test("accepts array values that match a sibling primitive enum", () => {
+			const tool = makeTool("sibling_enum_pass", {
+				type: "object",
+				properties: {
+					order_by: {
+						type: "array",
+						items: { type: "string" },
+						enum: orderByEnum,
+					},
+				},
+			});
+			const result = validateToolInput("s1", tool, { order_by: ["viewedByMeTime desc"] });
+			expect(result.valid).toBe(true);
+		});
+
+		test("rejects entries that aren't in the (rewritten) item enum", () => {
+			const tool = makeTool("sibling_enum_fail", {
+				type: "object",
+				properties: {
+					order_by: {
+						type: "array",
+						items: { type: "string" },
+						enum: orderByEnum,
+					},
+				},
+			});
+			const result = validateToolInput("s2", tool, { order_by: ["nope"] });
+			expect(result.valid).toBe(false);
+			expect(result.errors[0]?.path).toBe("order_by.0");
+			expect(result.errors[0]?.message).toContain("one of");
+		});
+
+		test("does not regress correctly-shaped items.enum schemas", () => {
+			const tool = makeTool("nested_enum_ok", {
+				type: "object",
+				properties: {
+					order_by: {
+						type: "array",
+						items: { type: "string", enum: orderByEnum },
+					},
+				},
+			});
+			const pass = validateToolInput("s3", tool, { order_by: ["createdTime"] });
+			expect(pass.valid).toBe(true);
+			const fail = validateToolInput("s3", tool, { order_by: ["nope"] });
+			expect(fail.valid).toBe(false);
+		});
+
+		test("leaves schema untouched when items.enum already exists", () => {
+			const tool = makeTool("both_enums", {
+				type: "object",
+				properties: {
+					order_by: {
+						type: "array",
+						items: { type: "string", enum: ["onlyA"] },
+						enum: ["onlyB"],
+					},
+				},
+			});
+			// If we had rewritten the parent enum into items.enum we would have silently
+			// overwritten the legitimate `["onlyA"]` constraint, and `["onlyB"]` would now pass.
+			// Confirm we did not: items.enum still rejects "onlyB".
+			const result = validateToolInput("s4", tool, { order_by: ["onlyB"] });
+			expect(result.valid).toBe(false);
+			expect(result.errors.some((e) => e.path === "order_by.0")).toBe(true);
+		});
+
+		test("leaves schema untouched when sibling enum contains non-primitives", () => {
+			const tool = makeTool("non_primitive_enum", {
+				type: "object",
+				properties: {
+					tuples: {
+						type: "array",
+						items: { type: "object" },
+						enum: [{ a: 1 }, { b: 2 }],
+					},
+				},
+			});
+			// The original (malformed) Ajv behavior is preserved here: array value
+			// is checked against the enum of objects and fails. We just verify we
+			// didn't accidentally rewrite it.
+			const result = validateToolInput("s5", tool, { tuples: [{ a: 1 }] });
+			expect(result.valid).toBe(false);
+		});
+	});
+
 	test("caches compiled validators", () => {
 		const tool = makeTool("cached_tool", {
 			type: "object",
