@@ -1,7 +1,7 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { cyan, dim, green, red, yellow } from "ansis";
 import { logger } from "../output/logger.ts";
+import { glyph, theme } from "../output/theme.ts";
 
 export interface TraceOptions {
 	json: boolean;
@@ -70,14 +70,14 @@ function logOutgoing(
 
 	if ("id" in message && "method" in message) {
 		const m = message as { id: string | number; method: string; params?: unknown };
-		const arrow = isTTY ? cyan("→") : "→";
+		const arrow = isTTY ? glyph.arrowOut : "→";
 		const detail = summarizeParams(m.method, m.params);
 		const detailStr = detail ? ` ${detail}` : "";
-		logger.writeRaw(`${arrow} ${dim(`${m.method} (id: ${m.id})${detailStr}`)}\n`);
+		logger.writeRaw(`${arrow} ${theme.muted(`${m.method} (id: ${m.id})${detailStr}`)}\n`);
 	} else if ("method" in message) {
 		const m = message as { method: string };
-		const arrow = isTTY ? cyan("→") : "→";
-		logger.writeRaw(`${arrow} ${dim(m.method)}\n`);
+		const arrow = isTTY ? glyph.arrowOut : "→";
+		logger.writeRaw(`${arrow} ${theme.muted(m.method)}\n`);
 	}
 }
 
@@ -109,11 +109,11 @@ function logIncoming(
 		}
 
 		const isError = m.error !== undefined;
-		const arrow = isTTY ? (isError ? red("←") : green("←")) : "←";
+		const arrow = isTTY ? (isError ? glyph.arrowErr : glyph.arrowIn) : "←";
 		const timing = elapsed !== undefined ? ` [${elapsed}ms]` : "";
 		const summary = summarizeResult(method, m.result);
 		const summaryStr = summary ? ` — ${summary}` : "";
-		logger.writeRaw(`${arrow} ${dim(`${method} (id: ${m.id})${timing}${summaryStr}`)}\n`);
+		logger.writeRaw(`${arrow} ${theme.muted(`${method} (id: ${m.id})${timing}${summaryStr}`)}\n`);
 	} else if ("method" in message) {
 		// Notification (incoming)
 		const m = message as { method: string; params?: unknown };
@@ -123,9 +123,9 @@ function logIncoming(
 			return;
 		}
 
-		const arrow = isTTY ? yellow("←") : "←";
+		const arrow = isTTY ? glyph.arrowNote : "←";
 		const params = m.params ? ` ${JSON.stringify(m.params)}` : "";
-		logger.writeRaw(`${arrow} ${dim(`${m.method}${params}`)}\n`);
+		logger.writeRaw(`${arrow} ${theme.muted(`${m.method}${params}`)}\n`);
 	}
 }
 

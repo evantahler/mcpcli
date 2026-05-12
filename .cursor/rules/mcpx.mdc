@@ -193,6 +193,8 @@ mcpx deauth <server>           # remove stored auth
 | `-d, --with-descriptions`   | Include tool descriptions in list output                 |
 | `-c, --config <path>`       | Specify config file location                             |
 | `-N, --no-interactive`      | Decline server elicitation requests (for scripted usage) |
+| `--no-color`                | Disable ANSI colors (also honored via `NO_COLOR=1`)      |
+| `--force-color`             | Force ANSI colors even when piped (also `FORCE_COLOR=1`) |
 | `-S, --show-secrets`        | Show full auth tokens in verbose output (unmasked)       |
 | `-l, --log-level <level>`   | Minimum server log level to display (default: `warning`) |
 

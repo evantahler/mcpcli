@@ -429,3 +429,52 @@ describe("wrapDescription", () => {
 		expect(result).toBe("");
 	});
 });
+
+describe("formatter color on/off equivalence", () => {
+	test("formatToolList stripped output matches between color modes", async () => {
+		const { formatToolList } = await import("../../src/output/formatter.ts");
+		const { setMode, resetMode } = await import("../../src/output/tty.ts");
+		const emptySchema = { type: "object" as const };
+		const tools = [
+			{ server: "alpha", tool: { name: "do-stuff", description: "Do the stuff", inputSchema: emptySchema } },
+			{ server: "beta", tool: { name: "fetch-things", description: "Fetch the things", inputSchema: emptySchema } },
+		];
+		const origStdout = process.stdout.isTTY;
+		const origStderr = process.stderr.isTTY;
+		Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
+		Object.defineProperty(process.stderr, "isTTY", { value: true, writable: true });
+		try {
+			setMode({ interactive: true, color: true, json: false, verbose: false });
+			const colored = formatToolList(tools, {});
+			setMode({ interactive: true, color: false, json: false, verbose: false });
+			const plain = formatToolList(tools, {});
+			expect(ansis.strip(colored)).toBe(plain);
+		} finally {
+			resetMode();
+			Object.defineProperty(process.stdout, "isTTY", { value: origStdout, writable: true });
+			Object.defineProperty(process.stderr, "isTTY", { value: origStderr, writable: true });
+		}
+	});
+
+	test("formatUnifiedList renders type pills with uppercased labels", async () => {
+		const { formatUnifiedList } = await import("../../src/output/formatter.ts");
+		const { setMode, resetMode } = await import("../../src/output/tty.ts");
+		const items = [
+			{ server: "alpha", type: "tool" as const, name: "x", description: "" },
+			{ server: "alpha", type: "resource" as const, name: "y", description: "" },
+			{ server: "alpha", type: "prompt" as const, name: "z", description: "" },
+		];
+		const origStdout = process.stdout.isTTY;
+		Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
+		try {
+			setMode({ interactive: true, color: false, json: false, verbose: false });
+			const out = formatUnifiedList(items, {});
+			expect(out).toContain(" TOOL ");
+			expect(out).toContain(" RESOURCE ");
+			expect(out).toContain(" PROMPT ");
+		} finally {
+			resetMode();
+			Object.defineProperty(process.stdout, "isTTY", { value: origStdout, writable: true });
+		}
+	});
+});

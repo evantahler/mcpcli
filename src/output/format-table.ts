@@ -1,5 +1,6 @@
-import ansis, { dim } from "ansis";
+import ansis from "ansis";
 import { wrapDescription } from "./formatter.ts";
+import { theme } from "./theme.ts";
 
 export interface Column<T> {
 	value: (item: T) => string;
@@ -29,28 +30,30 @@ function getTerminalWidth(): number | undefined {
  */
 export function formatTable<T>(items: T[], options: TableOptions<T>): string {
 	if (items.length === 0) {
-		return dim(options.emptyMessage ?? "No items found");
+		return theme.muted(options.emptyMessage ?? "No items found");
 	}
 
 	const sep = options.separator ?? "  ";
 	const termWidth = getTerminalWidth();
 
-	// Calculate max width for each column
-	const maxWidths = options.columns.map((col) => Math.max(...items.map((item) => col.value(item).length)));
+	// Calculate max width for each column (account for any ANSI from the value
+	// fn — though most value fns return plain strings, theme.pill* return ANSI).
+	const maxWidths = options.columns.map((col) => Math.max(...items.map((item) => visibleLength(col.value(item)))));
 
 	return items
 		.map((item) => {
 			const parts = options.columns.map((col, i) => {
 				const raw = col.value(item);
-				const pad = maxWidths[i]! - raw.length;
-				return col.style(raw) + " ".repeat(Math.max(0, pad));
+				const styled = col.style(raw);
+				const pad = (maxWidths[i] ?? 0) - visibleLength(raw);
+				return styled + " ".repeat(Math.max(0, pad));
 			});
 			const prefix = parts.join(sep);
 
 			const desc = options.description?.(item);
 			if (desc) {
 				const pw = visibleLength(prefix) + sep.length;
-				const formatted = termWidth != null ? wrapDescription(desc, pw, termWidth) : dim(desc);
+				const formatted = termWidth != null ? wrapDescription(desc, pw, termWidth) : theme.muted(desc);
 				return `${prefix}${sep}${formatted}`;
 			}
 

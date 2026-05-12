@@ -134,7 +134,23 @@ mcpx search -n 5 "manage pull requests"
 | `-j, --json`              | Force JSON output (default when piped)                   |
 | `-F, --format <format>`   | Output format: `json` or `markdown`                      |
 | `-N, --no-interactive`    | Decline server elicitation requests (for scripted usage) |
+| `--no-color`              | Disable ANSI colors in output                            |
+| `--force-color`           | Force ANSI colors even when piped                        |
 | `-l, --log-level <level>` | Minimum server log level to display (default: `warning`) |
+
+### Output & colors
+
+mcpx auto-detects whether stdout/stderr are interactive and adapts:
+
+- TTY → colored, formatted output (tables, headers, badges).
+- Non-TTY / piped → JSON.
+
+Color emission honors the standard env vars and matching flags:
+
+- `NO_COLOR=1` or `--no-color` — disable ANSI colors.
+- `FORCE_COLOR=1` or `--force-color` — enable ANSI colors even when piped.
+- `--json` / `-j` — JSON output, no colors.
+- `CI=true` — treated as non-interactive (spinners off).
 
 Server log messages (`notifications/message`) are displayed on stderr with level-appropriate coloring. Valid levels (in ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. When a server declares logging capability, mcpx sends `logging/setLevel` to request messages at the configured threshold and above.
 
