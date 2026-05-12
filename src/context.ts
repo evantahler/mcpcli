@@ -38,7 +38,7 @@ export async function getContext(program: Command): Promise<AppContext> {
 
 	const formatFlag = opts.format as string | undefined;
 	if (formatFlag && !VALID_FORMATS.includes(formatFlag as OutputFormat)) {
-		console.error(`error: Invalid format "${formatFlag}". Use: ${VALID_FORMATS.join(", ")}`);
+		logger.error(`error: Invalid format "${formatFlag}". Use: ${VALID_FORMATS.join(", ")}`);
 		process.exit(1);
 	}
 	const format = formatFlag as OutputFormat | undefined;

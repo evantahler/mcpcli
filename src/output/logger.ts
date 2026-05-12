@@ -1,6 +1,7 @@
-import { dim, red, yellow } from "ansis";
 import { createSpinner } from "nanospinner";
 import type { FormatOptions } from "./formatter.ts";
+import { glyph, styleStackLine, theme } from "./theme.ts";
+import { detectMode, isJson, isVerbose, setMode, useSpinner } from "./tty.ts";
 
 /** MCP log levels ordered by severity (RFC 5424) */
 const LOG_LEVELS = ["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"] as const;
@@ -15,14 +16,14 @@ function logLevelIndex(level: string): number {
 function colorForLevel(level: string): (s: string) => string {
 	switch (level) {
 		case "debug":
-			return dim;
+			return theme.muted;
 		case "warning":
-			return yellow;
+			return theme.warn;
 		case "error":
 		case "critical":
 		case "alert":
 		case "emergency":
-			return red;
+			return theme.error;
 		default:
 			return (s: string) => s;
 	}
@@ -49,14 +50,21 @@ class Logger {
 		return Logger.instance;
 	}
 
-	/** Set format options (called once during context setup) */
+	/** Set format options (called once during context setup). Also re-resolves the
+	 * output mode so verbose/json flags parsed by commander update the global mode. */
 	configure(options: FormatOptions): void {
 		this.formatOptions = options;
+		setMode(
+			detectMode({
+				json: !!options.json,
+				verbose: !!options.verbose,
+			}),
+		);
 	}
 
 	/** Whether interactive output is suppressed (JSON mode or non-TTY stderr) */
 	private isSilent(): boolean {
-		return !!this.formatOptions.json || !(process.stderr.isTTY ?? false);
+		return isJson() || !(process.stderr.isTTY ?? false);
 	}
 
 	/** Write a line to stderr, pausing any active spinner around the write */
@@ -73,24 +81,37 @@ class Logger {
 	/** Info-level message (dim text on stderr). Suppressed in JSON/non-TTY mode. */
 	info(msg: string): void {
 		if (this.isSilent()) return;
-		this.writeStderr(dim(msg));
+		this.writeStderr(theme.muted(msg));
+	}
+
+	/** Success message (green ✓ on stderr). Suppressed in JSON/non-TTY mode. */
+	success(msg: string): void {
+		if (this.isSilent()) return;
+		this.writeStderr(`${glyph.ok} ${msg}`);
 	}
 
 	/** Warning message (yellow text on stderr). Suppressed in JSON/non-TTY mode. */
 	warn(msg: string): void {
 		if (this.isSilent()) return;
-		this.writeStderr(yellow(msg));
+		this.writeStderr(`${glyph.warn} ${theme.warn(msg)}`);
 	}
 
 	/** Error message (red text on stderr). Always writes. */
 	error(msg: string): void {
-		this.writeStderr(red(msg));
+		// If the message looks like a stack trace, style each frame line.
+		if (msg.includes("\n") && /\n\s*at\s/.test(msg)) {
+			const [first, ...rest] = msg.split("\n");
+			const styled = [theme.error(first ?? ""), ...rest.map(styleStackLine)].join("\n");
+			this.writeStderr(styled);
+			return;
+		}
+		this.writeStderr(theme.error(msg));
 	}
 
 	/** Debug/verbose message (dim text on stderr). Only when verbose is enabled. */
 	debug(msg: string): void {
-		if (!this.formatOptions.verbose || this.isSilent()) return;
-		this.writeStderr(dim(msg));
+		if (!isVerbose() || this.isSilent()) return;
+		this.writeStderr(theme.muted(msg));
 	}
 
 	/** Write a raw string to stderr. Spinner-aware but no formatting or newline added. */
@@ -109,7 +130,7 @@ class Logger {
 		const minLevel = this.formatOptions.logLevel ?? "warning";
 		if (logLevelIndex(params.level) < logLevelIndex(minLevel)) return;
 
-		if (this.formatOptions.json) {
+		if (isJson()) {
 			// JSON mode: structured object to stderr
 			const obj = { server: serverName, ...params };
 			process.stderr.write(`${JSON.stringify(obj)}\n`);
@@ -126,11 +147,9 @@ class Logger {
 	}
 
 	/** Start a spinner. Returns the Spinner interface. */
-	startSpinner(text: string, options?: FormatOptions): Spinner {
-		const opts = options ?? this.formatOptions;
-
+	startSpinner(text: string, _options?: FormatOptions): Spinner {
 		// No spinner in JSON/piped/verbose mode — verbose writeRaw output conflicts with spinner rendering
-		if (opts.json || opts.verbose || !(process.stderr.isTTY ?? false)) {
+		if (!useSpinner() || !(process.stderr.isTTY ?? false)) {
 			return { update() {}, success() {}, error() {}, stop() {} };
 		}
 

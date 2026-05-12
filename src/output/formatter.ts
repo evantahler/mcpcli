@@ -1,10 +1,12 @@
-import ansis, { bold, cyan, dim, green, red, yellow } from "ansis";
+import ansis from "ansis";
 import type { PromptWithServer, ResourceWithServer, ToolWithServer } from "../client/manager.ts";
 import type { Prompt, Resource, Tool } from "../config/schemas.ts";
 import type { SearchResult } from "../search/index.ts";
 import type { ValidationError } from "../validation/schema.ts";
 import { formatOutput } from "./format-output.ts";
 import { formatTable } from "./format-table.ts";
+import { glyph, theme, underline } from "./theme.ts";
+import { isInteractive as ttyIsInteractive } from "./tty.ts";
 
 export const VALID_FORMATS = ["json", "markdown"] as const;
 
@@ -29,7 +31,7 @@ export interface UnifiedItem {
 /** Check if stdout is a TTY (interactive terminal) */
 export function isInteractive(options: FormatOptions): boolean {
 	if (options.json) return false;
-	return process.stdout.isTTY ?? false;
+	return ttyIsInteractive();
 }
 
 /** Get terminal width, or undefined if not a TTY. Subtracts 1 for safety margin. */
@@ -77,8 +79,8 @@ function wrapLines(text: string, maxWidth: number): string[] {
 
 /**
  * Word-wrap a description string to fit within the available terminal width.
- * Returns dim()-wrapped text with continuation lines indented to prefixWidth.
- * @param text - raw description text (before dim())
+ * Returns theme.muted()-wrapped text with continuation lines indented to prefixWidth.
+ * @param text - raw description text (before theme.muted())
  * @param prefixWidth - visible character width of everything before the description
  * @param termWidth - terminal width in columns
  */
@@ -90,16 +92,16 @@ export function wrapDescription(text: string, prefixWidth: number, termWidth: nu
 		const fallbackIndent = Math.min(prefixWidth, 4);
 		const fallbackAvail = termWidth - fallbackIndent;
 		if (fallbackAvail < 20) {
-			return dim(text.length > termWidth ? `${text.slice(0, termWidth - 3)}...` : text);
+			return theme.muted(text.length > termWidth ? `${text.slice(0, termWidth - 3)}...` : text);
 		}
 		const wrapped = wrapLines(text, fallbackAvail);
 		const indent = " ".repeat(fallbackIndent);
-		return wrapped.map((l) => `\n${indent}${dim(l)}`).join("");
+		return wrapped.map((l) => `\n${indent}${theme.muted(l)}`).join("");
 	}
 
 	const wrapped = wrapLines(text, available);
 	const indent = " ".repeat(prefixWidth);
-	return wrapped.map((l, i) => (i === 0 ? dim(l) : `\n${indent}${dim(l)}`)).join("");
+	return wrapped.map((l, i) => (i === 0 ? theme.muted(l) : `\n${indent}${theme.muted(l)}`)).join("");
 }
 
 export interface ServerOverview {
@@ -129,47 +131,55 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
 		() => {
 			const lines: string[] = [];
 
-			// Header: server name + version
-			const header = cyan.bold(overview.serverName);
+			// Header: server name + version, with a dim underline
+			const header = theme.server(overview.serverName);
+			let headerLine: string;
+			let headerVisible: number;
 			if (overview.version) {
-				lines.push(`${header}  ${dim(`v${overview.version.version}`)}  ${dim(`(${overview.version.name})`)}`);
+				const versionStr = `v${overview.version.version}`;
+				const nameStr = `(${overview.version.name})`;
+				headerLine = `${header}  ${theme.muted(versionStr)}  ${theme.muted(nameStr)}`;
+				headerVisible = overview.serverName.length + 2 + versionStr.length + 2 + nameStr.length;
 			} else {
-				lines.push(header);
+				headerLine = header;
+				headerVisible = overview.serverName.length;
 			}
+			lines.push(headerLine);
+			lines.push(underline(headerVisible));
 
 			// Capabilities
 			if (overview.capabilities) {
 				lines.push("");
-				lines.push(bold("Capabilities:"));
+				lines.push(theme.tool("Capabilities:"));
 				const caps = overview.capabilities;
 				const present = KNOWN_CAPABILITIES.filter((k) => k in caps);
 				const absent = KNOWN_CAPABILITIES.filter((k) => !(k in caps));
-				for (const k of present) lines.push(`  ${green("✓")} ${k}`);
-				for (const k of absent) lines.push(`  ${dim("✗")} ${dim(k)}`);
+				for (const k of present) lines.push(`  ${glyph.ok} ${k}`);
+				for (const k of absent) lines.push(`  ${theme.muted("✗")} ${theme.muted(k)}`);
 			}
 
 			// Instructions
 			if (overview.instructions) {
 				lines.push("");
-				lines.push(bold("Instructions:"));
-				lines.push(`  ${dim(overview.instructions)}`);
+				lines.push(theme.tool("Instructions:"));
+				lines.push(`  ${theme.muted(overview.instructions)}`);
 			}
 
 			// Tools
 			lines.push("");
 			if (overview.tools.length === 0) {
-				lines.push(`${bold("Tools:")} ${dim("none")}`);
+				lines.push(`${theme.tool("Tools:")} ${theme.muted("none")}`);
 			} else {
-				lines.push(bold(`Tools (${overview.tools.length}):`));
+				lines.push(theme.tool(`Tools (${overview.tools.length}):`));
 				const maxName = Math.max(...overview.tools.map((t) => t.name.length));
 				const termWidth = getTerminalWidth();
 				for (let i = 0; i < overview.tools.length; i++) {
 					const t = overview.tools[i]!;
 					if (i > 0) lines.push("");
-					const name = `  ${bold(t.name.padEnd(maxName))}`;
+					const name = `  ${theme.tool(t.name.padEnd(maxName))}`;
 					if (t.description) {
 						const pw = visibleLength(name) + 2;
-						const desc = termWidth != null ? wrapDescription(t.description, pw, termWidth) : dim(t.description);
+						const desc = termWidth != null ? wrapDescription(t.description, pw, termWidth) : theme.muted(t.description);
 						lines.push(`${name}  ${desc}`);
 					} else {
 						lines.push(name);
@@ -182,7 +192,7 @@ export function formatServerOverview(overview: ServerOverview, options: FormatOp
 			counts.push(`Resources: ${overview.resourceCount}`);
 			counts.push(`Prompts: ${overview.promptCount}`);
 			lines.push("");
-			lines.push(dim(counts.join(" | ")));
+			lines.push(theme.muted(counts.join(" | ")));
 
 			return lines.join("\n");
 		},
@@ -201,8 +211,8 @@ export function formatToolList(tools: ToolWithServer[], options: FormatOptions):
 		() =>
 			formatTable(tools, {
 				columns: [
-					{ value: (t) => t.server, style: cyan },
-					{ value: (t) => t.tool.name, style: bold },
+					{ value: (t) => t.server, style: theme.path },
+					{ value: (t) => t.tool.name, style: theme.tool },
 				],
 				description: options.withDescriptions ? (t) => t.tool.description : undefined,
 				emptyMessage: "No tools found",
@@ -220,11 +230,11 @@ export function formatServerTools(serverName: string, tools: Tool[], options: Fo
 		},
 		() => {
 			if (tools.length === 0) {
-				return dim(`No tools found for ${serverName}`);
+				return theme.muted(`No tools found for ${serverName}`);
 			}
-			const header = cyan.bold(serverName);
+			const header = theme.server(serverName);
 			const body = formatTable(tools, {
-				columns: [{ value: (t) => `  ${t.name}`, style: bold }],
+				columns: [{ value: (t) => `  ${t.name}`, style: theme.tool }],
 				description: (t) => t.description,
 			});
 			return `${header}\n${body}`;
@@ -244,10 +254,12 @@ export function formatToolSchema(serverName: string, tool: Tool, options: Format
 		},
 		() => {
 			const lines: string[] = [];
-			lines.push(`${cyan(serverName)}/${bold(tool.name)}`);
-			if (tool.description) lines.push(dim(tool.description));
+			const headerText = `${serverName}/${tool.name}`;
+			lines.push(`${theme.path(serverName)}/${theme.tool(tool.name)}`);
+			lines.push(underline(headerText.length));
+			if (tool.description) lines.push(theme.muted(tool.description));
 			lines.push("");
-			lines.push(bold("Input Schema:"));
+			lines.push(theme.tool("Input Schema:"));
 			lines.push(formatSchema(tool.inputSchema, 2));
 			return lines.join("\n");
 		},
@@ -262,16 +274,16 @@ function formatSchema(schema: Tool["inputSchema"], indent: number): string {
 	const required = new Set(schema.required ?? []);
 
 	if (Object.keys(properties).length === 0) {
-		return `${pad}${dim("(no parameters)")}`;
+		return `${pad}${theme.muted("(no parameters)")}`;
 	}
 
 	return Object.entries(properties)
 		.map(([name, prop]) => {
 			const p = prop as Record<string, unknown>;
 			const type = (p.type as string) ?? "any";
-			const req = required.has(name) ? red("*") : "";
-			const desc = p.description ? `  ${dim(String(p.description))}` : "";
-			return `${pad}${green(name)}${req} ${dim(`(${type})`)}${desc}`;
+			const req = required.has(name) ? theme.error("*") : "";
+			const desc = p.description ? `  ${theme.muted(String(p.description))}` : "";
+			return `${pad}${theme.success(name)}${req} ${theme.muted(`(${type})`)}${desc}`;
 		})
 		.join("\n");
 }
@@ -288,15 +300,17 @@ export function formatToolHelp(serverName: string, tool: Tool, options: FormatOp
 		},
 		() => {
 			const lines: string[] = [];
-			lines.push(`${cyan(serverName)}/${bold(tool.name)}`);
-			if (tool.description) lines.push(dim(tool.description));
+			const headerText = `${serverName}/${tool.name}`;
+			lines.push(`${theme.path(serverName)}/${theme.tool(tool.name)}`);
+			lines.push(underline(headerText.length));
+			if (tool.description) lines.push(theme.muted(tool.description));
 			lines.push("");
-			lines.push(bold("Parameters:"));
+			lines.push(theme.tool("Parameters:"));
 			lines.push(formatSchema(tool.inputSchema, 2));
 			const example = generateExample(tool.inputSchema);
 			lines.push("");
-			lines.push(bold("Example:"));
-			lines.push(dim(`  mcpx call ${serverName} ${tool.name} '${JSON.stringify(example)}'`));
+			lines.push(theme.tool("Example:"));
+			lines.push(theme.muted(`  mcpx call ${serverName} ${tool.name} '${JSON.stringify(example)}'`));
 			return lines.join("\n");
 		},
 		options,
@@ -458,7 +472,7 @@ function resetUrlPlaceholders(): void {
 
 function restoreUrlPlaceholders(ansiOutput: string): string {
 	for (const [token, url] of urlMap) {
-		ansiOutput = ansiOutput.replace(token, `\x1b[34m\x1b[4m${url}\x1b[24m\x1b[39m`);
+		ansiOutput = ansiOutput.replace(token, theme.url(url));
 	}
 	return ansiOutput;
 }
@@ -675,8 +689,8 @@ export function formatValidationErrors(
 	return formatOutput(
 		{ error: "validation", server: serverName, tool: toolName, details: errors },
 		() => {
-			const header = `${red("error:")} invalid arguments for ${cyan(serverName)}/${bold(toolName)}`;
-			const details = errors.map((e) => `  ${yellow(e.path)}: ${e.message}`).join("\n");
+			const header = `${glyph.fail} ${theme.error("error:")} invalid arguments for ${theme.path(serverName)}/${theme.tool(toolName)}`;
+			const details = errors.map((e) => `  ${theme.warn(e.path)}: ${e.message}`).join("\n");
 			return `${header}\n${details}`;
 		},
 		options,
@@ -689,7 +703,7 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
 		results,
 		() => {
 			if (results.length === 0) {
-				return dim("No matching tools found");
+				return theme.muted("No matching tools found");
 			}
 
 			const termWidth = getTerminalWidth();
@@ -697,14 +711,14 @@ export function formatSearchResults(results: SearchResult[], options: FormatOpti
 
 			return results
 				.map((r) => {
-					const header = `${cyan(r.server)}  ${bold(r.tool)}  ${yellow(r.score.toFixed(2))}`;
+					const header = `${theme.path(r.server)}  ${theme.tool(r.tool)}  ${theme.warn(r.score.toFixed(2))}`;
 					const fullDesc = r.description
 						.split("\n")
 						.map((l) => l.trim())
 						.filter((l) => l.length > 0)
 						.join(" ");
 					const indent = " ".repeat(descIndent);
-					const desc = termWidth != null ? wrapDescription(fullDesc, descIndent, termWidth) : dim(fullDesc);
+					const desc = termWidth != null ? wrapDescription(fullDesc, descIndent, termWidth) : theme.muted(fullDesc);
 					return `${header}\n${indent}${desc}`;
 				})
 				.join("\n\n");
@@ -725,8 +739,8 @@ export function formatResourceList(resources: ResourceWithServer[], options: For
 		() =>
 			formatTable(resources, {
 				columns: [
-					{ value: (r) => r.server, style: cyan },
-					{ value: (r) => r.resource.uri, style: bold },
+					{ value: (r) => r.server, style: theme.path },
+					{ value: (r) => r.resource.uri, style: theme.tool },
 				],
 				description: options.withDescriptions ? (r) => r.resource.description : undefined,
 				emptyMessage: "No resources found",
@@ -749,11 +763,11 @@ export function formatServerResources(serverName: string, resources: Resource[],
 		},
 		() => {
 			if (resources.length === 0) {
-				return dim(`No resources found for ${serverName}`);
+				return theme.muted(`No resources found for ${serverName}`);
 			}
-			const header = cyan.bold(serverName);
+			const header = theme.server(serverName);
 			const body = formatTable(resources, {
-				columns: [{ value: (r) => `  ${r.uri}`, style: bold }],
+				columns: [{ value: (r) => `  ${r.uri}`, style: theme.tool }],
 				description: (r) => r.description,
 			});
 			return `${header}\n${body}`;
@@ -775,17 +789,19 @@ export function formatResourceContents(
 			const contents =
 				(result as { contents?: Array<{ text?: string; blob?: string; mimeType?: string }> })?.contents ?? [];
 			const lines: string[] = [];
-			lines.push(`${cyan(serverName)}/${bold(uri)}`);
+			const headerText = `${serverName}/${uri}`;
+			lines.push(`${theme.path(serverName)}/${theme.resource(uri)}`);
+			lines.push(underline(headerText.length));
 			lines.push("");
 
 			if (contents.length === 0) {
-				lines.push(dim("(empty)"));
+				lines.push(theme.muted("(empty)"));
 			} else {
 				for (const item of contents) {
 					if (item.text !== undefined) {
 						lines.push(item.text);
 					} else if (item.blob !== undefined) {
-						lines.push(dim(`<binary blob, ${item.blob.length} bytes base64>`));
+						lines.push(theme.muted(`<binary blob, ${item.blob.length} bytes base64>`));
 					}
 				}
 			}
@@ -807,8 +823,8 @@ export function formatPromptList(prompts: PromptWithServer[], options: FormatOpt
 		() =>
 			formatTable(prompts, {
 				columns: [
-					{ value: (p) => p.server, style: cyan },
-					{ value: (p) => p.prompt.name, style: bold },
+					{ value: (p) => p.server, style: theme.path },
+					{ value: (p) => p.prompt.name, style: theme.prompt },
 				],
 				description: options.withDescriptions ? (p) => p.prompt.description : undefined,
 				emptyMessage: "No prompts found",
@@ -830,23 +846,23 @@ export function formatServerPrompts(serverName: string, prompts: Prompt[], optio
 		},
 		() => {
 			if (prompts.length === 0) {
-				return dim(`No prompts found for ${serverName}`);
+				return theme.muted(`No prompts found for ${serverName}`);
 			}
 
-			const header = cyan.bold(serverName);
+			const header = theme.server(serverName);
 			const maxName = Math.max(...prompts.map((p) => p.name.length));
 			const termWidth = getTerminalWidth();
 
 			const lines = prompts.map((p) => {
-				const name = `  ${bold(p.name.padEnd(maxName))}`;
+				const name = `  ${theme.prompt(p.name.padEnd(maxName))}`;
 				const args =
 					p.arguments && p.arguments.length > 0
-						? `  ${dim(`(${p.arguments.map((a) => (a.required ? a.name : `[${a.name}]`)).join(", ")})`)}`
+						? `  ${theme.muted(`(${p.arguments.map((a) => (a.required ? a.name : `[${a.name}]`)).join(", ")})`)}`
 						: "";
 				if (p.description) {
 					const prefix = `${name}${args}`;
 					const pw = visibleLength(prefix) + 2;
-					const desc = termWidth != null ? wrapDescription(p.description, pw, termWidth) : dim(p.description);
+					const desc = termWidth != null ? wrapDescription(p.description, pw, termWidth) : theme.muted(p.description);
 					return `${prefix}  ${desc}`;
 				}
 				return `${name}${args}`;
@@ -873,11 +889,13 @@ export function formatPromptMessages(
 				messages?: Array<{ role: string; content: { type: string; text?: string } }>;
 			};
 			const lines: string[] = [];
-			lines.push(`${cyan(serverName)}/${bold(name)}`);
-			if (r.description) lines.push(dim(r.description));
+			const headerText = `${serverName}/${name}`;
+			lines.push(`${theme.path(serverName)}/${theme.prompt(name)}`);
+			lines.push(underline(headerText.length));
+			if (r.description) lines.push(theme.muted(r.description));
 			lines.push("");
 			for (const msg of r.messages ?? []) {
-				lines.push(`${bold(msg.role)}:`);
+				lines.push(`${theme.tool(msg.role)}:`);
 				if (msg.content.text !== undefined) {
 					lines.push(`  ${msg.content.text}`);
 				}
@@ -890,11 +908,12 @@ export function formatPromptMessages(
 
 /** Format a unified list of tools, resources, and prompts across servers */
 export function formatUnifiedList(items: UnifiedItem[], options: FormatOptions): string {
-	const typeLabel = (t: string) => {
-		if (t === "tool") return green(t);
-		if (t === "resource") return cyan(t);
-		return yellow(t);
+	const typePill = (i: UnifiedItem): string => {
+		if (i.type === "tool") return theme.pillTool(i.type);
+		if (i.type === "resource") return theme.pillResource(i.type);
+		return theme.pillPrompt(i.type);
 	};
+	const nameStyle = (i: UnifiedItem) => (i.type === "prompt" ? theme.prompt(i.name) : theme.tool(i.name));
 
 	return formatOutput(
 		items.map((i) => ({
@@ -906,9 +925,9 @@ export function formatUnifiedList(items: UnifiedItem[], options: FormatOptions):
 		() =>
 			formatTable(items, {
 				columns: [
-					{ value: (i) => i.server, style: cyan },
-					{ value: (i) => i.type, style: typeLabel },
-					{ value: (i) => i.name, style: bold },
+					{ value: (i) => typePill(i), style: (s) => s },
+					{ value: (i) => i.server, style: theme.path },
+					{ value: (i) => nameStyle(i), style: (s) => s },
 				],
 				description: options.withDescriptions ? (i) => i.description : undefined,
 				emptyMessage: "No tools, resources, or prompts found",
@@ -928,27 +947,28 @@ export function formatTaskStatus(
 			const statusColor = (s: string) => {
 				switch (s) {
 					case "completed":
-						return green(s);
+						return theme.success(s);
 					case "working":
-						return yellow(s);
+						return theme.warn(s);
 					case "failed":
 					case "cancelled":
-						return red(s);
+						return theme.error(s);
 					case "input_required":
-						return yellow(s);
+						return theme.warn(s);
 					default:
 						return s;
 				}
 			};
 
 			const lines: string[] = [];
-			lines.push(`${bold("Task:")} ${cyan(task.taskId)}`);
-			lines.push(`${bold("Status:")} ${statusColor(task.status)}`);
-			if (task.statusMessage) lines.push(`${bold("Message:")} ${dim(String(task.statusMessage))}`);
-			if (task.createdAt) lines.push(`${bold("Created:")} ${dim(String(task.createdAt))}`);
-			if (task.lastUpdatedAt) lines.push(`${bold("Updated:")} ${dim(String(task.lastUpdatedAt))}`);
-			if (task.ttl != null) lines.push(`${bold("TTL:")} ${dim(`${String(task.ttl)}ms`)}`);
-			if (task.pollInterval != null) lines.push(`${bold("Poll interval:")} ${dim(`${String(task.pollInterval)}ms`)}`);
+			lines.push(`${theme.tool("Task:")} ${theme.path(task.taskId)}`);
+			lines.push(`${theme.tool("Status:")} ${statusColor(task.status)}`);
+			if (task.statusMessage) lines.push(`${theme.tool("Message:")} ${theme.muted(String(task.statusMessage))}`);
+			if (task.createdAt) lines.push(`${theme.tool("Created:")} ${theme.muted(String(task.createdAt))}`);
+			if (task.lastUpdatedAt) lines.push(`${theme.tool("Updated:")} ${theme.muted(String(task.lastUpdatedAt))}`);
+			if (task.ttl != null) lines.push(`${theme.tool("TTL:")} ${theme.muted(`${String(task.ttl)}ms`)}`);
+			if (task.pollInterval != null)
+				lines.push(`${theme.tool("Poll interval:")} ${theme.muted(`${String(task.pollInterval)}ms`)}`);
 			return lines.join("\n");
 		},
 		options,
@@ -965,18 +985,18 @@ export function formatTasksList(
 		{ tasks, ...(nextCursor ? { nextCursor } : {}) },
 		() => {
 			if (tasks.length === 0) {
-				return dim("No tasks found");
+				return theme.muted("No tasks found");
 			}
 
 			const statusColor = (s: string) => {
 				switch (s) {
 					case "completed":
-						return green(s.padEnd(14));
+						return theme.success(s.padEnd(14));
 					case "working":
-						return yellow(s.padEnd(14));
+						return theme.warn(s.padEnd(14));
 					case "failed":
 					case "cancelled":
-						return red(s.padEnd(14));
+						return theme.error(s.padEnd(14));
 					default:
 						return s.padEnd(14);
 				}
@@ -985,15 +1005,15 @@ export function formatTasksList(
 			const maxId = Math.max(...tasks.map((t) => t.taskId.length));
 
 			const lines = tasks.map((t) => {
-				const id = cyan(t.taskId.padEnd(maxId));
+				const id = theme.path(t.taskId.padEnd(maxId));
 				const status = statusColor(t.status);
-				const updated = t.lastUpdatedAt ? dim(String(t.lastUpdatedAt)) : "";
+				const updated = t.lastUpdatedAt ? theme.muted(String(t.lastUpdatedAt)) : "";
 				return `${id}  ${status}  ${updated}`;
 			});
 
 			if (nextCursor) {
 				lines.push("");
-				lines.push(dim(`Next cursor: ${nextCursor}`));
+				lines.push(theme.muted(`Next cursor: ${nextCursor}`));
 			}
 
 			return lines.join("\n");
@@ -1009,12 +1029,13 @@ export function formatTaskCreated(
 ): string {
 	return formatOutput(
 		{ task },
-		() => `${green("Task created:")} ${cyan(task.taskId)} ${dim(`(status: ${task.status})`)}`,
+		() =>
+			`${glyph.ok} ${theme.success("Task created:")} ${theme.taskId(task.taskId)} ${theme.muted(`(status: ${task.status})`)}`,
 		options,
 	);
 }
 
 /** Format an error message */
 export function formatError(message: string, options: FormatOptions): string {
-	return formatOutput({ error: message }, () => `${red("error:")} ${message}`, options);
+	return formatOutput({ error: message }, () => `${glyph.fail} ${theme.error("error:")} ${message}`, options);
 }

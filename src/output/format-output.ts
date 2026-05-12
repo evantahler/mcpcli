@@ -1,5 +1,11 @@
 import type { FormatOptions } from "./formatter.ts";
-import { isInteractive } from "./formatter.ts";
+import { isInteractive as ttyIsInteractive } from "./tty.ts";
+
+/** TTY-aware interactivity check, with an explicit JSON override. */
+function isInteractive(options: FormatOptions): boolean {
+	if (options.json) return false;
+	return ttyIsInteractive();
+}
 
 /**
  * Format output with automatic JSON/interactive branching.
