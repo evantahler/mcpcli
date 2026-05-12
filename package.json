@@ -1,6 +1,6 @@
 {
 	"name": "@evantahler/mcpx",
-	"version": "0.21.5",
+	"version": "0.21.6",
 	"description": "A command-line interface for MCP servers. curl for MCP.",
 	"type": "module",
 	"exports": {

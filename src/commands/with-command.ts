@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { type AppContext, getContext } from "../context.ts";
 import { formatError } from "../output/formatter.ts";
 import { logger, type Spinner } from "../output/logger.ts";
+import { ExitError } from "../shutdown.ts";
 
 export interface CommandContext extends AppContext {
 	spinner: Spinner;
@@ -47,9 +48,10 @@ export function withCommand<TArgs extends unknown[]>(
 		try {
 			await handler({ ...appCtx, spinner }, ...args);
 		} catch (err) {
+			if (err instanceof ExitError) throw err;
 			spinner.error(options.errorLabel ?? "Failed");
 			console.error(formatError(String(err), formatOptions));
-			process.exit(1);
+			throw new ExitError(1);
 		} finally {
 			await manager.close();
 		}

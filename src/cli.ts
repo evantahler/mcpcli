@@ -22,7 +22,10 @@ import { registerSkillCommand } from "./commands/skill.ts";
 import { registerTaskCommand } from "./commands/task.ts";
 import { registerUpgradeCommand } from "./commands/upgrade.ts";
 import { logger } from "./output/logger.ts";
+import { ExitError, installSignalHandlers } from "./shutdown.ts";
 import { maybeCheckForUpdate } from "./update/background.ts";
+
+installSignalHandlers();
 
 program
 	.name("mcpx")
@@ -92,7 +95,15 @@ if (firstCommand && !knownCommands.has(firstCommand)) {
 // Fire-and-forget background update check
 const updateNotice = maybeCheckForUpdate();
 
-program.parse();
+try {
+	await program.parseAsync();
+} catch (err) {
+	if (err instanceof ExitError) {
+		process.exit(err.code);
+	}
+	logger.error(String(err));
+	process.exit(1);
+}
 
 // Print update notice after command output completes
 process.on("beforeExit", async () => {
