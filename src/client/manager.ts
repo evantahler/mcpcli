@@ -20,6 +20,7 @@ import pkg from "../../package.json";
 import type { AuthFile, Prompt, Resource, ServerConfig, ServersFile, Tool } from "../config/schemas.ts";
 import { isHttpServer, isStdioServer } from "../config/schemas.ts";
 import { logger } from "../output/logger.ts";
+import { register, unregister } from "../shutdown.ts";
 import { handleElicitation } from "./elicitation.ts";
 import { createHttpTransport } from "./http.ts";
 import { McpOAuthProvider } from "./oauth.ts";
@@ -97,6 +98,7 @@ export class ServerManager {
 		this.logLevel = opts.logLevel ?? "warning";
 		this.json = opts.json ?? false;
 		this.noInteractive = opts.noInteractive ?? false;
+		register(this);
 	}
 
 	/** Get or create a connected client for a server */
@@ -492,16 +494,19 @@ export class ServerManager {
 
 	/** Disconnect all clients */
 	async close(): Promise<void> {
-		const closePromises = [...this.clients.entries()].map(async ([name, client]) => {
+		unregister(this);
+		// Close every transport — covers in-flight connects whose client hasn't been promoted
+		// into `this.clients` yet (otherwise stdio children would be orphaned on shutdown).
+		const closePromises = [...this.transports.values()].map(async (transport) => {
 			try {
-				await client.close();
+				await transport.close?.();
 			} catch {
 				// Ignore close errors
 			}
-			this.clients.delete(name);
-			this.transports.delete(name);
 		});
 		await Promise.allSettled(closePromises);
+		this.clients.clear();
+		this.transports.clear();
 		this.connecting.clear();
 	}
 }

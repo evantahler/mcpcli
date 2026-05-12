@@ -13,6 +13,7 @@ import {
 	formatValidationErrors,
 } from "../output/formatter.ts";
 import { logger } from "../output/logger.ts";
+import { ExitError } from "../shutdown.ts";
 import { validateToolInput } from "../validation/schema.ts";
 
 type ResolvedArgs =
@@ -268,10 +269,10 @@ export function registerExecCommand(program: Command) {
 						for (const elicitation of err.elicitations) {
 							await handleUrlElicitation(elicitation, elicitOptions);
 						}
-						process.exit(1);
+						throw new ExitError(1);
 					}
 					console.error(formatError(String(err), formatOptions));
-					process.exit(1);
+					throw new ExitError(1);
 				} finally {
 					await manager.close();
 				}
