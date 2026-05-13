@@ -20,9 +20,6 @@
         "@types/bun": "latest",
         "typescript": "^6",
       },
-      "peerDependencies": {
-        "typescript": "^6",
-      },
     },
   },
   "packages": {
