@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import type { UnifiedItem } from "../output/formatter.ts";
-import { formatUnifiedList } from "../output/formatter.ts";
+import { formatError, formatUnifiedList } from "../output/formatter.ts";
 import { withCommand } from "./with-command.ts";
 
 export function registerListCommand(program: Command) {
@@ -46,8 +46,17 @@ export function registerListCommand(program: Command) {
 
 				const errors = [...toolsResult.errors, ...resourcesResult.errors, ...promptsResult.errors];
 				if (errors.length > 0) {
+					const messagesByServer = new Map<string, Set<string>>();
 					for (const err of errors) {
-						console.error(`"${err.server}": ${err.message}`);
+						let set = messagesByServer.get(err.server);
+						if (!set) {
+							set = new Set();
+							messagesByServer.set(err.server, set);
+						}
+						set.add(err.message);
+					}
+					for (const [server, messages] of messagesByServer) {
+						console.error(formatError(`Server "${server}": ${[...messages].join("; ")}`, formatOptions));
 					}
 					if (items.length > 0) console.log("");
 				}
