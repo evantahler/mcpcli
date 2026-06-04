@@ -3,6 +3,7 @@ import type { Command } from "commander";
 import { saveSearchIndex } from "../config/loader.ts";
 import { getContext } from "../context.ts";
 import { logger } from "../output/logger.ts";
+import { maybeReindexDrift } from "../search/auto-reindex.ts";
 import { buildSearchIndex } from "../search/indexer.ts";
 import { getStaleServers } from "../search/staleness.ts";
 import { withCommand } from "./with-command.ts";
@@ -34,21 +35,37 @@ export function registerIndexCommand(program: Command) {
 		.option("-i, --status", "show index status")
 		.action(async (options: { status?: boolean }) => {
 			if (options.status) {
-				const { config, manager } = await getContext(program);
-				const idx = config.searchIndex;
-				if (idx.tools.length === 0) {
-					console.log("No search index. Run: mcpx index");
-				} else {
+				const { config, manager, formatOptions } = await getContext(program);
+				try {
+					if (config.searchIndex.tools.length === 0) {
+						console.log("No search index. Run: mcpx index");
+						return;
+					}
+
+					// Connect to servers and refresh the index for any whose tools have drifted.
+					const spinner = logger.startSpinner("Checking servers for tool changes...", formatOptions);
+					const { tools, errors } = await manager.getAllTools();
+					const { servers: reindexed } = await maybeReindexDrift(config, tools, errors, (p) => {
+						spinner.update(`Re-indexing ${p.current}/${p.total}: ${p.tool}`);
+					});
+					spinner.stop();
+
+					const idx = config.searchIndex;
 					console.log(`Tools:   ${idx.tools.length}`);
 					console.log(`Model:   ${idx.embedding_model}`);
 					console.log(`Indexed: ${idx.indexed_at}`);
+
+					if (reindexed.length > 0) {
+						console.log(`Refreshed: ${reindexed.join(", ")} (tools changed since last index)`);
+					}
 
 					const stale = getStaleServers(idx, config.servers);
 					if (stale.length > 0) {
 						console.log(yellow(`Stale:   ${stale.join(", ")} (run mcpx index to refresh)`));
 					}
+				} finally {
+					await manager.close();
 				}
-				await manager.close();
 				return;
 			}
 

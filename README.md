@@ -289,7 +289,7 @@ Tokens are automatically refreshed when expired (if a refresh token is available
 
 ### `search.json` — Semantic Search Index (managed automatically)
 
-Contains every discovered tool with metadata for semantic search. Built and updated automatically — any command that connects to a server will detect new/changed tools and re-index them in the background.
+Contains every discovered tool with metadata for semantic search. Built by `mcpx index` and kept fresh automatically — `mcpx` (the default list) and `mcpx index --status` already fetch every server's live tools, so they detect new/changed/removed tools and re-index the affected servers in the background.
 
 ```json
 {

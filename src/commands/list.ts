@@ -1,6 +1,10 @@
 import type { Command } from "commander";
-import type { UnifiedItem } from "../output/formatter.ts";
+import type { ServerError, ToolWithServer } from "../client/manager.ts";
+import type { Config } from "../config/schemas.ts";
+import type { FormatOptions, UnifiedItem } from "../output/formatter.ts";
 import { formatError, formatUnifiedList } from "../output/formatter.ts";
+import { logger } from "../output/logger.ts";
+import { maybeReindexDrift } from "../search/auto-reindex.ts";
 import { withCommand } from "./with-command.ts";
 
 export function registerListCommand(program: Command) {
@@ -8,13 +12,17 @@ export function registerListCommand(program: Command) {
 		withCommand(
 			program,
 			{ spinnerText: "Connecting to servers...", errorLabel: "Failed to list servers" },
-			async ({ manager, formatOptions, spinner }) => {
+			async ({ config, manager, formatOptions, spinner }) => {
 				const [toolsResult, resourcesResult, promptsResult] = await Promise.all([
 					manager.getAllTools(),
 					manager.getAllResources(),
 					manager.getAllPrompts(),
 				]);
 				spinner.stop();
+
+				// We already have every server's live tools — keep the search index fresh by
+				// re-indexing any server whose tools have changed since it was last indexed.
+				await refreshIndexOnDrift(config, toolsResult, formatOptions);
 
 				const items: UnifiedItem[] = [
 					...toolsResult.tools.map((t) => ({
@@ -65,4 +73,26 @@ export function registerListCommand(program: Command) {
 			},
 		),
 	);
+}
+
+/** Refresh the search index for any server whose tools have drifted since the last index. */
+async function refreshIndexOnDrift(
+	config: Config,
+	toolsResult: { tools: ToolWithServer[]; errors: ServerError[] },
+	formatOptions: FormatOptions,
+): Promise<void> {
+	const spinner = logger.startSpinner("Refreshing search index...", formatOptions);
+	try {
+		const { servers } = await maybeReindexDrift(config, toolsResult.tools, toolsResult.errors, (p) => {
+			spinner.update(`Re-indexing ${p.current}/${p.total}: ${p.tool}`);
+		});
+		spinner.stop();
+		if (servers.length > 0) {
+			logger.info(`Re-indexed tools for: ${servers.join(", ")} (changed since last index)`);
+		}
+	} catch (err) {
+		// A drift refresh is best-effort; never let it break `list` output.
+		spinner.stop();
+		logger.warn(`Could not refresh search index: ${String(err)}`);
+	}
 }

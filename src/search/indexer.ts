@@ -37,7 +37,7 @@ export function generateScenarios(name: string, description: string): string[] {
 }
 
 /** Build an IndexedTool from a tool with server info */
-async function indexTool(t: ToolWithServer): Promise<IndexedTool> {
+export async function indexTool(t: ToolWithServer): Promise<IndexedTool> {
 	const description = t.tool.description ?? "";
 	const keywords = extractKeywords(t.tool.name);
 	const scenarios = generateScenarios(t.tool.name, description);
@@ -89,5 +89,37 @@ export async function buildSearchIndex(
 		indexed_at: new Date().toISOString(),
 		embedding_model: EMBEDDING_MODEL.REPO,
 		tools: indexed,
+	};
+}
+
+/**
+ * Rebuild only the entries for `driftedServers`, reusing existing entries for every other server.
+ * Returns a new SearchIndex; the original is not mutated.
+ */
+export async function reindexServers(
+	index: SearchIndex,
+	allLiveTools: ToolWithServer[],
+	driftedServers: string[],
+	onProgress?: (progress: IndexProgress) => void,
+): Promise<SearchIndex> {
+	const drifted = new Set(driftedServers);
+
+	// Keep entries for servers that didn't drift.
+	const kept = index.tools.filter((t) => !drifted.has(t.server));
+
+	// Re-embed live tools for the drifted servers.
+	const toReindex = allLiveTools.filter((t) => drifted.has(t.server));
+	const reindexed: IndexedTool[] = [];
+	for (let i = 0; i < toReindex.length; i++) {
+		const t = toReindex[i]!;
+		onProgress?.({ total: toReindex.length, current: i + 1, tool: `${t.server}/${t.tool.name}` });
+		reindexed.push(await indexTool(t));
+	}
+
+	return {
+		version: index.version,
+		indexed_at: new Date().toISOString(),
+		embedding_model: EMBEDDING_MODEL.REPO,
+		tools: [...kept, ...reindexed],
 	};
 }
