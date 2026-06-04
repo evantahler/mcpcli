@@ -59,19 +59,37 @@ async function getEmbedder(): Promise<(text: string) => Promise<Float32Array>> {
 	// q8 quantization gives near-identical embedding quality at ~25% the model
 	// size (≈22 MB vs ≈86 MB for fp32). See onnx setup comment above for why
 	// we try `wasm` first and fall back to `cpu`.
+	//
+	// The first call downloads the model from Hugging Face, which can return a
+	// transient 429 (rate limit) or 5xx — retry those with exponential backoff
+	// so a flaky network doesn't fail the user's first index (or CI). The
+	// wasm→cpu device fallback ("Unsupported device") is NOT a transient error
+	// and is handled separately below.
+	const loadPipeline = () =>
+		transformers
+			.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, { device: "wasm", dtype: "q8" })
+			.catch((err: unknown) => {
+				if (!String((err as Error)?.message ?? "").includes("Unsupported device")) throw err;
+				logger.debug("WASM backend unavailable; falling back to cpu (onnxruntime-node)");
+				return transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, { device: "cpu", dtype: "q8" });
+			});
+
 	let extractor: Awaited<ReturnType<typeof transformers.pipeline>>;
-	try {
-		extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
-			device: "wasm",
-			dtype: "q8",
-		});
-	} catch (err) {
-		if (!String((err as Error)?.message ?? "").includes("Unsupported device")) throw err;
-		logger.debug("WASM backend unavailable; falling back to cpu (onnxruntime-node)");
-		extractor = await transformers.pipeline("feature-extraction", EMBEDDING_MODEL.REPO, {
-			device: "cpu",
-			dtype: "q8",
-		});
+	const maxAttempts = 4;
+	for (let attempt = 1; ; attempt++) {
+		try {
+			extractor = await loadPipeline();
+			break;
+		} catch (err) {
+			const message = String((err as Error)?.message ?? "");
+			const transient = /\b(429|5\d\d)\b/.test(message) || /load file/i.test(message);
+			if (!transient || attempt >= maxAttempts) throw err;
+			const delayMs = Math.round(2 ** (attempt - 1) * 500 * (1 + Math.random() * 0.25));
+			logger.warn(
+				`Failed to download embedding model (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms: ${message}`,
+			);
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
+		}
 	}
 
 	pipelineInstance = async (text: string): Promise<Float32Array> => {

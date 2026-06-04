@@ -15,7 +15,19 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: bash scripts/apply-transformers-patch.sh
+      # Cache the embedding model so it's downloaded from Hugging Face once and
+      # reused across runs, avoiding the per-run 429 rate-limits that make the
+      # semantic tests flaky. Key includes the model repo + revision so a model
+      # change busts the cache.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mcpx/transformers
+          key: transformers-Xenova-bge-small-en-v1.5-main
       - run: bun lint
+      # Warm the model cache (with the in-app retry/backoff) before the test
+      # suite so a cold cache populates the cache step above instead of failing
+      # mid-test on a transient download error.
+      - run: bun -e 'await (await import("./src/search/semantic.ts")).generateEmbedding("warm")'
       - run: bun test
 
   test-upgrade:
