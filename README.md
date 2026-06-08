@@ -737,6 +737,77 @@ const client = new McpxClient({
 });
 ```
 
+#### Tool metadata
+
+`info()` and `listTools()` return the raw MCP `Tool`, so you get everything the server declares: `name`, `title`, `description`, `inputSchema`, `outputSchema`, `execution.taskSupport`, and `annotations`. The `annotations` object carries the MCP behavioral hints:
+
+```typescript
+const tool = await client.info("github", "delete_repo");
+tool?.annotations; // { title?, readOnlyHint?, destructiveHint?, idempotentHint?, openWorldHint? }
+```
+
+> ⚠️ Annotations are **untrusted hints** — per the MCP spec, clients should never make tool-use decisions based on annotations from untrusted servers. Treat the approval gate below as a guardrail, not a security boundary.
+
+#### Human-in-the-loop approval gate
+
+Because the SDK runs non-interactively, mcpx can't prompt a human itself — instead you supply an approval callback and a policy for which tools to gate. This lets you require approval before, say, any **open-world writeable** tool (`openWorldHint: true` and not `readOnlyHint`) runs:
+
+```typescript
+import { McpxClient, ToolApprovalDeniedError } from "@evantahler/mcpx";
+
+const client = new McpxClient({
+  servers: { mcpServers: { github: { url: "https://mcp.github.com" } } },
+  approvalPolicy: "open-world-writeable", // default is "none"
+  onApprovalRequired: async ({ server, tool, args, annotations, reason }) => {
+    // Prompt a human, call out to an approval service, check a policy, etc.
+    return await promptHuman(`Allow ${server}/${tool}? (${reason})`, args);
+  },
+});
+
+// Gated tools wait for the callback; returning false throws ToolApprovalDeniedError.
+// If a tool is gated but no onApprovalRequired callback was provided, exec() throws
+// ToolApprovalRequiredError (fail-closed).
+await client.exec("github", "delete_repo", { repo: "old-thing" });
+```
+
+`approvalPolicy` accepts:
+
+| Value                   | Gates                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `"none"` _(default)_    | nothing — existing behavior, zero overhead                                         |
+| `"open-world-writeable"`| tools with `openWorldHint: true` and not `readOnlyHint` (unannotated tools pass)   |
+| `"writeable"`           | any tool not explicitly `readOnlyHint: true` (also gates unannotated tools)        |
+| `"all"`                 | every `exec()` call                                                                |
+| `(tool, server) => boolean` | a custom predicate                                                             |
+| `Array<…>`              | any of the above, combined with OR                                                 |
+
+Helpers `isOpenWorldWriteable(tool)` and `isWriteable(tool)` are exported for building custom predicates, along with the `ToolAnnotations` type. `mcpx info <server> <tool>` also surfaces these hints in the CLI.
+
+**Gating a specific tool by name.** The annotation presets can't tell two similar tools apart — a "create PR" and a "create issue" tool both look like open-world writes. To gate one but not the other, use the custom predicate form and match on `tool.name` (and `server`):
+
+```typescript
+const client = new McpxClient({
+  servers: { mcpServers: { github: { url: "https://mcp.github.com" } } },
+
+  // Require approval ONLY for creating PRs — issue creation runs freely.
+  approvalPolicy: (tool, server) => server === "github" && tool.name === "create_pull_request",
+
+  onApprovalRequired: async ({ server, tool, args }) => await promptHuman(`Allow ${server}/${tool}?`, args),
+});
+
+await client.exec("github", "create_pull_request", { ... }); // waits for approval
+await client.exec("github", "create_issue", { ... }); // runs immediately, no prompt
+```
+
+Confirm the exact `tool.name` first — it must match exactly, and servers name tools differently (e.g. `create_pull_request` vs `github_create_pr`):
+
+```bash
+mcpx search "open pull request"      # find the tool and its server
+mcpx info github create_pull_request # confirm the name
+```
+
+To match a family of tools, use a regex (`/pull_request|merge_pr/.test(tool.name)`); to gate the PR tool _and_ everything open-world-writeable, combine them with the array form: `["open-world-writeable", (tool, server) => …]`. Matching on `tool.name` is reliable — unlike `annotations`, which are untrusted server-supplied hints.
+
 ## Permissions (Claude Code & Cursor)
 
 AI agents like Claude Code and Cursor prompt users to approve each `mcpx exec` call. `mcpx allow` and `mcpx deny` manage fine-grained permission rules so agents can self-authorize specific tools without broad access.

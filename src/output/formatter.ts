@@ -251,6 +251,7 @@ export function formatToolSchema(serverName: string, tool: Tool, options: Format
 			tool: tool.name,
 			description: tool.description ?? "",
 			inputSchema: tool.inputSchema,
+			annotations: tool.annotations,
 		},
 		() => {
 			const lines: string[] = [];
@@ -258,6 +259,12 @@ export function formatToolSchema(serverName: string, tool: Tool, options: Format
 			lines.push(`${theme.path(serverName)}/${theme.tool(tool.name)}`);
 			lines.push(underline(headerText.length));
 			if (tool.description) lines.push(theme.muted(tool.description));
+			const annotations = formatAnnotations(tool.annotations);
+			if (annotations) {
+				lines.push("");
+				lines.push(theme.tool("Annotations:"));
+				lines.push(`  ${annotations}`);
+			}
 			lines.push("");
 			lines.push(theme.tool("Input Schema:"));
 			lines.push(formatSchema(tool.inputSchema, 2));
@@ -265,6 +272,40 @@ export function formatToolSchema(serverName: string, tool: Tool, options: Format
 		},
 		options,
 	);
+}
+
+/**
+ * Display labels for each MCP `ToolAnnotations` hint, keyed by its `true`/`false`
+ * value. MCP models these hints as booleans (not enums), so the human-readable
+ * strings live here. The keys are type-checked against the SDK's annotation
+ * type — renaming or removing a hint upstream becomes a compile error rather
+ * than silently dropping a label.
+ */
+const ANNOTATION_LABELS: {
+	[K in keyof NonNullable<Tool["annotations"]>]?: { true?: string; false?: string };
+} = {
+	readOnlyHint: { true: "read-only", false: "writeable" },
+	destructiveHint: { true: "destructive" },
+	idempotentHint: { true: "idempotent" },
+	openWorldHint: { true: "open-world", false: "closed-world" },
+};
+
+/**
+ * Format a tool's MCP annotation hints as a compact comma-separated list.
+ * Returns undefined when no annotation hints are set. Note: annotations are
+ * untrusted hints, not a behavioral guarantee.
+ */
+function formatAnnotations(annotations: Tool["annotations"]): string | undefined {
+	if (!annotations) return undefined;
+	const labels: string[] = [];
+	for (const key of Object.keys(ANNOTATION_LABELS) as (keyof typeof ANNOTATION_LABELS)[]) {
+		const variants = ANNOTATION_LABELS[key];
+		const value = annotations[key];
+		if (value === true && variants?.true) labels.push(variants.true);
+		else if (value === false && variants?.false) labels.push(variants.false);
+	}
+	if (labels.length === 0) return undefined;
+	return theme.muted(labels.join(", "));
 }
 
 /** Format a JSON schema as a readable parameter list */

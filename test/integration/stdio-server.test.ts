@@ -37,7 +37,7 @@ describe("stdio MCP server integration", () => {
 		const resources = items.filter((i) => i.type === "resource");
 		const prompts = items.filter((i) => i.type === "prompt");
 
-		expect(tools.length).toBe(6);
+		expect(tools.length).toBe(8);
 		expect(resources.length).toBeGreaterThan(0);
 		expect(prompts.length).toBeGreaterThan(0);
 
@@ -48,6 +48,8 @@ describe("stdio MCP server integration", () => {
 		expect(toolNames).toContain("noop");
 		expect(toolNames).toContain("slow_echo");
 		expect(toolNames).toContain("confirm_action");
+		expect(toolNames).toContain("delete_world");
+		expect(toolNames).toContain("read_status");
 
 		// Every item should be from the "mock" server
 		for (const item of items) {
@@ -65,7 +67,7 @@ describe("stdio MCP server integration", () => {
 	test("inspects a specific server to list its tools", async () => {
 		const result = await runAndParse<{ server: string; tools: { name: string }[] }>("info", "mock");
 		expect(result.server).toBe("mock");
-		expect(result.tools.length).toBe(6);
+		expect(result.tools.length).toBe(8);
 	});
 
 	test("inspects a specific tool to show its schema", async () => {
@@ -77,6 +79,17 @@ describe("stdio MCP server integration", () => {
 		expect(result.server).toBe("mock");
 		expect(result.tool).toBe("echo");
 		expect(result.inputSchema.properties).toHaveProperty("message");
+	});
+
+	test("exposes tool annotations in info output", async () => {
+		const result = await runAndParse<{
+			tool: string;
+			annotations?: { openWorldHint?: boolean; readOnlyHint?: boolean; destructiveHint?: boolean };
+		}>("info", "mock", "delete_world");
+		expect(result.tool).toBe("delete_world");
+		expect(result.annotations?.openWorldHint).toBe(true);
+		expect(result.annotations?.readOnlyHint).toBe(false);
+		expect(result.annotations?.destructiveHint).toBe(true);
 	});
 
 	test("calls echo tool and gets response", async () => {
