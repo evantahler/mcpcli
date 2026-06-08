@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { join } from "node:path";
-import type { SearchIndex, ServersFile } from "../../src/sdk.ts";
-import { McpxClient } from "../../src/sdk.ts";
+import type { SearchIndex, ServersFile, Tool } from "../../src/sdk.ts";
+import {
+	isOpenWorldWriteable,
+	isWriteable,
+	McpxClient,
+	ToolApprovalDeniedError,
+	ToolApprovalRequiredError,
+} from "../../src/sdk.ts";
 import * as semanticModule from "../../src/search/semantic.ts";
 
 // Snapshot the real exports BEFORE any test mocks the module. `import * as`
@@ -448,5 +454,184 @@ describe("McpxClient", () => {
 	test("throws on unknown server", async () => {
 		client = new McpxClient({ servers: makeInlineServers() });
 		await expect(client.exec("nonexistent", "echo", {})).rejects.toThrow("Unknown server");
+	});
+
+	// ---------------------------------------------------------------------------
+	// Approval gate (human-in-the-loop)
+	// ---------------------------------------------------------------------------
+
+	describe("approval gate", () => {
+		test("no policy: callback is never invoked and exec runs (back-compat)", async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({ servers: makeInlineServers(), onApprovalRequired });
+			const result = await client.exec("mock", "delete_world", { target: "x" });
+			const text = (result.content as { text: string }[])[0]!;
+			expect(text.text).toBe("deleted x");
+			expect(onApprovalRequired).not.toHaveBeenCalled();
+		});
+
+		test('"none" policy: callback is never invoked', async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({ servers: makeInlineServers(), approvalPolicy: "none", onApprovalRequired });
+			await client.exec("mock", "delete_world", { target: "x" });
+			expect(onApprovalRequired).not.toHaveBeenCalled();
+		});
+
+		test("gated tool with approval granted runs", async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "open-world-writeable",
+				onApprovalRequired,
+			});
+			const result = await client.exec("mock", "delete_world", { target: "moon" });
+			const text = (result.content as { text: string }[])[0]!;
+			expect(text.text).toBe("deleted moon");
+			expect(onApprovalRequired).toHaveBeenCalledTimes(1);
+		});
+
+		test("gated tool denied throws ToolApprovalDeniedError", async () => {
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "open-world-writeable",
+				onApprovalRequired: () => false,
+			});
+			await expect(client.exec("mock", "delete_world", { target: "x" })).rejects.toThrow(ToolApprovalDeniedError);
+		});
+
+		test("gated tool without callback fails closed with ToolApprovalRequiredError", async () => {
+			client = new McpxClient({ servers: makeInlineServers(), approvalPolicy: "open-world-writeable" });
+			const promise = client.exec("mock", "delete_world", { target: "x" });
+			await expect(promise).rejects.toThrow(ToolApprovalRequiredError);
+			await expect(promise).rejects.toThrow("mock/delete_world");
+		});
+
+		test("read-only tool is not gated under open-world-writeable", async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "open-world-writeable",
+				onApprovalRequired,
+			});
+			await client.exec("mock", "read_status");
+			expect(onApprovalRequired).not.toHaveBeenCalled();
+		});
+
+		test("async callback is awaited", async () => {
+			let resolved = false;
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "open-world-writeable",
+				onApprovalRequired: async () => {
+					await new Promise((r) => setTimeout(r, 5));
+					resolved = true;
+					return true;
+				},
+			});
+			await client.exec("mock", "delete_world", { target: "x" });
+			expect(resolved).toBe(true);
+		});
+
+		test("approval request carries server, tool, args, schema, annotations, reason", async () => {
+			let captured: Record<string, unknown> | undefined;
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "open-world-writeable",
+				onApprovalRequired: (req) => {
+					captured = req as unknown as Record<string, unknown>;
+					return true;
+				},
+			});
+			await client.exec("mock", "delete_world", { target: "earth" });
+			expect(captured?.server).toBe("mock");
+			expect(captured?.tool).toBe("delete_world");
+			expect(captured?.args).toEqual({ target: "earth" });
+			expect((captured?.schema as Tool).name).toBe("delete_world");
+			expect((captured?.annotations as { openWorldHint?: boolean }).openWorldHint).toBe(true);
+			expect(captured?.reason).toBe("open-world-writeable");
+		});
+
+		test('"open-world-writeable" does NOT gate an unannotated tool', async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "open-world-writeable",
+				onApprovalRequired,
+			});
+			await client.exec("mock", "echo", { message: "hi" });
+			expect(onApprovalRequired).not.toHaveBeenCalled();
+		});
+
+		test('"writeable" DOES gate an unannotated tool (fail-safe)', async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({ servers: makeInlineServers(), approvalPolicy: "writeable", onApprovalRequired });
+			await client.exec("mock", "echo", { message: "hi" });
+			expect(onApprovalRequired).toHaveBeenCalledTimes(1);
+		});
+
+		test("custom predicate gates only matching tools", async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: (tool) => tool.name === "add",
+				onApprovalRequired,
+			});
+			await client.exec("mock", "echo", { message: "hi" });
+			expect(onApprovalRequired).not.toHaveBeenCalled();
+			await client.exec("mock", "add", { a: 1, b: 2 });
+			expect(onApprovalRequired).toHaveBeenCalledTimes(1);
+		});
+
+		test("array policy combines presets and predicates with OR", async () => {
+			const onApprovalRequired = mock(() => true);
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: ["open-world-writeable", (tool) => tool.name === "add"],
+				onApprovalRequired,
+			});
+			await client.exec("mock", "delete_world", { target: "x" }); // open-world
+			await client.exec("mock", "add", { a: 1, b: 2 }); // predicate
+			expect(onApprovalRequired).toHaveBeenCalledTimes(2);
+		});
+
+		test("unknown tool under active policy still surfaces canonical error", async () => {
+			client = new McpxClient({
+				servers: makeInlineServers(),
+				approvalPolicy: "all",
+				onApprovalRequired: () => true,
+			});
+			const result = await client.exec("mock", "nonexistent", {});
+			// mock server returns an isError result for unknown tools rather than throwing
+			expect((result as { isError?: boolean }).isError).toBe(true);
+		});
+	});
+});
+
+// -----------------------------------------------------------------------------
+// Classification helpers (pure)
+// -----------------------------------------------------------------------------
+
+describe("approval classification helpers", () => {
+	const make = (annotations?: Tool["annotations"]): Tool => ({
+		name: "t",
+		inputSchema: { type: "object" },
+		annotations,
+	});
+
+	test("isOpenWorldWriteable: open-world + not read-only", () => {
+		expect(isOpenWorldWriteable(make({ openWorldHint: true, readOnlyHint: false }))).toBe(true);
+		expect(isOpenWorldWriteable(make({ openWorldHint: true }))).toBe(true);
+	});
+
+	test("isOpenWorldWriteable: false when read-only or closed-world or unannotated", () => {
+		expect(isOpenWorldWriteable(make({ openWorldHint: true, readOnlyHint: true }))).toBe(false);
+		expect(isOpenWorldWriteable(make({ openWorldHint: false }))).toBe(false);
+		expect(isOpenWorldWriteable(make(undefined))).toBe(false);
+	});
+
+	test("isWriteable: true unless explicitly read-only", () => {
+		expect(isWriteable(make(undefined))).toBe(true);
+		expect(isWriteable(make({ readOnlyHint: false }))).toBe(true);
+		expect(isWriteable(make({ readOnlyHint: true }))).toBe(false);
 	});
 });

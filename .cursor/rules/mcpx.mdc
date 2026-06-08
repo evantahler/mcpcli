@@ -139,7 +139,7 @@ mcpx deauth <server>           # remove stored auth
 | `mcpx servers`                        | List servers (name, type, detail) |
 | `mcpx -d`                             | List with descriptions            |
 | `mcpx info <server>`                  | Server overview (version, capabilities, tools) |
-| `mcpx info <server> <tool>`           | Show tool schema                  |
+| `mcpx info <server> <tool>`           | Show tool schema + annotations    |
 | `mcpx exec <server>`                  | List tools for a server           |
 | `mcpx exec <tool> '<json>'`           | Execute tool (server auto-resolved) |
 | `mcpx exec <server> <tool> '<json>'`  | Execute tool (explicit server)    |

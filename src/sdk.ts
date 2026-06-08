@@ -3,6 +3,7 @@ import type {
 	CancelTaskResult,
 	GetTaskResult,
 	ListTasksResult,
+	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
 import type {
 	PromptWithServer,
@@ -58,12 +59,120 @@ export type {
 	StdioServerConfig,
 	// Config types
 	Tool,
+	// MCP tool annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint, title)
+	ToolAnnotations,
 	// Manager types
 	ToolWithServer,
 	ValidationError,
 	// Validation types
 	ValidationResult,
 };
+
+// ---------------------------------------------------------------------------
+// Human-in-the-loop approval gate
+//
+// MCP tools carry optional `annotations` (readOnlyHint, destructiveHint,
+// idempotentHint, openWorldHint). SDK consumers can require a human/approval
+// callback before executing tools that match a policy — e.g. "open-world
+// writeable" tools. Per the MCP spec these annotations are *untrusted hints*:
+// "Clients should never make tool use decisions based on ToolAnnotations
+// received from untrusted servers." Treat this gate as a guardrail, not a
+// security boundary.
+// ---------------------------------------------------------------------------
+
+/** Built-in classification presets for which tools require approval. */
+export type ApprovalPolicyPreset =
+	| "none" // default — nothing is gated (back-compat)
+	| "open-world-writeable" // openWorldHint === true AND readOnlyHint !== true
+	| "writeable" // readOnlyHint !== true (also gates unannotated tools)
+	| "all"; // every exec is gated
+
+/**
+ * Custom classifier. Return true to require approval for this tool.
+ * `tool` is the raw MCP Tool (its `annotations` may be undefined).
+ */
+export type ApprovalPredicate = (tool: Tool, server: string) => boolean;
+
+/** A preset, a custom predicate, or an array of either combined with OR. */
+export type ApprovalPolicy = ApprovalPolicyPreset | ApprovalPredicate | Array<ApprovalPolicyPreset | ApprovalPredicate>;
+
+/** Passed to the approval callback describing the pending tool call. */
+export interface ToolApprovalRequest {
+	server: string;
+	tool: string;
+	/** Arguments exec() was called with (after defaulting to {}). */
+	args: Record<string, unknown>;
+	/** The full resolved Tool schema, including annotations. */
+	schema: Tool;
+	/** Convenience accessor for schema.annotations (may be undefined). */
+	annotations: ToolAnnotations | undefined;
+	/** Which preset/predicate flagged this call, for logging. */
+	reason: string;
+}
+
+/** Approval callback. Return true to allow, false to deny. May be async. */
+export type ToolApprovalCallback = (request: ToolApprovalRequest) => boolean | Promise<boolean>;
+
+/** Thrown when a tool is gated but no onApprovalRequired callback was supplied. */
+export class ToolApprovalRequiredError extends Error {
+	readonly server: string;
+	readonly tool: string;
+	constructor(server: string, tool: string) {
+		super(
+			`Tool "${server}/${tool}" requires human approval, but no onApprovalRequired callback was provided. ` +
+				`Supply McpxClientOptions.onApprovalRequired, or set approvalPolicy to "none".`,
+		);
+		this.name = "ToolApprovalRequiredError";
+		this.server = server;
+		this.tool = tool;
+	}
+}
+
+/** Thrown when the approval callback denies a gated tool call. */
+export class ToolApprovalDeniedError extends Error {
+	readonly server: string;
+	readonly tool: string;
+	constructor(server: string, tool: string) {
+		super(`Execution of "${server}/${tool}" was denied by the approval callback.`);
+		this.name = "ToolApprovalDeniedError";
+		this.server = server;
+		this.tool = tool;
+	}
+}
+
+/**
+ * True when a tool is annotated as interacting with an "open world" of external
+ * entities AND is not marked read-only. Fail-permissive: tools with no
+ * `openWorldHint` are NOT considered open-world (absence of a hint is not an
+ * affirmative mark).
+ */
+export function isOpenWorldWriteable(tool: Tool): boolean {
+	const a = tool.annotations;
+	return a?.openWorldHint === true && a?.readOnlyHint !== true;
+}
+
+/**
+ * True when a tool is not explicitly marked read-only. Fail-safe: tools with no
+ * annotations ARE considered writeable.
+ */
+export function isWriteable(tool: Tool): boolean {
+	return tool.annotations?.readOnlyHint !== true;
+}
+
+/** Resolve a single preset/predicate into a matcher with a human-readable reason label. */
+function presetMatcher(p: ApprovalPolicyPreset | ApprovalPredicate): { reason: string; match: ApprovalPredicate } {
+	if (typeof p === "function") return { reason: "custom-predicate", match: p };
+	switch (p) {
+		case "open-world-writeable":
+			return { reason: "open-world-writeable", match: isOpenWorldWriteable };
+		case "writeable":
+			return { reason: "writeable", match: isWriteable };
+		case "all":
+			return { reason: "all", match: () => true };
+		default:
+			return { reason: "none", match: () => false };
+	}
+}
 
 export interface McpxClientOptions {
 	/** Path to config directory. Defaults to ~/.mcpx or MCP_CONFIG_PATH env var. */
@@ -82,6 +191,18 @@ export interface McpxClientOptions {
 	maxRetries?: number;
 	/** Enable verbose/trace logging. Default: false */
 	verbose?: boolean;
+	/**
+	 * Which tools require human approval before exec(). Default: "none".
+	 * A preset string, a custom predicate, or an array of either (OR-combined).
+	 */
+	approvalPolicy?: ApprovalPolicy;
+	/**
+	 * Async callback invoked when a gated tool is about to run. Return false to
+	 * deny (exec() throws ToolApprovalDeniedError). Required whenever
+	 * approvalPolicy gates anything — if a gated tool is reached without a
+	 * callback, exec() throws ToolApprovalRequiredError.
+	 */
+	onApprovalRequired?: ToolApprovalCallback;
 }
 
 export class McpxClient {
@@ -170,7 +291,56 @@ export class McpxClient {
 	/** Execute a tool and return the result. */
 	async exec(server: string, tool: string, args?: Record<string, unknown>): Promise<CallToolResult> {
 		const manager = await this.ensureConnected();
-		return manager.callTool(server, tool, args ?? {}) as Promise<CallToolResult>;
+		const callArgs = args ?? {};
+
+		// Fast path: when no approval policy can gate anything, run the tool
+		// directly — no extra schema fetch, identical to pre-gate behavior.
+		if (!this.isApprovalActive()) {
+			return manager.callTool(server, tool, callArgs) as Promise<CallToolResult>;
+		}
+
+		// Policy is active — resolve the schema once to classify the tool.
+		const schema = await manager.getToolSchema(server, tool);
+		// Unknown tool: defer to callTool so the canonical error surfaces (don't mask it).
+		if (schema) {
+			const reason = this.classify(schema, server);
+			if (reason) {
+				if (!this.options.onApprovalRequired) {
+					throw new ToolApprovalRequiredError(server, tool);
+				}
+				const approved = await this.options.onApprovalRequired({
+					server,
+					tool,
+					args: callArgs,
+					schema,
+					annotations: schema.annotations,
+					reason,
+				});
+				if (!approved) throw new ToolApprovalDeniedError(server, tool);
+			}
+		}
+
+		return manager.callTool(server, tool, callArgs) as Promise<CallToolResult>;
+	}
+
+	/** True when approvalPolicy could gate at least one tool. */
+	private isApprovalActive(): boolean {
+		const policy = this.options.approvalPolicy;
+		if (policy === undefined) return false;
+		const entries = Array.isArray(policy) ? policy : [policy];
+		return entries.some((p) => p !== "none");
+	}
+
+	/** Classify a tool against the policy. Returns the matching reason, or undefined if not gated. */
+	private classify(tool: Tool, server: string): string | undefined {
+		const policy = this.options.approvalPolicy;
+		if (policy === undefined) return undefined;
+		const entries = Array.isArray(policy) ? policy : [policy];
+		for (const entry of entries) {
+			const { reason, match } = presetMatcher(entry);
+			if (match(tool, server)) return reason;
+		}
+		return undefined;
 	}
 
 	// ---------------------------------------------------------------------------

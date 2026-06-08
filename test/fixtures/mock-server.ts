@@ -194,6 +194,24 @@ function handleMessage(line: string) {
 						required: ["action"],
 					},
 				},
+				{
+					name: "delete_world",
+					description: "An open-world writeable tool (annotated)",
+					inputSchema: {
+						type: "object",
+						properties: {
+							target: { type: "string", description: "What to delete" },
+						},
+						required: ["target"],
+					},
+					annotations: { openWorldHint: true, readOnlyHint: false, destructiveHint: true },
+				},
+				{
+					name: "read_status",
+					description: "A read-only tool (annotated)",
+					inputSchema: { type: "object", properties: {} },
+					annotations: { readOnlyHint: true, openWorldHint: true },
+				},
 			],
 		});
 	} else if (msg.method === "logging/setLevel") {
@@ -255,6 +273,14 @@ function handleMessage(line: string) {
 			// Send an elicitation request to the client, wait for response, then reply
 			handleConfirmAction(msg.id!, String(params.arguments?.action ?? "unknown"));
 			return; // async — respond later
+		} else if (params.name === "delete_world") {
+			respond(msg.id, {
+				content: [{ type: "text", text: `deleted ${String(params.arguments?.target ?? "")}` }],
+			});
+		} else if (params.name === "read_status") {
+			respond(msg.id, {
+				content: [{ type: "text", text: "ok" }],
+			});
 		} else if (params.name === "noop") {
 			respond(msg.id, {
 				content: [{ type: "text", text: "ok" }],
