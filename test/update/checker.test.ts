@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { detectInstallMethod, isNewerVersion, needsCheck } from "../../src/update/checker.ts";
+import { isNewerVersion } from "upgradr";
+import { updater } from "../../src/update/updater.ts";
 
 describe("isNewerVersion", () => {
 	test("returns true when latest is newer (patch)", () => {
@@ -31,29 +32,35 @@ describe("isNewerVersion", () => {
 	});
 });
 
-describe("needsCheck", () => {
+describe("updater.needsCheck", () => {
 	test("returns true when cache is undefined", () => {
-		expect(needsCheck(undefined)).toBe(true);
+		expect(updater.needsCheck(undefined)).toBe(true);
 	});
 
 	test("returns true when cache has no lastCheckAt", () => {
-		expect(needsCheck({ lastCheckAt: "", latestVersion: "1.0.0", hasUpdate: false })).toBe(true);
+		expect(updater.needsCheck({ lastCheckAt: "", latestVersion: "1.0.0", hasUpdate: false })).toBe(true);
 	});
 
 	test("returns true when cache is older than 24 hours", () => {
 		const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
-		expect(needsCheck({ lastCheckAt: old, latestVersion: "1.0.0", hasUpdate: false })).toBe(true);
+		expect(updater.needsCheck({ lastCheckAt: old, latestVersion: "1.0.0", hasUpdate: false })).toBe(true);
 	});
 
 	test("returns false when cache is fresh", () => {
 		const recent = new Date(Date.now() - 1000).toISOString();
-		expect(needsCheck({ lastCheckAt: recent, latestVersion: "1.0.0", hasUpdate: false })).toBe(false);
+		expect(updater.needsCheck({ lastCheckAt: recent, latestVersion: "1.0.0", hasUpdate: false })).toBe(false);
 	});
 });
 
-describe("detectInstallMethod", () => {
+describe("updater config + detectInstallMethod", () => {
+	test("is configured for the mcpx package and repo", () => {
+		expect(updater.config.packageName).toBe("@evantahler/mcpx");
+		expect(updater.config.repo).toBe("evantahler/mcpx");
+		expect(updater.config.binaryName).toBe("mcpx");
+	});
+
 	test("returns a valid install method", () => {
-		const method = detectInstallMethod();
+		const method = updater.detectInstallMethod();
 		expect(["npm", "bun", "binary", "local-dev"]).toContain(method);
 	});
 });

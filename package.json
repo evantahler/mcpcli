@@ -1,6 +1,6 @@
 {
 	"name": "@evantahler/mcpx",
-	"version": "0.22.2",
+	"version": "0.22.3",
 	"description": "A command-line interface for MCP servers. curl for MCP.",
 	"type": "module",
 	"exports": {
@@ -48,13 +48,14 @@
 	"dependencies": {
 		"@huggingface/transformers": "^4.2.0",
 		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@types/picomatch": "^4.0.3",
 		"ajv": "^8.20.0",
 		"ansis": "^4.2.0",
 		"commander": "^14.0.3",
 		"nanospinner": "^1.2.2",
 		"onnxruntime-web": "1.26.0-dev.20260416-b7804b056c",
 		"picomatch": "^4.0.4",
-		"@types/picomatch": "^4.0.3"
+		"upgradr": "^0.1.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.14",

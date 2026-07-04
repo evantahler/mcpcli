@@ -29,7 +29,7 @@ import { logger } from "./output/logger.ts";
 import { theme } from "./output/theme.ts";
 import { detectMode, setMode } from "./output/tty.ts";
 import { ExitError, installSignalHandlers } from "./shutdown.ts";
-import { maybeCheckForUpdate } from "./update/background.ts";
+import { updater } from "./update/updater.ts";
 
 installSignalHandlers();
 
@@ -115,7 +115,7 @@ if (firstCommand && !knownCommands.has(firstCommand)) {
 }
 
 // Fire-and-forget background update check
-const updateNotice = maybeCheckForUpdate();
+const updateNotice = updater.maybeBackgroundNotice();
 
 try {
 	await program.parseAsync();

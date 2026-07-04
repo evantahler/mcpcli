@@ -18,6 +18,8 @@ describe("mcpx upgrade", () => {
 		expect(exitCode).toBe(0);
 
 		const result = JSON.parse(stdout);
-		expect(result).toHaveProperty("currentVersion");
+		expect(result).toHaveProperty("from");
+		expect(result).toHaveProperty("method");
+		expect(result).toHaveProperty("success");
 	});
 });
