@@ -1,82 +1,7 @@
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { dim, green, red, yellow } from "ansis";
-import { $ } from "bun";
+import { green, red, yellow } from "ansis";
 import type { Command } from "commander";
 import { createSpinner } from "nanospinner";
-import pkg from "../../package.json";
-import pkgMeta from "../../package.json";
-import { clearUpdateCache, loadUpdateCache, saveUpdateCache } from "../update/cache.ts";
-import type { UpdateCache } from "../update/checker.ts";
-import { checkForUpdate, detectInstallMethod, type InstallMethod, needsCheck } from "../update/checker.ts";
-
-const GITHUB_REPO = pkgMeta.repository.url.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
-
-function platformArtifactName(): string {
-	let os: string;
-	let ext = "";
-	switch (process.platform) {
-		case "darwin":
-			os = "darwin";
-			break;
-		case "win32":
-			os = "windows";
-			ext = ".exe";
-			break;
-		default:
-			os = "linux";
-			break;
-	}
-	const arch = process.arch === "arm64" ? "arm64" : "x64";
-	return `mcpx-${os}-${arch}${ext}`;
-}
-
-async function upgradeWithPackageManager(command: string, args: string[]): Promise<boolean> {
-	const result = await $`${command} ${args}`.nothrow();
-	return result.exitCode === 0;
-}
-
-async function upgradeFromBinary(latestVersion: string): Promise<boolean> {
-	const artifact = platformArtifactName();
-	const tag = `v${latestVersion}`;
-	const url = `https://github.com/${GITHUB_REPO}/releases/download/${tag}/${artifact}`;
-
-	const tmpPath = join(tmpdir(), `mcpx-upgrade-${Date.now()}`);
-	const targetPath = process.execPath;
-
-	try {
-		const res = await fetch(url);
-		if (!res.ok) {
-			console.error(red(`Failed to download binary: HTTP ${res.status}`));
-			return false;
-		}
-
-		const bytes = await res.arrayBuffer();
-		await Bun.write(tmpPath, bytes);
-
-		await $`chmod +x ${tmpPath}`.quiet();
-
-		// Try to move into place
-		const mv = await $`mv ${tmpPath} ${targetPath}`.quiet().nothrow();
-
-		if (mv.exitCode !== 0) {
-			// Try with sudo
-			console.log(dim("Requires elevated permissions..."));
-			const sudo = await $`sudo mv ${tmpPath} ${targetPath}`.nothrow();
-			if (sudo.exitCode !== 0) {
-				console.error(red("Failed to install binary. Try running with sudo."));
-				return false;
-			}
-		}
-
-		return true;
-	} catch (err) {
-		console.error(red(`Failed to upgrade binary: ${err}`));
-		// Clean up temp file
-		await $`rm -f ${tmpPath}`.quiet().nothrow();
-		return false;
-	}
-}
+import { updater } from "../update/updater.ts";
 
 export function registerUpgradeCommand(program: Command) {
 	program
@@ -91,115 +16,26 @@ export function registerUpgradeCommand(program: Command) {
 				!json && isTTY ? createSpinner("Checking for updates...", { stream: process.stderr }).start() : null;
 
 			try {
-				// Check for update (use cache if fresh)
-				const cache = await loadUpdateCache();
-				let latestVersion: string;
-				let hasUpdate: boolean;
+				// upgradr performs a fresh check, detects the install method, upgrades
+				// in place (npm/bun/binary), and manages the cache — all in one call.
+				const result = await updater.upgrade();
+				spinner?.stop();
 
-				if (!needsCheck(cache) && cache) {
-					latestVersion = cache.latestVersion;
-					hasUpdate = cache.hasUpdate;
+				if (json) {
+					console.log(JSON.stringify(result, null, 2));
+				} else if (!result.hasUpdate) {
+					console.log(green(`mcpx is already up to date (v${result.from})`));
+				} else if (result.method === "local-dev") {
+					console.log(yellow("Running from source. Use `git pull && bun install` to update."));
+				} else if (result.success) {
+					console.log(green(`Successfully upgraded mcpx: v${result.from} → v${result.to}`));
 				} else {
-					const info = await checkForUpdate(pkg.version);
-					latestVersion = info.latestVersion;
-					hasUpdate = info.hasUpdate;
-
-					const newCache: UpdateCache = {
-						lastCheckAt: new Date().toISOString(),
-						latestVersion,
-						hasUpdate,
-						changelog: info.changelog,
-					};
-					await saveUpdateCache(newCache);
+					console.error(red(`Upgrade failed${result.error ? `: ${result.error}` : "."}`));
 				}
 
-				if (!hasUpdate) {
-					spinner?.stop();
-					if (json) {
-						console.log(
-							JSON.stringify({
-								upgraded: false,
-								currentVersion: pkg.version,
-								message: "Already up to date",
-							}),
-						);
-					} else {
-						console.log(green(`mcpx is already up to date (v${pkg.version})`));
-					}
-					return;
-				}
-
-				const method: InstallMethod = detectInstallMethod();
-				spinner?.update({
-					text: `Upgrading from v${pkg.version} to v${latestVersion} (${method})...`,
-				});
-
-				let success = false;
-
-				switch (method) {
-					case "bun":
-						spinner?.stop();
-						success = await upgradeWithPackageManager("bun", ["install", "-g", `@evantahler/mcpx@${latestVersion}`]);
-						break;
-
-					case "npm":
-						spinner?.stop();
-						success = await upgradeWithPackageManager("npm", ["install", "-g", `@evantahler/mcpx@${latestVersion}`]);
-						break;
-
-					case "binary":
-						spinner?.stop();
-						success = await upgradeFromBinary(latestVersion);
-						break;
-
-					case "local-dev":
-						spinner?.stop();
-						if (json) {
-							console.log(
-								JSON.stringify({
-									upgraded: false,
-									currentVersion: pkg.version,
-									latestVersion,
-									installMethod: "local-dev",
-									message: "Running from source. Use `git pull && bun install` to update.",
-								}),
-							);
-						} else {
-							console.log(yellow("Running from source. Use `git pull && bun install` to update."));
-						}
-						return;
-				}
-
-				if (success) {
-					await clearUpdateCache();
-					if (json) {
-						console.log(
-							JSON.stringify({
-								upgraded: true,
-								previousVersion: pkg.version,
-								newVersion: latestVersion,
-								installMethod: method,
-							}),
-						);
-					} else {
-						console.log(green(`Successfully upgraded mcpx: v${pkg.version} → v${latestVersion}`));
-					}
-				} else {
-					if (json) {
-						console.log(
-							JSON.stringify({
-								upgraded: false,
-								currentVersion: pkg.version,
-								latestVersion,
-								installMethod: method,
-								message: "Upgrade failed",
-							}),
-						);
-					} else {
-						console.error(red("Upgrade failed. See errors above."));
-					}
-					process.exit(1);
-				}
+				// Only a genuinely attempted-and-failed install is an error exit;
+				// local-dev is informational and exits 0.
+				if (result.performed && !result.success) process.exit(1);
 			} catch (err) {
 				spinner?.error({ text: "Upgrade failed" });
 				console.error(String(err));

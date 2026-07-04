@@ -61,7 +61,7 @@ assert_eq "npm: check-update currentVersion matches" "$CHECK_VER" "$EXPECTED_VER
 
 clear_cache
 UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
-assert_json_field "npm: upgrade has currentVersion" "$UPGRADE" ".currentVersion"
+assert_json_field "npm: upgrade has from" "$UPGRADE" ".from"
 
 npm uninstall -g @evantahler/mcpx 2>&1
 hash -r
@@ -90,7 +90,7 @@ assert_eq "bun: check-update currentVersion matches" "$CHECK_VER" "$EXPECTED_VER
 
 clear_cache
 UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
-assert_json_field "bun: upgrade has currentVersion" "$UPGRADE" ".currentVersion"
+assert_json_field "bun: upgrade has from" "$UPGRADE" ".from"
 
 bun remove -g @evantahler/mcpx 2>&1
 rm -f "/tmp/$TARBALL"
@@ -126,12 +126,12 @@ assert_eq "binary: check-update currentVersion matches" "$CHECK_VER" "$EXPECTED_
 
 clear_cache
 UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
-assert_json_field "binary: upgrade has currentVersion" "$UPGRADE" ".currentVersion"
+assert_json_field "binary: upgrade has from" "$UPGRADE" ".from"
 
 # The binary pathway should NOT detect as npm or bun
-UPGRADE_METHOD=$(echo "$UPGRADE" | jq -r '.installMethod // empty')
+UPGRADE_METHOD=$(echo "$UPGRADE" | jq -r '.method // empty')
 if [ -n "$UPGRADE_METHOD" ]; then
-  # If installMethod is present (update was available), verify it's "binary"
+  # If method is present (always emitted), verify it's "binary"
   assert_eq "binary: detected install method" "$UPGRADE_METHOD" "binary"
 fi
 

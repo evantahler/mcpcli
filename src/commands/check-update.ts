@@ -1,10 +1,7 @@
 import { cyan, dim, green, yellow } from "ansis";
 import type { Command } from "commander";
 import { createSpinner } from "nanospinner";
-import pkg from "../../package.json";
-import { saveUpdateCache } from "../update/cache.ts";
-import type { UpdateCache } from "../update/checker.ts";
-import { checkForUpdate } from "../update/checker.ts";
+import { updater } from "../update/updater.ts";
 
 export function registerCheckUpdateCommand(program: Command) {
 	program
@@ -19,16 +16,15 @@ export function registerCheckUpdateCommand(program: Command) {
 				!json && isTTY ? createSpinner("Checking for updates...", { stream: process.stderr }).start() : null;
 
 			try {
-				const info = await checkForUpdate(pkg.version);
+				const info = await updater.checkForUpdate();
 
-				// Save to cache
-				const cache: UpdateCache = {
+				// Persist the result so the background notice can reuse it.
+				await updater.saveCache({
 					lastCheckAt: new Date().toISOString(),
 					latestVersion: info.latestVersion,
 					hasUpdate: info.hasUpdate,
 					changelog: info.changelog,
-				};
-				await saveUpdateCache(cache);
+				});
 
 				spinner?.stop();
 
