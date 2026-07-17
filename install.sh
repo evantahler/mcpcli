@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="evantahler/mcpx"
+REPO="arcadeai-labs/mcpx"
 INSTALL_DIR="${MCPX_INSTALL_DIR:-/usr/local/bin}"
 
 # Detect OS

@@ -14,18 +14,18 @@ Three audiences:
 
 ```bash
 # Via bun (all platforms)
-bun install -g @evantahler/mcpx
+bun install -g @arcadeai/mcpx
 
 # Via curl (macOS/Linux)
-curl -fsSL https://raw.githubusercontent.com/evantahler/mcpx/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/arcadeai-labs/mcpx/main/install.sh | bash
 ```
 
 ```powershell
 # Via PowerShell (Windows)
-irm https://raw.githubusercontent.com/evantahler/mcpx/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/arcadeai-labs/mcpx/main/install.ps1 | iex
 ```
 
-The curl/PowerShell installers download a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh). Binaries for all platforms are also available on the [GitHub Releases](https://github.com/evantahler/mcpx/releases) page.
+The curl/PowerShell installers download a pre-built binary — no runtime needed. The bun install method requires [Bun](https://bun.sh). Binaries for all platforms are also available on the [GitHub Releases](https://github.com/arcadeai-labs/mcpx/releases) page.
 
 ## Quick Start
 
@@ -537,13 +537,13 @@ Anything after a `--` separator is parsed as shell flags using the tool's input 
 
 ```bash
 # JSON form
-mcpx exec github create_issue '{"owner":"evantahler","repo":"mcpx","title":"bug"}'
+mcpx exec github create_issue '{"owner":"arcadeai-labs","repo":"mcpx","title":"bug"}'
 
 # Equivalent shell-flag form
-mcpx exec github create_issue -- --owner evantahler --repo mcpx --title bug
+mcpx exec github create_issue -- --owner arcadeai-labs --repo mcpx --title bug
 
 # --field=value also works
-mcpx exec github create_issue -- --owner=evantahler --repo=mcpx --title=bug
+mcpx exec github create_issue -- --owner=arcadeai-labs --repo=mcpx --title=bug
 
 # Booleans
 mcpx exec my-server flagit -- --enabled         # true
@@ -697,7 +697,7 @@ Always search before executing — don't assume tool names.
 For agents that don't have shell access — remote, persistent, or isolated agents running in TypeScript:
 
 ```typescript
-import { McpxClient } from "@evantahler/mcpx";
+import { McpxClient } from "@arcadeai/mcpx";
 
 const client = new McpxClient();
 // or: new McpxClient({ configDir: "/path/to/.mcpx" })
@@ -753,7 +753,7 @@ tool?.annotations; // { title?, readOnlyHint?, destructiveHint?, idempotentHint?
 Because the SDK runs non-interactively, mcpx can't prompt a human itself — instead you supply an approval callback and a policy for which tools to gate. This lets you require approval before, say, any **open-world writeable** tool (`openWorldHint: true` and not `readOnlyHint`) runs:
 
 ```typescript
-import { McpxClient, ToolApprovalDeniedError } from "@evantahler/mcpx";
+import { McpxClient, ToolApprovalDeniedError } from "@arcadeai/mcpx";
 
 const client = new McpxClient({
   servers: { mcpServers: { github: { url: "https://mcp.github.com" } } },

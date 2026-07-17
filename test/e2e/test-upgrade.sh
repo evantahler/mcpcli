@@ -63,7 +63,7 @@ clear_cache
 UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
 assert_json_field "npm: upgrade has from" "$UPGRADE" ".from"
 
-npm uninstall -g @evantahler/mcpx 2>&1
+npm uninstall -g @arcadeai/mcpx 2>&1
 hash -r
 
 # ══════════════════════════════════════════════════════════════
@@ -92,7 +92,7 @@ clear_cache
 UPGRADE=$(mcpx --json upgrade 2>/dev/null || true)
 assert_json_field "bun: upgrade has from" "$UPGRADE" ".from"
 
-bun remove -g @evantahler/mcpx 2>&1
+bun remove -g @arcadeai/mcpx 2>&1
 rm -f "/tmp/$TARBALL"
 hash -r
 
