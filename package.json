@@ -1,6 +1,6 @@
 {
-	"name": "@evantahler/mcpx",
-	"version": "0.22.3",
+	"name": "@arcadeai/mcpx",
+	"version": "1.0.0",
 	"description": "A command-line interface for MCP servers. curl for MCP.",
 	"type": "module",
 	"exports": {
@@ -33,8 +33,12 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/evantahler/mcpx.git"
+		"url": "https://github.com/arcadeai-labs/mcpx.git"
 	},
+	"bugs": {
+		"url": "https://github.com/arcadeai-labs/mcpx/issues"
+	},
+	"homepage": "https://github.com/arcadeai-labs/mcpx#readme",
 	"keywords": [
 		"mcp",
 		"cli",

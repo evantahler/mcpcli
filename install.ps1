@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$Repo = "evantahler/mcpx"
+$Repo = "arcadeai-labs/mcpx"
 $InstallDir = if ($env:MCPX_INSTALL_DIR) { $env:MCPX_INSTALL_DIR } else { "$env:LOCALAPPDATA\mcpx" }
 
 # Detect architecture

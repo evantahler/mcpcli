@@ -54,8 +54,8 @@ describe("updater.needsCheck", () => {
 
 describe("updater config + detectInstallMethod", () => {
 	test("is configured for the mcpx package and repo", () => {
-		expect(updater.config.packageName).toBe("@evantahler/mcpx");
-		expect(updater.config.repo).toBe("evantahler/mcpx");
+		expect(updater.config.packageName).toBe("@arcadeai/mcpx");
+		expect(updater.config.repo).toBe("arcadeai-labs/mcpx");
 		expect(updater.config.binaryName).toBe("mcpx");
 	});
 

@@ -237,7 +237,7 @@ mcpx deauth <server>           # remove stored auth
 For agents that don't have shell access (remote, persistent, or isolated agents), mcpx can be used as a TypeScript library:
 
 ```typescript
-import { McpxClient } from "@evantahler/mcpx";
+import { McpxClient } from "@arcadeai/mcpx";
 
 const client = new McpxClient();
 const results = await client.search("send a message");
